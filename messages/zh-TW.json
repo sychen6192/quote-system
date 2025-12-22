@@ -1,0 +1,99 @@
+{
+  "Metadata": {
+    "title": "聖大國際有限公司 | 報價系統",
+    "description": "專業的線上報價單管理系統"
+  },
+  "Dashboard": {
+    "title": "儀表板",
+    "subtitle": "您的業務概況總覽",
+    "totalRevenue": "總營收",
+    "totalQuotes": "報價單總數",
+    "customers": "客戶總數",
+    "recentQuotes": "最近報價單",
+    "createQuote": "建立報價單",
+    "viewAll": "查看全部"
+  },
+  "Common": {
+    "backToDashboard": "返回儀表板",
+    "number": "報價單號",
+    "customer": "客戶",
+    "status": "狀態",
+    "date": "日期",
+    "amount": "金額"
+  },
+  "QuotesList": {
+    "title": "報價單列表",
+    "backToDashboard": "返回儀表板",
+    "emptyState": "尚無報價單，請建立您的第一張報價單！",
+    "unknownCustomer": "未知客戶",
+    "table": {
+      "quoteNumber": "報價單號",
+      "customer": "客戶名稱",
+      "salesperson": "銷售人員",
+      "date": "開立日期",
+      "validUntil": "有效期限",
+      "totalAmount": "總金額",
+      "action": "操作"
+    },
+    "status": {
+      "expired": "已過期",
+      "active": "有效"
+    }
+  },
+  "NewQuote": {
+    "title": "建立新報價單",
+    "backToDashboard": "返回儀表板"
+  },
+  "QuoteForm": {
+    "header": {
+      "createTitle": "新增報價單",
+      "createDesc": "請填寫詳細資訊以產生新報價單。",
+      "editTitle": "編輯報價單 #{id}",
+      "editDesc": "請在下方更新報價單內容。"
+    },
+    "sections": {
+      "customerDetails": "客戶資料",
+      "items": "報價項目"
+    },
+    "fields": {
+      "companyName": "公司名稱",
+      "contactPerson": "聯絡人",
+      "email": "電子郵件",
+      "phone": "聯絡電話",
+      "vatNumber": "統一編號",
+      "salesperson": "銷售人員",
+      "address": "帳單地址",
+      "issuedDate": "開立日期",
+      "validUntil": "有效期限"
+    },
+    "table": {
+      "product": "產品 / 服務",
+      "qty": "數量",
+      "price": "單價",
+      "amount": "金額"
+    },
+    "placeholders": {
+      "itemName": "輸入項目名稱"
+    },
+    "summary": {
+      "subtotal": "小計",
+      "taxRate": "稅率",
+      "taxAmount": "稅額",
+      "total": "總計"
+    },
+    "actions": {
+      "save": "儲存報價單",
+      "update": "更新報價單",
+      "saving": "儲存中...",
+      "cancel": "取消",
+      "addItem": "新增項目"
+    },
+    "messages": {
+      "created": "報價單建立成功！",
+      "updated": "報價單更新成功！",
+      "error": "發生錯誤，請稍後再試",
+      "confirmDiscard": "您有未儲存的變更，確定要放棄嗎？"
+    }
+  }
+}
+}

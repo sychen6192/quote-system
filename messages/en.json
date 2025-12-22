@@ -1,0 +1,99 @@
+{
+  "Metadata": {
+    "title": "Shanda Intl | Quote System",
+    "description": "Professional quote management system"
+  },
+  "Dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Overview of your business performance",
+    "totalRevenue": "Total Revenue",
+    "totalQuotes": "Total Quotes",
+    "customers": "Customers",
+    "recentQuotes": "Recent Quotations",
+    "createQuote": "Create Quote",
+    "viewAll": "View All"
+  },
+  "Common": {
+    "backToDashboard": "Back to Dashboard",
+    "number": "Number",
+    "customer": "Customer",
+    "status": "Status",
+    "date": "Date",
+    "amount": "Amount"
+  },
+  "QuotesList": {
+    "title": "Quotations",
+    "backToDashboard": "Back to Dashboard",
+    "emptyState": "No quotations found. Create your first one!",
+    "unknownCustomer": "Unknown",
+    "table": {
+      "quoteNumber": "Quote #",
+      "customer": "Customer",
+      "salesperson": "Salesperson",
+      "date": "Date",
+      "validUntil": "Valid Until",
+      "totalAmount": "Total Amount",
+      "action": "Action"
+    },
+    "status": {
+      "expired": "Expired",
+      "active": "Active"
+    }
+  },
+  "NewQuote": {
+    "title": "Create New Quotation",
+    "backToDashboard": "Back to Dashboard"
+  },
+  "QuoteForm": {
+    "header": {
+      "createTitle": "New Quotation",
+      "createDesc": "Fill in the details to generate a new quote.",
+      "editTitle": "Edit Quote #{id}",
+      "editDesc": "Update the quotation details below."
+    },
+    "sections": {
+      "customerDetails": "Customer Details",
+      "items": "Quote Items"
+    },
+    "fields": {
+      "companyName": "Company Name",
+      "contactPerson": "Contact Person",
+      "email": "Email",
+      "phone": "Phone",
+      "vatNumber": "VAT Number",
+      "salesperson": "Salesperson",
+      "address": "Billing Address",
+      "issuedDate": "Issued Date",
+      "validUntil": "Valid Until"
+    },
+    "table": {
+      "product": "Product / Service",
+      "qty": "Qty",
+      "price": "Unit Price",
+      "amount": "Amount"
+    },
+    "placeholders": {
+      "itemName": "Item name"
+    },
+    "summary": {
+      "subtotal": "Subtotal",
+      "taxRate": "Tax Rate",
+      "taxAmount": "Tax Amount",
+      "total": "Total"
+    },
+    "actions": {
+      "save": "Save Quote",
+      "update": "Update Quote",
+      "saving": "Saving...",
+      "cancel": "Cancel",
+      "addItem": "Add Item"
+    },
+    "messages": {
+      "created": "Quote created successfully!",
+      "updated": "Quote updated successfully!",
+      "error": "Something went wrong",
+      "confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"
+    }
+  }
+
+}
