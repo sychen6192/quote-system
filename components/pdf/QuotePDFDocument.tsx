@@ -5,21 +5,11 @@ import {
   Text,
   View,
   StyleSheet,
-  Font,
+  // ❌ 移除 Font，不要在這裡引入
 } from "@react-pdf/renderer";
 
-// ✅ 修復 1: 改用 fetch 網路資源的方式載入字體
-// 這樣就不用管 process.cwd() 或 path 了
-// 注意：請確保你的專案在開發時是用 localhost:3000，上線後要換成真實網域
-// 如果你只是本地測試，寫死 http://localhost:3000 沒問題
-const fontUrl = process.env.NEXT_PUBLIC_APP_URL
-  ? `${process.env.NEXT_PUBLIC_APP_URL}/fonts/NotoSansTC-Regular.ttf`
-  : "http://localhost:3000/fonts/NotoSansTC-Regular.ttf";
-
-Font.register({
-  family: "Noto Sans TC",
-  src: fontUrl,
-});
+// ❌ 移除所有 Font.register 的程式碼
+// ❌ 移除 process.env.NEXT_PUBLIC_APP_URL 相關的變數
 
 const colors = {
   slate900: "#0f172a",
@@ -31,26 +21,24 @@ const colors = {
 
 const styles = StyleSheet.create({
   page: {
-    padding: 40,
-    fontFamily: "Noto Sans TC", // ✅ 記得把字體加回來
+    padding: 30,
+    fontFamily: "Noto Sans TC", // ✅ 這裡保留名字就好，API Route 已經幫你載入檔案了
     fontSize: 9,
     color: colors.slate600,
-    lineHeight: 1.5,
+    lineHeight: 1.4,
   },
-
-  // --- Header 區域 ---
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 20,
+    marginBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: colors.slate100,
-    paddingBottom: 20,
-    alignItems: "flex-start", // ✅ 修復 2: 確保頂部對齊，避免跑版
+    paddingBottom: 10,
+    alignItems: "flex-start",
   },
   brandSection: {
     flexDirection: "row",
-    alignItems: "flex-start", // 確保 Logo 跟文字對齊
+    alignItems: "flex-start",
   },
   logoPlaceholder: {
     width: 30,
@@ -69,51 +57,44 @@ const styles = StyleSheet.create({
     color: colors.slate500,
   },
   contactInfo: {
-    marginTop: 8,
+    marginTop: 4,
     fontSize: 8,
     color: colors.slate500,
-    lineHeight: 1.2, // 微調行高
+    lineHeight: 1.2,
   },
-
   titleSection: {
     alignItems: "flex-end",
-    // ✅ 修復 2: 增加寬度限制或調整，避免擠壓
     maxWidth: "40%",
   },
   docTitle: {
-    fontSize: 24, // ✅ 修復 2: 稍微縮小字體 (原本28可能太大)
-    fontWeight: "bold", // react-pdf 支援 bold, 不支援 heavy
+    fontSize: 24,
+    fontWeight: "bold",
     color: colors.slate900,
     textTransform: "uppercase",
-    marginBottom: 5, // ✅ 修復 2: 增加下方間距，避免跟單號重疊
+    marginBottom: 2,
   },
   docNumber: {
     fontSize: 10,
     color: colors.slate500,
-    marginTop: 2,
+    marginTop: 0,
   },
   statusBadge: {
-    marginTop: 5,
+    marginTop: 4,
     paddingVertical: 2,
     paddingHorizontal: 8,
     backgroundColor: colors.slate100,
-    borderRadius: 4, // 稍微方一點比較好看
+    borderRadius: 4,
   },
   statusText: {
     fontSize: 8,
     color: colors.slate600,
     textTransform: "uppercase",
   },
-
-  // ... (中間的 InfoSection, Table, Totals, Footer 樣式保持不變，直接沿用) ...
-  // 為了節省篇幅，這裡省略中間沒變的樣式，請保留你原本的程式碼
-
-  // 只要確保 page 的 fontFamily 有設回 "Noto Sans TC" 即可
   infoSection: {
     backgroundColor: "#F8FAFC",
-    padding: 15,
+    padding: 10,
     flexDirection: "row",
-    marginBottom: 20,
+    marginBottom: 15,
     borderRadius: 4,
   },
   billToCol: { width: "55%" },
@@ -123,61 +104,62 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: colors.slate500,
     textTransform: "uppercase",
-    marginBottom: 4,
+    marginBottom: 2,
   },
   clientName: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "bold",
     color: colors.slate900,
     marginBottom: 2,
   },
-  detailItem: { width: "50%", marginBottom: 10 },
+  detailItem: { width: "50%", marginBottom: 6 },
   detailValue: { fontSize: 9, fontWeight: "bold", color: colors.slate900 },
-
   tableHeader: {
     flexDirection: "row",
     borderBottomWidth: 1,
     borderBottomColor: colors.slate900,
-    paddingBottom: 6,
-    marginBottom: 6,
+    paddingBottom: 4,
+    marginBottom: 4,
   },
   tableHeaderCell: { fontSize: 8, fontWeight: "bold", color: colors.slate900 },
   tableRow: {
     flexDirection: "row",
     borderBottomWidth: 1,
     borderBottomColor: colors.slate100,
-    paddingVertical: 8,
+    paddingVertical: 6,
   },
   colDesc: { width: "50%" },
   colQty: { width: "10%", textAlign: "right" },
   colPrice: { width: "20%", textAlign: "right" },
   colAmount: { width: "20%", textAlign: "right" },
   itemTitle: { fontSize: 9, color: colors.slate900 },
-
   totalsSection: {
     flexDirection: "row",
     justifyContent: "flex-end",
-    marginTop: 20,
-    marginBottom: 30,
+    marginTop: 10,
+    marginBottom: 10,
   },
   totalsBox: { width: "40%" },
   totalRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 6,
+    marginBottom: 4,
   },
-  separator: { height: 1, backgroundColor: colors.slate900, marginVertical: 6 },
+  separator: { height: 1, backgroundColor: colors.slate900, marginVertical: 4 },
   finalTotalRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
   },
   finalTotalLabel: { fontSize: 10, fontWeight: "bold", color: colors.slate900 },
-  finalTotalValue: { fontSize: 16, fontWeight: "bold", color: colors.slate900 },
-
+  finalTotalValue: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: colors.slate900,
+  },
   footerSection: {
-    marginTop: "auto",
-    paddingTop: 20,
+    marginTop: 10,
+    paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: colors.slate100,
     flexDirection: "row",
@@ -194,7 +176,7 @@ const styles = StyleSheet.create({
     color: colors.slate900,
     marginBottom: 2,
   },
-  bankInfo: { marginTop: 10 },
+  bankInfo: { marginTop: 6 },
   signatureLine: {
     width: 150,
     borderBottomWidth: 1,
@@ -209,14 +191,13 @@ const styles = StyleSheet.create({
     width: 150,
   },
   copyright: {
-    marginTop: 30,
+    marginTop: 20,
     textAlign: "center",
     fontSize: 7,
     color: "#cbd5e1",
   },
 });
 
-// ... Helper functions 保持不變 ...
 const fmtMoney = (cents: number) => {
   return new Intl.NumberFormat("zh-TW", {
     style: "currency",
@@ -235,7 +216,6 @@ const fmtDate = (d: Date | string) => {
 };
 
 export const QuotePDFDocument = ({ quote }: { quote: any }) => {
-  // ... Server 端計算邏輯保持不變 ...
   const subtotalCents = quote.items.reduce(
     (acc: number, item: any) => acc + item.quantity * item.unitPrice,
     0
@@ -247,16 +227,12 @@ export const QuotePDFDocument = ({ quote }: { quote: any }) => {
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* 內容保持不變，因為字體修復了，中文就會正常顯示 */}
-        {/* ... JSX 結構省略，與上次一致 ... */}
-
         <View style={styles.header}>
           <View style={styles.brandSection}>
             <View style={styles.logoPlaceholder} />
             <View>
               <Text style={styles.brandName}>Shangda Inc.</Text>
-              <Text style={styles.brandSub}>聖大國際有限公司</Text>{" "}
-              {/* 中文測試 */}
+              <Text style={styles.brandSub}>聖大國際有限公司</Text>
               <View style={styles.contactInfo}>
                 <Text>Taipei City, Taiwan</Text>
                 <Text>VAT: 50990180</Text>
@@ -276,7 +252,6 @@ export const QuotePDFDocument = ({ quote }: { quote: any }) => {
           </View>
         </View>
 
-        {/* 下面都一樣... */}
         <View style={styles.infoSection}>
           <View style={styles.billToCol}>
             <Text style={styles.sectionTitle}>Bill To</Text>
@@ -284,6 +259,9 @@ export const QuotePDFDocument = ({ quote }: { quote: any }) => {
             <Text>Attn: {quote.customer?.contactPerson}</Text>
             <Text>{quote.customer?.address}</Text>
             <Text>{quote.customer?.email}</Text>
+            {quote.customer?.vatNumber ? (
+              <Text>VAT: {quote.customer.vatNumber}</Text>
+            ) : null}
           </View>
           <View style={styles.detailsCol}>
             <View style={styles.detailItem}>
@@ -360,6 +338,13 @@ export const QuotePDFDocument = ({ quote }: { quote: any }) => {
 
         <View style={styles.footerSection}>
           <View style={styles.footerLeft}>
+            {quote.notes ? (
+              <View style={{ marginBottom: 6 }}>
+                <Text style={styles.notesTitle}>Notes</Text>
+                <Text>{quote.notes}</Text>
+              </View>
+            ) : null}
+
             <View style={styles.bankInfo}>
               <Text style={styles.notesTitle}>Payment Details</Text>
               <Text>Bank: CTBC Bank (822)</Text>
@@ -372,6 +357,11 @@ export const QuotePDFDocument = ({ quote }: { quote: any }) => {
             <Text style={styles.signatureLabel}>Authorized Signature</Text>
           </View>
         </View>
+
+        <Text style={styles.copyright}>
+          Thank you for your business! If you have any questions, please contact
+          us.
+        </Text>
       </Page>
     </Document>
   );
