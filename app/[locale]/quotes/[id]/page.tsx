@@ -5,11 +5,10 @@ import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Building2, Mail, Phone, MapPin } from "lucide-react";
-import SendEmailButton from "@/components/send-email-button";
 import Link from "next/link";
-import PrintButton from "@/components/print-button";
 import { getFormatter } from "next-intl/server";
-import DownloadPDFButton from "@/components/download-pdf-button";
+// ✅ 引入新的 Actions 元件
+import QuoteActions from "@/components/quote-actions";
 
 interface PageProps {
   params: Promise<{
@@ -36,38 +35,35 @@ export default async function QuoteDetailPage({ params }: PageProps) {
   // 2. 初始化 Formatter
   const format = await getFormatter();
 
-  // 3. 即時計算金額 (處理 DB 存整數的問題)
-  // 小計 (分)
+  // 3. 計算金額
   const subtotalCents = quote.items.reduce((acc, item) => {
     return acc + item.quantity * item.unitPrice;
   }, 0);
 
-  // 稅額 (分) = 總金額 - 小計
   const taxAmountCents = quote.totalAmount - subtotalCents;
-
-  // 稅率顯示 (例如 500 -> 5)
   const taxRateDisplay = (Number(quote.taxRate) || 0) / 100;
 
   return (
     <div className="min-h-screen bg-gray-100/50 py-10 print:bg-white print:p-0">
       <div className="container mx-auto max-w-[210mm]">
-        {" "}
-        {/* 限制為 A4 寬度 */}
-        {/* --- 頂部動作列 (列印時隱藏) --- */}
+        {/* --- 頂部動作列 (列印時會被 CSS 隱藏) --- */}
         <div className="flex justify-between items-center mb-8 print:hidden">
           <Link href="/">
             <Button variant="outline" className="gap-2">
               <ArrowLeft className="h-4 w-4" /> Back to List
             </Button>
           </Link>
-          <div className="flex gap-3">
-            <SendEmailButton quote={quote} />
-            <DownloadPDFButton quoteId={quote.id} />
-            <PrintButton />
-          </div>
+
+          {/* ✅ 替換為整合後的按鈕組 */}
+          <QuoteActions quote={quote} />
         </div>
+
         {/* --- 報價單 A4 紙張區域 --- */}
-        <div className="bg-white shadow-xl rounded-sm border print:shadow-none print:border-none print:rounded-none min-h-[297mm] relative flex flex-col">
+        {/* ✅ 加上 id="printable-content" 讓 CSS 鎖定這個區塊列印 */}
+        <div
+          id="printable-content"
+          className="bg-white shadow-xl rounded-sm border print:shadow-none print:border-none print:rounded-none min-h-[297mm] relative flex flex-col"
+        >
           {/* 1. Header 品牌區 */}
           <div className="p-12 pb-8 border-b border-gray-100">
             <div className="flex justify-between items-start">
@@ -208,7 +204,7 @@ export default async function QuoteDetailPage({ params }: PageProps) {
                 </tr>
               </thead>
               <tbody className="text-slate-600">
-                {quote.items.map((item, index) => (
+                {quote.items.map((item) => (
                   <tr
                     key={item.id}
                     className="border-b border-gray-100 last:border-0"
@@ -217,8 +213,6 @@ export default async function QuoteDetailPage({ params }: PageProps) {
                       <p className="font-semibold text-slate-900">
                         {item.productName}
                       </p>
-                      {/* 如果你有商品描述欄位，可以在這裡顯示 */}
-                      {/* <p className="text-xs mt-1 text-slate-400">Item specific description goes here...</p> */}
                     </td>
                     <td className="py-4 text-right align-top font-mono">
                       {item.quantity}

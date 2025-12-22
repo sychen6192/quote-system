@@ -67,3 +67,52 @@
     @apply bg-background text-foreground;
   }
 }
+@layer utilities {
+  @media print {
+    /* 1. 歸零瀏覽器預設邊距 */
+    @page {
+      margin: 0;
+      size: auto;
+    }
+
+    /* 2. 隱藏不相關的元素 */
+    body * {
+      visibility: hidden;
+    }
+
+    /* 3. 鎖定我們的主內容 */
+    #printable-content,
+    #printable-content * {
+      visibility: visible;
+    }
+
+    /* 4. 關鍵修復：取消高度限制與邊距調整 */
+    #printable-content {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+
+      /* ⚠️ 關鍵：原本是 297mm，列印時要改回 auto，不然一定會多出一頁 */
+      min-height: 0 !important;
+      height: auto !important;
+
+      /* 移除陰影與邊框 */
+      box-shadow: none !important;
+      border: none !important;
+      margin: 0 !important;
+      padding: 20px !important; /* 強制縮小內距 (原本是 p-12=48px，太大了) */
+    }
+
+    /* 5. 針對 Footer：取消置底推擠 */
+    #printable-content .mt-auto {
+      margin-top: 20px !important; /* 不要用 auto 推到底，改用固定間距 */
+    }
+
+    /* 確保背景色 (表格灰底) 有印出來 */
+    body {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+  }
+}
