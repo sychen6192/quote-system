@@ -43,7 +43,7 @@ export default async function DashboardPage() {
       .from(customers),
     db.query.quotations.findMany({
       with: { customer: true },
-      orderBy: [desc(quotations.issuedDate)],
+      orderBy: [desc(quotations.createdAt)],
       limit: 5,
     }),
   ]);
