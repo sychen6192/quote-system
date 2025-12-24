@@ -94,6 +94,21 @@
       "error": "發生錯誤，請稍後再試",
       "confirmDiscard": "您有未儲存的變更，確定要放棄嗎？"
     }
+  },
+
+  "QuoteActions": {
+    "backToList": "返回列表",
+    "export": "匯出",
+    "downloadPdf": "下載 PDF",
+    "print": "列印 (網頁版)",
+    "sendEmail": "寄送報價單",
+    "sending": "寄送中...",
+    "confirmSend": "確認寄送",
+    "cancel": "取消",
+    "dialogTitle": "寄送報價單？",
+    "dialogDesc": "確定要將此報價單寄送給：",
+    "success": "Email 寄送成功！",
+    "error": "Email 寄送失敗",
+    "genericError": "發生錯誤，請稍後再試"
   }
-}
 }

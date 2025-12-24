@@ -25,4 +25,4 @@ export const quoteFormSchema = z.object({
     notes: z.string().optional(),
 });
 
-export type QuoteFormValues = z.infer<typeof quoteFormSchema>;
+export type QuoteFormData = z.infer<typeof quoteFormSchema>;

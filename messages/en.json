@@ -94,6 +94,20 @@
       "error": "Something went wrong",
       "confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"
     }
+  },
+  "QuoteActions": {
+    "backToList": "Back to List",
+    "export": "Export",
+    "downloadPdf": "Download PDF",
+    "print": "Print (Web)",
+    "sendEmail": "Send Email",
+    "sending": "Sending...",
+    "confirmSend": "Confirm Send",
+    "cancel": "Cancel",
+    "dialogTitle": "Send Quotation?",
+    "dialogDesc": "Are you sure you want to send this quotation to:",
+    "success": "Email sent successfully!",
+    "error": "Failed to send email",
+    "genericError": "Something went wrong"
   }
-
 }
