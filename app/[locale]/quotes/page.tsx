@@ -12,135 +12,154 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Eye, Pencil } from "lucide-react"; // ✅ 新增 Pencil icon
-import { getTranslations, getFormatter } from "next-intl/server"; // ✅ 新增 getFormatter
+import { ArrowLeft, Eye, Pencil, Plus } from "lucide-react";
+import { getTranslations, getFormatter } from "next-intl/server";
 import { formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
 export default async function QuotesListPage() {
-  // 1. 初始化翻譯與格式化工具
   const t = await getTranslations("QuotesList");
-  const format = await getFormatter(); // 取得 Server 端的格式化工具
+  const format = await getFormatter();
 
-  // 2. 資料庫查詢
   const data = await db.query.quotations.findMany({
-    with: {
-      customer: true,
-    },
+    with: { customer: true },
     orderBy: [desc(quotations.createdAt)],
   });
 
   return (
-    <div className="container mx-auto py-10">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">{t("title")}</h1>
-        <Link href="/">
-          <Button variant="outline">
-            {" "}
-            {/* 改用 outline 比較不搶眼 */}
-            <ArrowLeft className="mr-2 h-4 w-4" /> {t("backToDashboard")}
-          </Button>
-        </Link>
+    // ✅ 1. 間距優化：手機 py-4 / 電腦 py-10
+    <div className="container mx-auto py-4 md:py-10 px-4 md:px-0">
+      {/* ✅ 2. Header 手機版垂直排列 */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold">{t("title")}</h1>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Link href="/" className="w-full sm:w-auto">
+            <Button variant="outline" className="w-full sm:w-auto">
+              <ArrowLeft className="mr-2 h-4 w-4" /> {t("backToDashboard")}
+            </Button>
+          </Link>
+          <Link href="/quotes/new" className="w-full sm:w-auto">
+            <Button className="w-full sm:w-auto">
+              <Plus className="mr-2 h-4 w-4" /> Create
+            </Button>
+          </Link>
+        </div>
       </div>
 
-      <div className="border rounded-md">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t("table.quoteNumber")}</TableHead>
-              <TableHead>{t("table.customer")}</TableHead>
-              <TableHead>{t("table.salesperson")}</TableHead>
-              <TableHead>{t("table.date")}</TableHead>
-              <TableHead>{t("table.validUntil")}</TableHead>
-              <TableHead className="text-right">
-                {t("table.totalAmount")}
-              </TableHead>
-              <TableHead className="text-right">{t("table.action")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.length === 0 ? (
+      <div className="border rounded-md overflow-hidden">
+        {/* ✅ 3. 表格加上橫向捲軸 (防止手機破版) */}
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell
-                  colSpan={7}
-                  className="text-center h-24 text-muted-foreground"
-                >
-                  {t("emptyState")}
-                </TableCell>
+                <TableHead className="w-[120px]">
+                  {t("table.quoteNumber")}
+                </TableHead>
+                <TableHead className="min-w-[150px]">
+                  {t("table.customer")}
+                </TableHead>
+                {/* ✅ 4. 手機隱藏次要欄位 */}
+                <TableHead className="hidden md:table-cell">
+                  {t("table.salesperson")}
+                </TableHead>
+                <TableHead className="hidden lg:table-cell">
+                  {t("table.date")}
+                </TableHead>
+                <TableHead className="hidden lg:table-cell">
+                  {t("table.validUntil")}
+                </TableHead>
+                <TableHead className="text-right">
+                  {t("table.totalAmount")}
+                </TableHead>
+                <TableHead className="text-right w-[100px]">
+                  {t("table.action")}
+                </TableHead>
               </TableRow>
-            ) : (
-              data.map((quote) => (
-                <TableRow key={quote.id} className="group">
-                  <TableCell className="font-medium">
-                    {/* 點擊單號通常是進去「看」詳細內容 */}
-                    <Link
-                      href={`/quotes/${quote.id}`}
-                      className="hover:underline text-blue-600"
-                    >
-                      {quote.quotationNumber}
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    <div className="font-medium">
-                      {quote.customer?.companyName || t("unknownCustomer")}
-                    </div>
-                    <div className="text-xs text-muted-foreground hidden md:block">
-                      {quote.customer?.contactPerson}
-                    </div>
-                  </TableCell>
-                  <TableCell>{quote.salesperson}</TableCell>
-
-                  {/* 使用 next-intl 格式化日期 */}
-                  <TableCell>
-                    {format.dateTime(new Date(quote.issuedDate), {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </TableCell>
-
-                  <TableCell>
-                    {new Date(quote.validUntil) < new Date() ? (
-                      <Badge variant="destructive">{t("status.expired")}</Badge>
-                    ) : (
-                      <Badge
-                        variant="secondary"
-                        className="bg-green-100 text-green-800 hover:bg-green-100"
-                      >
-                        {t("status.active")}
-                      </Badge>
-                    )}
-                  </TableCell>
-
-                  <TableCell className="text-right font-mono font-medium">
-                    {/* 使用 next-intl 格式化貨幣 (台幣不顯示小數點) */}
-                    {formatCurrency(quote.totalAmount)}
-                  </TableCell>
-
-                  {/* --- Action Column 優化 --- */}
-                  <TableCell className="text-right">
-                    <div className="flex justify-end items-center gap-1">
-                      {/* 1. 編輯按鈕 (通常連到 /edit 路由) */}
-                      <Link href={`/quotes/${quote.id}/edit`}>
-                        <Button variant="ghost" size="icon" title="Edit">
-                          <Pencil className="h-4 w-4 text-muted-foreground hover:text-blue-600 transition-colors" />
-                        </Button>
-                      </Link>
-
-                      {/* 2. 檢視按鈕 */}
-                      <Link href={`/quotes/${quote.id}`}>
-                        <Button variant="ghost" size="icon" title="View">
-                          <Eye className="h-4 w-4 text-muted-foreground hover:text-black transition-colors" />
-                        </Button>
-                      </Link>
-                    </div>
+            </TableHeader>
+            <TableBody>
+              {data.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={7}
+                    className="text-center h-24 text-muted-foreground"
+                  >
+                    {t("emptyState")}
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : (
+                data.map((quote) => (
+                  <TableRow key={quote.id} className="group">
+                    <TableCell className="font-medium">
+                      <Link
+                        href={`/quotes/${quote.id}`}
+                        className="hover:underline text-blue-600 block min-w-max"
+                      >
+                        {quote.quotationNumber}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <div className="font-medium truncate max-w-[150px] md:max-w-none">
+                        {quote.customer?.companyName || t("unknownCustomer")}
+                      </div>
+                      {/* 手機版把聯絡人也秀出來，因為可能隱藏了其他欄位 */}
+                      <div className="text-xs text-muted-foreground md:hidden block">
+                        {format.dateTime(new Date(quote.issuedDate), {
+                          dateStyle: "short",
+                        })}
+                      </div>
+                      <div className="text-xs text-muted-foreground hidden md:block">
+                        {quote.customer?.contactPerson}
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {quote.salesperson}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      {format.dateTime(new Date(quote.issuedDate), {
+                        dateStyle: "medium",
+                      })}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      {new Date(quote.validUntil) < new Date() ? (
+                        <Badge
+                          variant="destructive"
+                          className="whitespace-nowrap"
+                        >
+                          {t("status.expired")}
+                        </Badge>
+                      ) : (
+                        <Badge
+                          variant="secondary"
+                          className="bg-green-100 text-green-800 hover:bg-green-100 whitespace-nowrap"
+                        >
+                          {t("status.active")}
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right font-mono font-medium">
+                      {formatCurrency(quote.totalAmount)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end items-center gap-1">
+                        <Link href={`/quotes/${quote.id}/edit`}>
+                          <Button variant="ghost" size="icon" title="Edit">
+                            <Pencil className="h-4 w-4 text-muted-foreground hover:text-blue-600 transition-colors" />
+                          </Button>
+                        </Link>
+                        <Link href={`/quotes/${quote.id}`}>
+                          <Button variant="ghost" size="icon" title="View">
+                            <Eye className="h-4 w-4 text-muted-foreground hover:text-black transition-colors" />
+                          </Button>
+                        </Link>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     </div>
   );
