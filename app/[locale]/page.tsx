@@ -53,7 +53,8 @@ export default async function DashboardPage() {
   const totalCustomers = totalCustomersResult[0].count || 0;
 
   return (
-    <div className="container mx-auto py-10 space-y-8">
+    <div className="container mx-auto py-4 md:py-10 space-y-8 px-4 md:px-0">
+      {" "}
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -71,7 +72,6 @@ export default async function DashboardPage() {
           </Link>
         </div>
       </div>
-
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -114,7 +114,6 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-
       <Card className="col-span-4">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>{t("recentQuotes")}</CardTitle>
@@ -125,71 +124,73 @@ export default async function DashboardPage() {
             {t("viewAll")} <ArrowRight className="ml-1 h-4 w-4" />
           </Link>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead> {tCommon("number")}</TableHead>
-                <TableHead> {tCommon("customer")}</TableHead>
-                <TableHead>{tCommon("date")}</TableHead>
-                <TableHead>{tCommon("status")}</TableHead>
-                <TableHead className="text-right">
-                  {tCommon("amount")}
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {recentQuotes.map((q) => (
-                <TableRow
-                  key={q.id}
-                  className="group cursor-pointer hover:bg-muted/50"
-                >
-                  <TableCell className="font-medium">
-                    <Link
-                      href={`/quotes/${q.id}`}
-                      className="block w-full h-full"
-                    >
-                      {q.quotationNumber}
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    <Link
-                      href={`/quotes/${q.id}`}
-                      className="block w-full h-full"
-                    >
-                      {q.customer?.companyName || "Unknown"}
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    <Link
-                      href={`/quotes/${q.id}`}
-                      className="block w-full h-full text-muted-foreground"
-                    >
-                      {q.issuedDate
-                        ? new Date(q.issuedDate).toLocaleDateString("zh-TW")
-                        : "-"}
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    <Link
-                      href={`/quotes/${q.id}`}
-                      className="block w-full h-full"
-                    >
-                      <Badge variant="outline">Sent</Badge>
-                    </Link>
-                  </TableCell>
-                  <TableCell className="text-right font-mono font-medium">
-                    <Link
-                      href={`/quotes/${q.id}`}
-                      className="block w-full h-full"
-                    >
-                      {formatCurrency(q.totalAmount)}
-                    </Link>
-                  </TableCell>
+        <CardContent className="p-0 md:p-6">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead> {tCommon("number")}</TableHead>
+                  <TableHead> {tCommon("customer")}</TableHead>
+                  <TableHead>{tCommon("date")}</TableHead>
+                  <TableHead>{tCommon("status")}</TableHead>
+                  <TableHead className="text-right">
+                    {tCommon("amount")}
+                  </TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {recentQuotes.map((q) => (
+                  <TableRow
+                    key={q.id}
+                    className="group cursor-pointer hover:bg-muted/50"
+                  >
+                    <TableCell className="font-medium">
+                      <Link
+                        href={`/quotes/${q.id}`}
+                        className="block w-full h-full"
+                      >
+                        {q.quotationNumber}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <Link
+                        href={`/quotes/${q.id}`}
+                        className="block w-full h-full"
+                      >
+                        {q.customer?.companyName || "Unknown"}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <Link
+                        href={`/quotes/${q.id}`}
+                        className="block w-full h-full text-muted-foreground"
+                      >
+                        {q.issuedDate
+                          ? new Date(q.issuedDate).toLocaleDateString("zh-TW")
+                          : "-"}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <Link
+                        href={`/quotes/${q.id}`}
+                        className="block w-full h-full"
+                      >
+                        <Badge variant="outline">Sent</Badge>
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-right font-mono font-medium">
+                      <Link
+                        href={`/quotes/${q.id}`}
+                        className="block w-full h-full"
+                      >
+                        {formatCurrency(q.totalAmount)}
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>
