@@ -11,6 +11,7 @@ import {
   Image,
 } from "@react-pdf/renderer";
 import { COMPANY_INFO, PAYMENT_INFO } from "@/lib/company-info";
+import { calculateQuoteTotals } from "@/lib/calculations";
 
 const colors = {
   slate900: "#0f172a",
@@ -229,11 +230,10 @@ const fmtDate = (d: string | Date) =>
   });
 
 export const QuotePDFDocument = ({ quote }: { quote: any }) => {
-  const subtotalCents = quote.items.reduce(
-    (acc: number, item: any) => acc + item.quantity * item.unitPrice,
-    0
+  const { subtotal, taxAmount, totalAmount } = calculateQuoteTotals(
+    quote.items,
+    Number(quote.taxRate)
   );
-  const taxAmountCents = quote.totalAmount - subtotalCents;
   const taxRateDisplay = (Number(quote.taxRate) || 0) / 100;
   const isExpired = new Date(quote.validUntil) < new Date();
 
@@ -243,12 +243,10 @@ export const QuotePDFDocument = ({ quote }: { quote: any }) => {
         <View style={styles.header}>
           <View style={styles.brandSection}>
             {/* ✅ 更新：使用 SVG 繪製專業建築圖示 */}
-            <Svg
-              width={40}
-              height={40}
-              viewBox="0 0 24 24"
-              style={{ marginRight: 8 }}
-            >
+            <Image 
+              src={COMPANY_INFO.logoBase64}
+              style={{ width: 40, height: 40, marginRight: 8, objectFit: 'contain' }} 
+            />
               {/* 主體建築 */}
               <Path
                 d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"
@@ -352,17 +350,15 @@ export const QuotePDFDocument = ({ quote }: { quote: any }) => {
           <View style={styles.totalsBox}>
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Subtotal</Text>
-              <Text style={styles.totalValue}>{fmtMoney(subtotalCents)}</Text>
+              <Text style={styles.totalValue}>{fmtMoney(subtotal)}</Text>
             </View>
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Tax ({taxRateDisplay}%)</Text>
-              <Text style={styles.totalValue}>{fmtMoney(taxAmountCents)}</Text>
+              <Text style={styles.totalValue}>{fmtMoney(taxAmount)}</Text>
             </View>
             <View style={styles.totalRowFinal}>
               <Text style={styles.finalLabel}>Total</Text>
-              <Text style={styles.finalValue}>
-                {fmtMoney(quote.totalAmount)}
-              </Text>
+              <Text style={styles.finalValue}>{fmtMoney(totalAmount)}</Text>
             </View>
           </View>
         </View>

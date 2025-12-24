@@ -9,6 +9,7 @@ import Link from "next/link";
 import { getFormatter, getTranslations } from "next-intl/server";
 import QuoteActions from "@/components/quote-actions";
 import { COMPANY_INFO, PAYMENT_INFO } from "@/lib/company-info";
+import { calculateQuoteTotals } from "@/lib/calculations";
 
 interface PageProps {
   params: Promise<{
@@ -35,11 +36,10 @@ export default async function QuoteDetailPage({ params }: PageProps) {
 
   const format = await getFormatter();
 
-  const subtotalCents = quote.items.reduce((acc, item) => {
-    return acc + item.quantity * item.unitPrice;
-  }, 0);
-
-  const taxAmountCents = quote.totalAmount - subtotalCents;
+  const { subtotal, taxAmount, totalAmount } = calculateQuoteTotals(
+    quote.items,
+    Number(quote.taxRate)
+  );
   const taxRateDisplay = (Number(quote.taxRate) || 0) / 100;
 
   return (
@@ -67,7 +67,11 @@ export default async function QuoteDetailPage({ params }: PageProps) {
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 bg-slate-900 rounded flex items-center justify-center text-white">
-                    <Building2 className="h-6 w-6" />
+                    <img
+                      src={COMPANY_INFO.logoBase64}
+                      alt="Company Logo"
+                      className="h-12 w-auto object-contain"
+                    />
                   </div>
                   <div>
                     <h2 className="text-xl font-bold text-slate-900 tracking-tight">
@@ -237,7 +241,7 @@ export default async function QuoteDetailPage({ params }: PageProps) {
                 <div className="flex justify-between text-slate-500 text-sm">
                   <span>Subtotal</span>
                   <span className="font-mono text-slate-900 font-medium">
-                    {format.number(subtotalCents / 100, {
+                    {format.number(subtotal / 100, {
                       style: "currency",
                       currency: "TWD",
                       maximumFractionDigits: 0,
@@ -247,7 +251,7 @@ export default async function QuoteDetailPage({ params }: PageProps) {
                 <div className="flex justify-between text-slate-500 text-sm">
                   <span>Tax ({taxRateDisplay}%)</span>
                   <span className="font-mono text-slate-900 font-medium">
-                    {format.number(taxAmountCents / 100, {
+                    {format.number(subtotal / 100, {
                       style: "currency",
                       currency: "TWD",
                       maximumFractionDigits: 0,

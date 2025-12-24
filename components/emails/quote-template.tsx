@@ -1,4 +1,4 @@
-import { COMPANY_INFO } from "@/lib/company-info";
+import { COMPANY_INFO, PAYMENT_INFO } from "@/lib/company-info";
 import {
   Body,
   Container,
@@ -104,6 +104,15 @@ export const QuoteEmail = ({ quote }: QuoteTemplateProps) => {
 
             {/* Footer */}
             <Section className="text-center mt-8">
+              <div className="mb-6 text-xs text-slate-500">
+                <Text className="font-bold m-0 uppercase mb-2">
+                  Payment Details
+                </Text>
+                <Text className="m-0">Bank: {PAYMENT_INFO.bankName}</Text>
+                <Text className="m-0">Account: {PAYMENT_INFO.accountName}</Text>
+                <Text className="m-0">No: {PAYMENT_INFO.accountNumber}</Text>
+              </div>
+
               <Text className="text-xs text-slate400 leading-relaxed m-0">
                 <strong>{COMPANY_INFO.name}</strong>
                 <br />
