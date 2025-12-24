@@ -26,12 +26,12 @@ import {
 import { Plus, Trash2, Save, ArrowLeft } from "lucide-react";
 import { createQuote } from "@/actions/create-quote";
 import { updateQuote } from "@/actions/update-quote";
-import { quoteFormSchema, type QuoteFormValues } from "@/lib/schemas/quote";
+import { quoteFormSchema, type QuoteFormData } from "@/lib/schemas/quote";
 import { toast } from "sonner";
 import { useTranslations, useFormatter } from "next-intl";
 
 interface QuoteFormProps {
-  initialData: QuoteFormValues & { id?: number };
+  initialData: QuoteFormData & { id?: number };
 }
 
 export default function QuoteForm({ initialData }: QuoteFormProps) {
@@ -41,7 +41,7 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
   const [isPending, setIsPending] = useState(false);
 
   // 1. 初始化 Form
-  const form = useForm<QuoteFormValues>({
+  const form = useForm<QuoteFormData>({
     resolver: zodResolver(quoteFormSchema),
     defaultValues: initialData,
   });
@@ -67,13 +67,14 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
   const total = Math.round(subtotal + taxAmount);
 
   // 4. 送出表單
-  const onSubmit = async (data: QuoteFormValues) => {
+  const onSubmit = async (data: QuoteFormData) => {
     setIsPending(true);
     try {
       const res = initialData?.id
         ? await updateQuote(initialData.id, data)
         : await createQuote(data);
 
+      console.log(res);
       if (res?.error) {
         toast.error(t("messages.error"));
       } else {
@@ -417,8 +418,8 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
 // ------------------------------------------------------------
 interface FormFieldProps {
   label: string;
-  name: Path<QuoteFormValues>; // ✨ 這是關鍵：限制 name 只能是 schema 裡有的 key
-  register: UseFormRegister<QuoteFormValues>;
+  name: Path<QuoteFormData>; // ✨ 這是關鍵：限制 name 只能是 schema 裡有的 key
+  register: UseFormRegister<QuoteFormData>;
   error?: FieldError;
   type?: string;
   disabled?: boolean;

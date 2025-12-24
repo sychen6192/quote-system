@@ -16,16 +16,29 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { type InferSelectModel } from "drizzle-orm";
+import { customers, quotations, quotationItems } from "@/db/schema";
+import { useTranslations } from "next-intl";
 
-export default function SendEmailButton({ quote }: { quote: any }) {
+type QuoteWithRelations = InferSelectModel<typeof quotations> & {
+  customer: InferSelectModel<typeof customers> | null;
+  items: InferSelectModel<typeof quotationItems>[];
+};
+
+interface QuoteActionsProps {
+  quote: QuoteWithRelations;
+}
+
+export default function SendEmailButton({ quote }: QuoteActionsProps) {
+  const t = useTranslations("QuoteActions");
+
   const [open, setOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
 
-  // 檢查 Email 是否存在
+  const name = quote.customer?.companyName;
   const email = quote.customer?.email;
 
   const handleSend = async (e: React.MouseEvent) => {
-    // ⚠️ 關鍵：阻止 Dialog 點擊後自動關閉，我們要手動控制
     e.preventDefault();
 
     setIsSending(true);
@@ -33,20 +46,18 @@ export default function SendEmailButton({ quote }: { quote: any }) {
       const res = await sendQuoteEmail(quote);
 
       if (res.success) {
-        toast.success(`Email sent to ${email} successfully!`);
-        setOpen(false); // 發送成功才關閉視窗
+        toast.success(t("success"));
+        setOpen(false);
       } else {
-        toast.error(res.error || "Failed to send email");
+        toast.error(res.error || t("error"));
       }
     } catch (err) {
       console.error(err);
-      toast.error("Something went wrong");
     } finally {
       setIsSending(false);
     }
   };
 
-  // 如果沒有 Email，按鈕直接 disable 並提示 (或是你可以隱藏按鈕)
   if (!email) {
     return (
       <Button variant="outline" size="sm" disabled title="No email address">
@@ -59,17 +70,17 @@ export default function SendEmailButton({ quote }: { quote: any }) {
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
         <Button variant="outline" size="sm">
-          <Mail className="mr-2 h-4 w-4" /> Send Email
+          <Mail className="mr-2 h-4 w-4" />
+          {t("sendEmail")}
         </Button>
       </AlertDialogTrigger>
 
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Send Quotation?</AlertDialogTitle>
+          <AlertDialogTitle>{t("dialogTitle")}</AlertDialogTitle>{" "}
           <AlertDialogDescription className="space-y-2">
-            Are you sure you want to send this quotation to:
+            {t("dialogDesc")} <b>{name}</b>
             <br />
-            {/* 強調顯示客戶 Email，讓使用者最後確認一次 */}
             <span className="font-bold text-foreground block p-2 bg-muted rounded-md text-center">
               {email}
             </span>
@@ -77,8 +88,9 @@ export default function SendEmailButton({ quote }: { quote: any }) {
         </AlertDialogHeader>
 
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isSending}>Cancel</AlertDialogCancel>
-
+          <AlertDialogCancel disabled={isSending}>
+            {t("cancel")}
+          </AlertDialogCancel>
           <AlertDialogAction
             onClick={handleSend}
             disabled={isSending}
@@ -86,11 +98,12 @@ export default function SendEmailButton({ quote }: { quote: any }) {
           >
             {isSending ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending...
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
+                {t("sending")}{" "}
               </>
             ) : (
               <>
-                <Send className="mr-2 h-4 w-4" /> Confirm Send
+                <Send className="mr-2 h-4 w-4" /> {t("confirmSend")}{" "}
               </>
             )}
           </AlertDialogAction>

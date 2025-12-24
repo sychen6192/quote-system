@@ -1,109 +1,125 @@
-import * as React from "react";
+import { COMPANY_INFO } from "@/lib/company-info";
 import {
   Body,
   Container,
   Head,
   Heading,
   Html,
+  Img,
   Preview,
   Section,
   Text,
   Hr,
+  Tailwind,
+  Link,
 } from "@react-email/components";
 
+// 金額格式化
+const fmtMoney = (cents: number) =>
+  new Intl.NumberFormat("zh-TW", {
+    style: "currency",
+    currency: "TWD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(cents / 100);
+
 interface QuoteTemplateProps {
-  quoteNumber: string;
-  customerName: string;
-  // items 拿掉了，因為明細都在 PDF 裡
-  totalAmount: number; // 我們保留總金額讓客戶一眼看到
+  quote: any;
 }
 
-export const QuoteEmailTemplate = ({
-  quoteNumber,
-  customerName,
-  totalAmount,
-}: QuoteTemplateProps) => (
-  <Html>
-    <Head />
-    <Preview>Your quotation #{quoteNumber} is attached.</Preview>
-    <Body style={main}>
-      <Container style={container}>
-        <Heading style={h1}>Quotation #{quoteNumber}</Heading>
+export const QuoteEmail = ({ quote }: QuoteTemplateProps) => {
+  if (!quote) return null;
 
-        <Text style={text}>Hi {customerName},</Text>
+  const customerName =
+    quote.customer?.contactPerson ||
+    quote.customer?.companyName ||
+    "Valued Customer";
+  const quoteNumber = quote.quotationNumber;
+  const totalAmount = quote.totalAmount;
 
-        <Text style={text}>
-          Please find the attached quotation (PDF) for your review.
-        </Text>
+  return (
+    <Html>
+      <Head />
+      <Preview>
+        Quotation #{quoteNumber} from {COMPANY_INFO.logoBase64}
+      </Preview>
+      <Tailwind
+        config={{
+          theme: {
+            extend: {
+              colors: {
+                slate900: "#0f172a",
+                slate600: "#475569",
+                slate500: "#64748b",
+                slate100: "#e2e8f0",
+              },
+            },
+          },
+        }}
+      >
+        <Body className="bg-white my-auto mx-auto font-sans">
+          <Container className="border border-solid border-[#eaeaea] rounded my-[40px] mx-auto p-[40px] max-w-[500px]">
+            {/* Header: Logo & Title */}
+            <Section className="text-center mb-8">
+              <Img
+                src={COMPANY_INFO.logoBase64}
+                width="48"
+                height="48"
+                alt="Logo"
+                className="mx-auto mb-4"
+              />
+              <Heading className="text-2xl font-bold text-slate900 m-0">
+                Quotation #{quoteNumber}
+              </Heading>
+              <Text className="text-sm text-slate500 mt-2">
+                {COMPANY_INFO.name}
+              </Text>
+            </Section>
 
-        <Text style={text}>
-          If you have any questions or need to make any adjustments, please feel
-          free to reply to this email.
-        </Text>
+            {/* Content */}
+            <Section className="mb-6">
+              <Text className="text-base text-slate900 leading-relaxed">
+                Hi <strong>{customerName}</strong>,
+              </Text>
+              <Text className="text-base text-slate600 leading-relaxed">
+                Please find the attached quotation (PDF) for your review.
+              </Text>
+              <Text className="text-base text-slate600 leading-relaxed">
+                If you have any questions or need to make any adjustments,
+                please feel free to reply to this email.
+              </Text>
+            </Section>
 
-        <Hr style={hr} />
+            <Hr className="border border-solid border-slate100 my-6 mx-0 w-full" />
 
-        {/* 只顯示總金額作為摘要，並確保是整數 */}
-        <Section>
-          <Text style={total}>
-            Total Amount: ${Math.round(totalAmount / 100).toLocaleString()}
-          </Text>
-        </Section>
+            {/* Total Amount Highlight */}
+            <Section className="bg-slate100 rounded-lg p-4 text-center mb-6">
+              <Text className="text-xs font-bold text-slate500 uppercase m-0 mb-1">
+                Total Amount
+              </Text>
+              <Text className="text-2xl font-bold text-slate900 m-0">
+                {fmtMoney(totalAmount)}
+              </Text>
+            </Section>
 
-        <Text style={footer}>
-          Shangda Int'l Co., Inc.
-          <br />
-          Taipei, Taiwan
-        </Text>
-      </Container>
-    </Body>
-  </Html>
-);
-
-// Styles
-const main = {
-  backgroundColor: "#ffffff",
-  fontFamily:
-    '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif',
-};
-
-const container = {
-  margin: "0 auto",
-  padding: "20px 0 48px",
-  width: "580px",
-};
-
-const h1 = {
-  fontSize: "24px",
-  fontWeight: "bold",
-  margin: "40px 0",
-  padding: "0",
-  textAlign: "center" as const,
-};
-
-const text = {
-  color: "#333",
-  fontSize: "16px",
-  lineHeight: "26px",
-};
-
-const hr = {
-  borderColor: "#cccccc",
-  margin: "20px 0",
-};
-
-const total = {
-  fontSize: "20px",
-  fontWeight: "bold",
-  textAlign: "right" as const,
-  marginTop: "10px",
-  color: "#333",
-};
-
-const footer = {
-  color: "#898989",
-  fontSize: "12px",
-  lineHeight: "22px",
-  marginTop: "20px",
-  textAlign: "center" as const,
+            {/* Footer */}
+            <Section className="text-center mt-8">
+              <Text className="text-xs text-slate400 leading-relaxed m-0">
+                <strong>{COMPANY_INFO.name}</strong>
+                <br />
+                {COMPANY_INFO.address}
+                <br />
+                <Link
+                  href={COMPANY_INFO.email}
+                  className="text-slate400 underline"
+                >
+                  {COMPANY_INFO.email}
+                </Link>
+              </Text>
+            </Section>
+          </Container>
+        </Body>
+      </Tailwind>
+    </Html>
+  );
 };

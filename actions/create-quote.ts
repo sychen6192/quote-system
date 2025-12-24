@@ -2,9 +2,44 @@
 
 import { db } from '@/db';
 import { quotations, quotationItems, customers } from '@/db/schema';
-import { quoteFormSchema } from '@/lib/schemas/quote';
+import { quoteFormSchema, type QuoteFormData } from '@/lib/schemas/quote';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { like, desc } from 'drizzle-orm';
+
+function calculateFinancials(items: QuoteFormData['items'], taxRate: number) {
+    const subtotal = items.reduce((acc, item) => acc + (item.quantity * Math.round(item.unitPrice * 100)), 0);
+    const taxRateBP = Math.round(taxRate * 100);
+    const taxAmount = Math.round(subtotal * (taxRateBP / 10000));
+    const totalAmount = subtotal + taxAmount;
+
+    return { subtotal, taxRateBP, taxAmount, totalAmount };
+}
+
+async function generateQuoteNumber(tx: any) {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const prefix = `QT-${year}${month}${day}`;
+
+    const lastQuotes = await tx.select({ quotationNumber: quotations.quotationNumber })
+        .from(quotations)
+        .where(like(quotations.quotationNumber, `${prefix}-%`))
+        .orderBy(desc(quotations.quotationNumber))
+        .limit(1);
+
+    let nextSeq = 1;
+    if (lastQuotes.length > 0) {
+        const lastId = lastQuotes[0].quotationNumber;
+        const lastSeqStr = lastId.split('-').pop();
+        if (lastSeqStr) {
+            nextSeq = parseInt(lastSeqStr) + 1;
+        }
+    }
+
+    return `${prefix}-${String(nextSeq).padStart(3, '0')}`;
+}
 
 export async function createQuote(data: unknown) {
     const result = quoteFormSchema.safeParse(data);
@@ -12,10 +47,7 @@ export async function createQuote(data: unknown) {
 
     const { items, taxRate, ...quoteData } = result.data;
 
-    const subtotal = items.reduce((acc, item) => acc + (item.quantity * Math.round(item.unitPrice * 100)), 0);
-    const taxRateBP = Math.round(taxRate * 100);
-    const taxAmount = Math.round(subtotal * (taxRateBP / 10000));
-    const totalAmount = subtotal + taxAmount;
+    const financials = calculateFinancials(items, taxRate);
 
     try {
         await db.transaction(async (tx) => {
@@ -28,8 +60,10 @@ export async function createQuote(data: unknown) {
                 vatNumber: quoteData.vatNumber,
             }).returning({ id: customers.id });
 
+            const newQuotationNumber = await generateQuoteNumber(tx);
+
             const [newQuote] = await tx.insert(quotations).values({
-                quotationNumber: `Q-${Date.now()}`,
+                quotationNumber: newQuotationNumber,
                 customerId: newCustomer.id,
                 salesperson: quoteData.salesperson,
                 issuedDate: quoteData.issuedDate,
@@ -38,7 +72,10 @@ export async function createQuote(data: unknown) {
                 paymentMethod: quoteData.paymentMethod,
                 shippingMethod: quoteData.shippingMethod,
                 notes: quoteData.notes,
-                subtotal, taxRate: taxRateBP, taxAmount, totalAmount,
+                subtotal: financials.subtotal,
+                taxRate: financials.taxRateBP,
+                taxAmount: financials.taxAmount,
+                totalAmount: financials.totalAmount,
             }).returning({ id: quotations.id });
 
             if (items.length > 0) {
@@ -55,9 +92,9 @@ export async function createQuote(data: unknown) {
         });
     } catch (error) {
         console.error('Transaction Failed:', error);
-        return { success: false, error: 'Failed' };
+        return { success: false, error: 'Transaction Failed' };
     }
 
     revalidatePath('/');
-    redirect('/');
+    return { success: true };
 }

@@ -5,6 +5,9 @@ const withNextIntl = createNextIntlPlugin();
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  experimental: {
+    serverComponentsExternalPackages: ["@react-pdf/renderer"],
+  },
 };
 
 export default withNextIntl(nextConfig);

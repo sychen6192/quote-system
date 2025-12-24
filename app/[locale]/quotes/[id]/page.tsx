@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Building2, Mail, Phone, MapPin } from "lucide-react";
 import Link from "next/link";
-import { getFormatter } from "next-intl/server";
-// ✅ 引入新的 Actions 元件
+import { getFormatter, getTranslations } from "next-intl/server";
 import QuoteActions from "@/components/quote-actions";
+import { COMPANY_INFO, PAYMENT_INFO } from "@/lib/company-info";
 
 interface PageProps {
   params: Promise<{
@@ -17,11 +17,12 @@ interface PageProps {
 }
 
 export default async function QuoteDetailPage({ params }: PageProps) {
+  const t = await getTranslations("QuoteActions");
+
   const { id } = await params;
   const quoteId = Number(id);
   if (isNaN(quoteId)) notFound();
 
-  // 1. 撈取資料
   const quote = await db.query.quotations.findFirst({
     where: eq(quotations.id, quoteId),
     with: {
@@ -32,10 +33,8 @@ export default async function QuoteDetailPage({ params }: PageProps) {
 
   if (!quote) return notFound();
 
-  // 2. 初始化 Formatter
   const format = await getFormatter();
 
-  // 3. 計算金額
   const subtotalCents = quote.items.reduce((acc, item) => {
     return acc + item.quantity * item.unitPrice;
   }, 0);
@@ -46,28 +45,25 @@ export default async function QuoteDetailPage({ params }: PageProps) {
   return (
     <div className="min-h-screen bg-gray-100/50 py-10 print:bg-white print:p-0">
       <div className="container mx-auto max-w-[210mm]">
-        {/* --- 頂部動作列 (列印時會被 CSS 隱藏) --- */}
+        {/* --- 頂部動作列 --- */}
         <div className="flex justify-between items-center mb-8 print:hidden">
           <Link href="/">
             <Button variant="outline" className="gap-2">
-              <ArrowLeft className="h-4 w-4" /> Back to List
+              {/* ✅ 這裡會顯示翻譯後的「返回列表」 */}
+              <ArrowLeft className="h-4 w-4" /> {t("backToList")}
             </Button>
           </Link>
 
-          {/* ✅ 替換為整合後的按鈕組 */}
           <QuoteActions quote={quote} />
         </div>
 
-        {/* --- 報價單 A4 紙張區域 --- */}
-        {/* ✅ 加上 id="printable-content" 讓 CSS 鎖定這個區塊列印 */}
+        {/* --- 下面保持英文內容 (依你需求) --- */}
         <div
           id="printable-content"
           className="bg-white shadow-xl rounded-sm border print:shadow-none print:border-none print:rounded-none min-h-[297mm] relative flex flex-col"
         >
-          {/* 1. Header 品牌區 */}
           <div className="p-12 pb-8 border-b border-gray-100">
             <div className="flex justify-between items-start">
-              {/* 左側：公司 Logo 與名稱 */}
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 bg-slate-900 rounded flex items-center justify-center text-white">
@@ -75,7 +71,7 @@ export default async function QuoteDetailPage({ params }: PageProps) {
                   </div>
                   <div>
                     <h2 className="text-xl font-bold text-slate-900 tracking-tight">
-                      Shangda Inc.
+                      {COMPANY_INFO.name}
                     </h2>
                     <p className="text-sm text-slate-500">
                       Tech Solutions Provider
@@ -85,16 +81,17 @@ export default async function QuoteDetailPage({ params }: PageProps) {
 
                 <div className="text-sm text-slate-500 space-y-1 mt-4">
                   <p className="flex items-center gap-2">
-                    <MapPin className="h-3 w-3" /> 123 Tech Blvd, Taipei City,
-                    Taiwan
+                    <MapPin className="h-3 w-3" /> {COMPANY_INFO.address}
                   </p>
                   <p className="flex items-center gap-2">
-                    <Mail className="h-3 w-3" /> billing@shangda.com
+                    <Mail className="h-3 w-3" /> {COMPANY_INFO.email}
                   </p>
                   <p className="flex items-center gap-2">
-                    <Phone className="h-3 w-3" /> +886 2 2345 6789
+                    <Phone className="h-3 w-3" /> {COMPANY_INFO.phone}
                   </p>
-                  <p className="font-medium text-slate-700">VAT: 50990180</p>
+                  <p className="font-medium text-slate-700">
+                    VAT: {COMPANY_INFO.vatNumber}
+                  </p>
                 </div>
               </div>
 
@@ -293,22 +290,23 @@ export default async function QuoteDetailPage({ params }: PageProps) {
                     Payment Details
                   </h4>
                   <div className="text-slate-500 space-y-1">
+                    {/* ✅ 改用設定檔變數 */}
                     <p>
                       Bank:{" "}
                       <span className="font-medium text-slate-700">
-                        CTBC Bank (822)
+                        {PAYMENT_INFO.bankName}
                       </span>
                     </p>
                     <p>
                       Account Name:{" "}
                       <span className="font-medium text-slate-700">
-                        Shangda Inc.
+                        {PAYMENT_INFO.accountName}
                       </span>
                     </p>
                     <p>
                       Account No:{" "}
                       <span className="font-medium text-slate-700">
-                        1234-5678-9012
+                        {PAYMENT_INFO.accountNumber}
                       </span>
                     </p>
                   </div>
@@ -322,7 +320,7 @@ export default async function QuoteDetailPage({ params }: PageProps) {
                   <p className="font-bold text-slate-900">
                     Authorized Signature
                   </p>
-                  <p className="text-xs text-slate-400">Shangda Inc.</p>
+                  <p className="text-xs text-slate-400">{COMPANY_INFO.name}</p>
                 </div>
               </div>
             </div>

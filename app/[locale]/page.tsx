@@ -16,7 +16,7 @@ import { ArrowRight, DollarSign, FileText, Plus, Users } from "lucide-react";
 import { Link } from "@/navigation";
 import { Button } from "@/components/ui/button";
 import { getTranslations } from "next-intl/server";
-import LanguageSwitcher from "@/components/LanguageSwitcher";
+import LanguageSwitcher from "@/components/language-switcher";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +34,13 @@ export default async function DashboardPage() {
       .select({ value: sql<number>`sum(${quotations.totalAmount})` })
       .from(quotations),
     db.select({ count: sql<number>`count(*)` }).from(quotations),
-    db.select({ count: sql<number>`count(*)` }).from(customers),
+    db
+      .select({
+        count: sql<number>`count(distinct ${customers.companyName})`.mapWith(
+          Number
+        ),
+      })
+      .from(customers),
     db.query.quotations.findMany({
       with: { customer: true },
       orderBy: [desc(quotations.issuedDate)],

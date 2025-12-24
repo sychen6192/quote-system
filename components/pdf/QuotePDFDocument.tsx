@@ -5,215 +5,228 @@ import {
   Text,
   View,
   StyleSheet,
-  // ❌ 移除 Font，不要在這裡引入
+  Svg,
+  Path,
+  Rect,
+  Image,
 } from "@react-pdf/renderer";
-
-// ❌ 移除所有 Font.register 的程式碼
-// ❌ 移除 process.env.NEXT_PUBLIC_APP_URL 相關的變數
+import { COMPANY_INFO, PAYMENT_INFO } from "@/lib/company-info";
 
 const colors = {
   slate900: "#0f172a",
   slate600: "#475569",
   slate500: "#64748b",
-  slate100: "#f1f5f9",
+  slate100: "#e2e8f0",
   white: "#ffffff",
 };
 
 const styles = StyleSheet.create({
   page: {
     padding: 30,
-    fontFamily: "Noto Sans TC", // ✅ 這裡保留名字就好，API Route 已經幫你載入檔案了
+    fontFamily: "Noto Sans TC",
     fontSize: 9,
     color: colors.slate600,
-    lineHeight: 1.4,
+    lineHeight: 1.5,
   },
+
+  // Header
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 10,
+    marginBottom: 20,
     borderBottomWidth: 1,
     borderBottomColor: colors.slate100,
-    paddingBottom: 10,
+    paddingBottom: 20,
     alignItems: "flex-start",
   },
   brandSection: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center", // Logo 與文字垂直置中
   },
-  logoPlaceholder: {
-    width: 30,
-    height: 30,
-    backgroundColor: colors.slate900,
-    marginRight: 10,
-    borderRadius: 2,
+
+  // 品牌文字區
+  brandInfoColumn: {
+    flexDirection: "column",
+    marginLeft: 4, // 讓文字離 Icon 稍微遠一點點
   },
   brandName: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "bold",
     color: colors.slate900,
+    marginBottom: 10, // ✅ 關鍵修正：增加間距 (原本是 4 -> 10)
+    lineHeight: 1,
   },
   brandSub: {
-    fontSize: 8,
+    fontSize: 9,
     color: colors.slate500,
+    marginBottom: 6,
   },
   contactInfo: {
-    marginTop: 4,
     fontSize: 8,
     color: colors.slate500,
-    lineHeight: 1.2,
+    lineHeight: 1.4,
   },
+
+  // Title Section
   titleSection: {
     alignItems: "flex-end",
-    maxWidth: "40%",
   },
   docTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: "bold",
     color: colors.slate900,
     textTransform: "uppercase",
-    marginBottom: 2,
+    marginBottom: 10,
+    lineHeight: 1,
   },
   docNumber: {
     fontSize: 10,
     color: colors.slate500,
-    marginTop: 0,
+    marginBottom: 6,
   },
   statusBadge: {
-    marginTop: 4,
-    paddingVertical: 2,
-    paddingHorizontal: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
     backgroundColor: colors.slate100,
-    borderRadius: 4,
+    borderRadius: 12,
   },
   statusText: {
     fontSize: 8,
+    fontWeight: "bold",
     color: colors.slate600,
     textTransform: "uppercase",
   },
+
+  // Info Grid
   infoSection: {
-    backgroundColor: "#F8FAFC",
-    padding: 10,
     flexDirection: "row",
-    marginBottom: 15,
-    borderRadius: 4,
+    marginBottom: 30,
+    backgroundColor: "#f8fafc",
+    padding: 15,
+    borderRadius: 6,
   },
-  billToCol: { width: "55%" },
-  detailsCol: { width: "45%", flexDirection: "row", flexWrap: "wrap" },
-  sectionTitle: {
+  colLeft: { width: "55%" },
+  colRight: { width: "45%", flexDirection: "row", flexWrap: "wrap" },
+  label: {
     fontSize: 7,
     fontWeight: "bold",
     color: colors.slate500,
     textTransform: "uppercase",
     marginBottom: 2,
   },
-  clientName: {
+  value: {
     fontSize: 10,
     fontWeight: "bold",
     color: colors.slate900,
-    marginBottom: 2,
+    marginBottom: 10,
   },
-  detailItem: { width: "50%", marginBottom: 6 },
-  detailValue: { fontSize: 9, fontWeight: "bold", color: colors.slate900 },
-  tableHeader: {
-    flexDirection: "row",
-    borderBottomWidth: 1,
-    borderBottomColor: colors.slate900,
-    paddingBottom: 4,
+  valueLarge: {
+    fontSize: 12,
+    fontWeight: "bold",
+    color: colors.slate900,
     marginBottom: 4,
   },
-  tableHeaderCell: { fontSize: 8, fontWeight: "bold", color: colors.slate900 },
+  textSmall: { fontSize: 9, color: colors.slate600, lineHeight: 1.4 },
+
+  // Table
+  tableContainer: { marginBottom: 20 },
+  tableHeader: {
+    flexDirection: "row",
+    borderBottomWidth: 2,
+    borderBottomColor: colors.slate900,
+    paddingBottom: 8,
+    marginBottom: 8,
+  },
+  tableHeaderCell: {
+    fontSize: 8,
+    fontWeight: "bold",
+    color: colors.slate900,
+    textTransform: "uppercase",
+  },
   tableRow: {
     flexDirection: "row",
     borderBottomWidth: 1,
     borderBottomColor: colors.slate100,
-    paddingVertical: 6,
+    paddingVertical: 8,
   },
   colDesc: { width: "50%" },
   colQty: { width: "10%", textAlign: "right" },
   colPrice: { width: "20%", textAlign: "right" },
   colAmount: { width: "20%", textAlign: "right" },
-  itemTitle: { fontSize: 9, color: colors.slate900 },
+
+  // Totals
   totalsSection: {
     flexDirection: "row",
     justifyContent: "flex-end",
-    marginTop: 10,
-    marginBottom: 10,
+    marginBottom: 40,
   },
   totalsBox: { width: "40%" },
   totalRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 4,
+    marginBottom: 6,
+    paddingBottom: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.slate100,
   },
-  separator: { height: 1, backgroundColor: colors.slate900, marginVertical: 4 },
-  finalTotalRow: {
+  totalRowFinal: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-end",
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 2,
+    borderTopColor: colors.slate900,
   },
-  finalTotalLabel: { fontSize: 10, fontWeight: "bold", color: colors.slate900 },
-  finalTotalValue: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: colors.slate900,
-  },
-  footerSection: {
-    marginTop: 10,
-    paddingTop: 10,
+  totalLabel: { fontSize: 9, color: colors.slate600 },
+  totalValue: { fontSize: 9, fontWeight: "bold", color: colors.slate900 },
+  finalLabel: { fontSize: 12, fontWeight: "bold", color: colors.slate900 },
+  finalValue: { fontSize: 16, fontWeight: "bold", color: colors.slate900 },
+
+  // Footer
+  footer: {
+    marginTop: "auto",
     borderTopWidth: 1,
     borderTopColor: colors.slate100,
+    paddingTop: 20,
     flexDirection: "row",
+    justifyContent: "space-between",
   },
-  footerLeft: { width: "60%", paddingRight: 20 },
-  footerRight: {
-    width: "40%",
-    justifyContent: "flex-end",
-    alignItems: "flex-end",
+  footerCol: { width: "48%" },
+  stampImage: {
+    width: 80, // 依據你的圖片實際大小調整
+    height: "auto",
+    marginBottom: -35, // ✅ 重要：使用負邊距讓印章「壓」在橫線上，看起來更真實
+    zIndex: -1, // 確保在文字下方
+    opacity: 0.9, // 稍微透明一點點更有質感
   },
-  notesTitle: {
-    fontSize: 8,
-    fontWeight: "bold",
-    color: colors.slate900,
-    marginBottom: 2,
-  },
-  bankInfo: { marginTop: 6 },
   signatureLine: {
-    width: 150,
+    marginTop: 40,
     borderBottomWidth: 1,
     borderBottomColor: colors.slate900,
-    marginBottom: 5,
-  },
-  signatureLabel: {
-    fontSize: 8,
-    fontWeight: "bold",
-    color: colors.slate900,
-    textAlign: "center",
-    width: 150,
+    width: "80%",
+    alignSelf: "flex-end",
   },
   copyright: {
-    marginTop: 20,
+    marginTop: 40,
     textAlign: "center",
     fontSize: 7,
-    color: "#cbd5e1",
+    color: "#94a3b8",
   },
 });
 
-const fmtMoney = (cents: number) => {
-  return new Intl.NumberFormat("zh-TW", {
+const fmtMoney = (cents: number) =>
+  new Intl.NumberFormat("zh-TW", {
     style: "currency",
     currency: "TWD",
     minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
   }).format(cents / 100);
-};
 
-const fmtDate = (d: Date | string) => {
-  return new Date(d).toLocaleDateString("en-US", {
+const fmtDate = (d: string | Date) =>
+  new Date(d).toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
     day: "numeric",
   });
-};
 
 export const QuotePDFDocument = ({ quote }: { quote: any }) => {
   const subtotalCents = quote.items.reduce(
@@ -229,20 +242,47 @@ export const QuotePDFDocument = ({ quote }: { quote: any }) => {
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
           <View style={styles.brandSection}>
-            <View style={styles.logoPlaceholder} />
-            <View>
-              <Text style={styles.brandName}>Shangda Inc.</Text>
-              <Text style={styles.brandSub}>聖大國際有限公司</Text>
+            {/* ✅ 更新：使用 SVG 繪製專業建築圖示 */}
+            <Svg
+              width={40}
+              height={40}
+              viewBox="0 0 24 24"
+              style={{ marginRight: 8 }}
+            >
+              {/* 主體建築 */}
+              <Path
+                d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"
+                fill={colors.slate900}
+              />
+              {/* 旁邊的小建築結構 */}
+              <Path
+                d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"
+                fill={colors.slate900}
+                opacity={0.7} // 稍微淡一點增加層次
+              />
+              <Path
+                d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"
+                fill={colors.slate900}
+                opacity={0.7}
+              />
+              {/* 窗戶線條 (白色) */}
+              <Rect x="10" y="6" width="4" height="1.5" fill="white" />
+              <Rect x="10" y="10" width="4" height="1.5" fill="white" />
+              <Rect x="10" y="14" width="4" height="1.5" fill="white" />
+              <Rect x="10" y="18" width="4" height="1.5" fill="white" />
+            </Svg>
+
+            <View style={styles.brandInfoColumn}>
+              <Text style={styles.brandName}>{COMPANY_INFO.name}</Text>
+              <Text style={styles.brandSub}>{COMPANY_INFO.chineseName}</Text>
               <View style={styles.contactInfo}>
-                <Text>Taipei City, Taiwan</Text>
-                <Text>VAT: 50990180</Text>
-                <Text>+886 2 2345 6789</Text>
+                <Text>{COMPANY_INFO.address}</Text>
+                <Text>VAT: {COMPANY_INFO.vatNumber}</Text>
               </View>
             </View>
           </View>
-
           <View style={styles.titleSection}>
-            <Text style={styles.docTitle}>QUOTATION</Text>
+            <Text style={styles.docTitle}>Quotation</Text>
             <Text style={styles.docNumber}>#{quote.quotationNumber}</Text>
             <View style={styles.statusBadge}>
               <Text style={styles.statusText}>
@@ -253,41 +293,39 @@ export const QuotePDFDocument = ({ quote }: { quote: any }) => {
         </View>
 
         <View style={styles.infoSection}>
-          <View style={styles.billToCol}>
-            <Text style={styles.sectionTitle}>Bill To</Text>
-            <Text style={styles.clientName}>{quote.customer?.companyName}</Text>
-            <Text>Attn: {quote.customer?.contactPerson}</Text>
-            <Text>{quote.customer?.address}</Text>
-            <Text>{quote.customer?.email}</Text>
+          <View style={styles.colLeft}>
+            <Text style={styles.label}>Bill To</Text>
+            <Text style={styles.valueLarge}>{quote.customer?.companyName}</Text>
+            <Text style={styles.textSmall}>
+              Attn: {quote.customer?.contactPerson}
+            </Text>
+            <Text style={styles.textSmall}>{quote.customer?.address}</Text>
+            <Text style={styles.textSmall}>{quote.customer?.email}</Text>
             {quote.customer?.vatNumber ? (
-              <Text>VAT: {quote.customer.vatNumber}</Text>
+              <Text style={styles.textSmall}>
+                VAT: {quote.customer.vatNumber}
+              </Text>
             ) : null}
           </View>
-          <View style={styles.detailsCol}>
-            <View style={styles.detailItem}>
-              <Text style={styles.sectionTitle}>Issued Date</Text>
-              <Text style={styles.detailValue}>
-                {fmtDate(quote.issuedDate)}
-              </Text>
+          <View style={styles.colRight}>
+            <View style={{ width: "50%", marginBottom: 10 }}>
+              <Text style={styles.label}>Issued Date</Text>
+              <Text style={styles.value}>{fmtDate(quote.issuedDate)}</Text>
             </View>
-            <View style={styles.detailItem}>
-              <Text style={styles.sectionTitle}>Valid Until</Text>
-              <Text style={[styles.detailValue, { color: "#dc2626" }]}>
+            <View style={{ width: "50%", marginBottom: 10 }}>
+              <Text style={styles.label}>Valid Until</Text>
+              <Text style={[styles.value, { color: "#dc2626" }]}>
                 {fmtDate(quote.validUntil)}
               </Text>
             </View>
-            <View style={styles.detailItem}>
-              <Text style={styles.sectionTitle}>Salesperson</Text>
-              <Text style={styles.detailValue}>{quote.salesperson || "-"}</Text>
-            </View>
-            <View style={styles.detailItem}>
-              <Text style={styles.sectionTitle}>Currency</Text>
-              <Text style={styles.detailValue}>TWD (NT$)</Text>
+            <View style={{ width: "50%" }}>
+              <Text style={styles.label}>Salesperson</Text>
+              <Text style={styles.value}>{quote.salesperson || "-"}</Text>
             </View>
           </View>
         </View>
 
-        <View>
+        <View style={styles.tableContainer}>
           <View style={styles.tableHeader}>
             <Text style={[styles.tableHeaderCell, styles.colDesc]}>
               Description
@@ -300,9 +338,7 @@ export const QuotePDFDocument = ({ quote }: { quote: any }) => {
           </View>
           {quote.items.map((item: any, i: number) => (
             <View key={i} style={styles.tableRow} wrap={false}>
-              <Text style={[styles.colDesc, styles.itemTitle]}>
-                {item.productName}
-              </Text>
+              <Text style={styles.colDesc}>{item.productName}</Text>
               <Text style={styles.colQty}>{item.quantity}</Text>
               <Text style={styles.colPrice}>{fmtMoney(item.unitPrice)}</Text>
               <Text style={styles.colAmount}>
@@ -315,53 +351,49 @@ export const QuotePDFDocument = ({ quote }: { quote: any }) => {
         <View style={styles.totalsSection}>
           <View style={styles.totalsBox}>
             <View style={styles.totalRow}>
-              <Text>Subtotal</Text>
-              <Text style={{ fontWeight: "bold", color: colors.slate900 }}>
-                {fmtMoney(subtotalCents)}
-              </Text>
+              <Text style={styles.totalLabel}>Subtotal</Text>
+              <Text style={styles.totalValue}>{fmtMoney(subtotalCents)}</Text>
             </View>
             <View style={styles.totalRow}>
-              <Text>Tax ({taxRateDisplay}%)</Text>
-              <Text style={{ fontWeight: "bold", color: colors.slate900 }}>
-                {fmtMoney(taxAmountCents)}
-              </Text>
+              <Text style={styles.totalLabel}>Tax ({taxRateDisplay}%)</Text>
+              <Text style={styles.totalValue}>{fmtMoney(taxAmountCents)}</Text>
             </View>
-            <View style={styles.separator} />
-            <View style={styles.finalTotalRow}>
-              <Text style={styles.finalTotalLabel}>Total Amount</Text>
-              <Text style={styles.finalTotalValue}>
+            <View style={styles.totalRowFinal}>
+              <Text style={styles.finalLabel}>Total</Text>
+              <Text style={styles.finalValue}>
                 {fmtMoney(quote.totalAmount)}
               </Text>
             </View>
           </View>
         </View>
 
-        <View style={styles.footerSection}>
-          <View style={styles.footerLeft}>
+        <View style={styles.footer}>
+          <View style={styles.footerCol}>
             {quote.notes ? (
-              <View style={{ marginBottom: 6 }}>
-                <Text style={styles.notesTitle}>Notes</Text>
-                <Text>{quote.notes}</Text>
+              <View style={{ marginBottom: 10 }}>
+                <Text style={styles.label}>Notes</Text>
+                <Text style={styles.textSmall}>{quote.notes}</Text>
               </View>
             ) : null}
-
-            <View style={styles.bankInfo}>
-              <Text style={styles.notesTitle}>Payment Details</Text>
-              <Text>Bank: CTBC Bank (822)</Text>
-              <Text>Account: Shangda Inc.</Text>
-              <Text>No: 1234-5678-9012</Text>
+            <View>
+              <Text style={styles.label}>Bank Details</Text>
+              <Text style={styles.textSmall}>{PAYMENT_INFO.bankName}</Text>
+              <Text style={styles.textSmall}>{PAYMENT_INFO.accountName}</Text>
+              <Text style={styles.textSmall}>{PAYMENT_INFO.accountNumber}</Text>
             </View>
           </View>
-          <View style={styles.footerRight}>
-            <View style={styles.signatureLine} />
-            <Text style={styles.signatureLabel}>Authorized Signature</Text>
+          <View style={[styles.footerCol, { alignItems: "flex-end" }]}>
+            <View style={{ width: "100%", alignItems: "center" }}>
+              <Image src={COMPANY_INFO.stampBase64} style={styles.stampImage} />
+              <View style={styles.signatureLine} />
+              <Text style={[styles.label, { marginTop: 4 }]}>
+                Authorized Signature
+              </Text>
+            </View>
           </View>
         </View>
 
-        <Text style={styles.copyright}>
-          Thank you for your business! If you have any questions, please contact
-          us.
-        </Text>
+        <Text style={styles.copyright}>Thank you for your business!</Text>
       </Page>
     </Document>
   );

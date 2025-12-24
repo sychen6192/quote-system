@@ -2,30 +2,15 @@ import { db } from "@/db";
 import { quotations } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { renderToStream, Font } from "@react-pdf/renderer"; // 引入 Font
+import { renderToStream, Font } from "@react-pdf/renderer";
 import { QuotePDFDocument } from "@/components/pdf/QuotePDFDocument";
 import { NextResponse } from "next/server";
 import path from "path";
-import fs from "fs"; // ✅ 引入 fs 來 debug
 
-// 1. 在 API 這裡註冊字體 (只會執行一次)
-// 使用 process.cwd() 確保抓到正確的伺服器路徑
-const fontPath = path.join(
-  process.cwd(),
-  "public",
-  "fonts",
-  "NotoSansTC-Regular.ttf"
-);
-
-if (!fs.existsSync(fontPath)) {
-  console.error("❌ Font file not found at:", fontPath);
-} else {
-  console.log("✅ Font file found:", fontPath);
-}
-
+// ✅ 這是唯一的字體註冊點
 Font.register({
   family: "Noto Sans TC",
-  src: fontPath,
+  src: path.join(process.cwd(), "public", "fonts", "NotoSansTC-Regular.ttf"),
 });
 
 export async function GET(
