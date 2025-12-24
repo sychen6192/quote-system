@@ -4,7 +4,14 @@ import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Building2, Mail, Phone, MapPin } from "lucide-react";
+import {
+  ArrowLeft,
+  Building2,
+  Mail,
+  Phone,
+  MapPin,
+  FileText,
+} from "lucide-react";
 import Link from "next/link";
 import { getFormatter, getTranslations } from "next-intl/server";
 import QuoteActions from "@/components/quote-actions";
@@ -93,8 +100,8 @@ export default async function QuoteDetailPage({ params }: PageProps) {
                   <p className="flex items-center gap-2">
                     <Phone className="h-3 w-3" /> {COMPANY_INFO.phone}
                   </p>
-                  <p className="font-medium text-slate-700">
-                    VAT: {COMPANY_INFO.vatNumber}
+                  <p className="flex items-center gap-2">
+                    <FileText className="h-3 w-3" /> {COMPANY_INFO.vatNumber}
                   </p>
                 </div>
               </div>
