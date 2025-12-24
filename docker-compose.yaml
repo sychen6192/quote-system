@@ -1,15 +1,31 @@
 version: '3.8'
 
 services:
+  app:
+    container_name: quote-system-web
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/quote-system
+    depends_on:
+      - postgres
+
   postgres:
     image: postgres:16-alpine
     container_name: quote-system-db
+    restart: always
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: quote_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=quote-system
     volumes:
-      - ./postgres_data:/var/lib/postgresql/data
-    restart: always
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
