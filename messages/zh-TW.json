@@ -23,6 +23,7 @@
   },
   "QuotesList": {
     "title": "報價單列表",
+    "createQuote": "建立報價單",
     "backToDashboard": "返回儀表板",
     "emptyState": "尚無報價單，請建立您的第一張報價單！",
     "unknownCustomer": "未知客戶",

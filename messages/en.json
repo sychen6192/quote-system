@@ -23,6 +23,7 @@
   },
   "QuotesList": {
     "title": "Quotations",
+    "createQuote": "Create Quote",
     "backToDashboard": "Back to Dashboard",
     "emptyState": "No quotations found. Create your first one!",
     "unknownCustomer": "Unknown",

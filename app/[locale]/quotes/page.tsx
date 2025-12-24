@@ -41,7 +41,7 @@ export default async function QuotesListPage() {
           </Link>
           <Link href="/quotes/new" className="w-full sm:w-auto">
             <Button className="w-full sm:w-auto">
-              <Plus className="mr-2 h-4 w-4" /> Create
+              <Plus className="mr-2 h-4 w-4" /> {t("createQuote")}
             </Button>
           </Link>
         </div>
