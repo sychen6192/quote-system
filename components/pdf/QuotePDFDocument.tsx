@@ -242,34 +242,15 @@ export const QuotePDFDocument = ({ quote }: { quote: any }) => {
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
           <View style={styles.brandSection}>
-            {/* ✅ 更新：使用 SVG 繪製專業建築圖示 */}
-            <Image 
+            <Image
               src={COMPANY_INFO.logoBase64}
-              style={{ width: 40, height: 40, marginRight: 8, objectFit: 'contain' }} 
+              style={{
+                width: 40,
+                height: 40,
+                marginRight: 8,
+                objectFit: "contain",
+              }}
             />
-              {/* 主體建築 */}
-              <Path
-                d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"
-                fill={colors.slate900}
-              />
-              {/* 旁邊的小建築結構 */}
-              <Path
-                d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"
-                fill={colors.slate900}
-                opacity={0.7} // 稍微淡一點增加層次
-              />
-              <Path
-                d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"
-                fill={colors.slate900}
-                opacity={0.7}
-              />
-              {/* 窗戶線條 (白色) */}
-              <Rect x="10" y="6" width="4" height="1.5" fill="white" />
-              <Rect x="10" y="10" width="4" height="1.5" fill="white" />
-              <Rect x="10" y="14" width="4" height="1.5" fill="white" />
-              <Rect x="10" y="18" width="4" height="1.5" fill="white" />
-            </Svg>
-
             <View style={styles.brandInfoColumn}>
               <Text style={styles.brandName}>{COMPANY_INFO.name}</Text>
               <Text style={styles.brandSub}>{COMPANY_INFO.chineseName}</Text>
