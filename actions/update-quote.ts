@@ -5,9 +5,9 @@ import { quotations, quotationItems, customers } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { QuoteFormValues } from '@/lib/schemas/quote';
+import { QuoteFormData } from '@/lib/schemas/quote';
 
-export async function updateQuote(id: number, data: QuoteFormValues) {
+export async function updateQuote(id: number, data: QuoteFormData) {
     try {
         await db.transaction(async (tx) => {
             // 1. 檢查並獲取關聯 Customer ID
