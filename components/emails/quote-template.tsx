@@ -5,8 +5,7 @@ import {
   Head,
   Heading,
   Html,
-  Img,
-  Preview,
+  Preview, // 移除 Img 引用
   Section,
   Text,
   Hr,
@@ -14,7 +13,6 @@ import {
   Link,
 } from "@react-email/components";
 
-// 金額格式化
 const fmtMoney = (cents: number) =>
   new Intl.NumberFormat("zh-TW", {
     style: "currency",
@@ -40,8 +38,9 @@ export const QuoteEmail = ({ quote }: QuoteTemplateProps) => {
   return (
     <Html>
       <Head />
+      {/* ✅ 修正 Preview：只顯示文字，不放 Base64 亂碼 */}
       <Preview>
-        Quotation #{quoteNumber} from {COMPANY_INFO.logoBase64}
+        Quotation #{quoteNumber} from {COMPANY_INFO.name}
       </Preview>
       <Tailwind
         config={{
@@ -59,15 +58,8 @@ export const QuoteEmail = ({ quote }: QuoteTemplateProps) => {
       >
         <Body className="bg-white my-auto mx-auto font-sans">
           <Container className="border border-solid border-[#eaeaea] rounded my-[40px] mx-auto p-[40px] max-w-[500px]">
-            {/* Header: Logo & Title */}
+            {/* Header: Title Only (No Logo) */}
             <Section className="text-center mb-8">
-              <Img
-                src={COMPANY_INFO.logoBase64}
-                width="48"
-                height="48"
-                alt="Logo"
-                className="mx-auto mb-4"
-              />
               <Heading className="text-2xl font-bold text-slate900 m-0">
                 Quotation #{quoteNumber}
               </Heading>
@@ -119,7 +111,7 @@ export const QuoteEmail = ({ quote }: QuoteTemplateProps) => {
                 {COMPANY_INFO.address}
                 <br />
                 <Link
-                  href={COMPANY_INFO.email}
+                  href={`mailto:${COMPANY_INFO.email}`}
                   className="text-slate400 underline"
                 >
                   {COMPANY_INFO.email}

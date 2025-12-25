@@ -2,7 +2,6 @@
 
 import { Resend } from "resend";
 import { QuoteEmail } from "@/components/emails/quote-template";
-// 引入 PDF 文件與渲染器
 import { QuotePDFDocument } from "@/components/pdf/QuotePDFDocument";
 import { renderToBuffer, Font } from "@react-pdf/renderer";
 import path from "path";
@@ -35,7 +34,7 @@ export async function sendQuoteEmail(quote: any): Promise<SendEmailState> {
 
     // 5. 寄出 Email (含附件)
     const { data, error } = await resend.emails.send({
-      from: "Shangda Inc. <billing@sycomputer.org>", // 請換成你驗證過的網域 Email
+      from: "Shangda Inc. <billing@sycomputer.org>",
       to: [quote.customer.email],
       subject: `Quotation #${quote.quotationNumber} from Shangda Inc.`,
       react: <QuoteEmail quote={quote} />, // 你的 HTML Email Template
