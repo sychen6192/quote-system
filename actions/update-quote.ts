@@ -55,19 +55,9 @@ export async function updateQuote(id: number, data: QuoteFormData) {
                 .set({
                     salesperson: data.salesperson,
 
-                    // ✅ 修正點 1：直接傳送字串，不要用 new Date()
-                    // 如果你的 data.issuedDate 是 "2025-12-13" (string)，直接傳
-                    // 萬一 Zod 已經把它轉成 Date，請用 .toISOString()
-                    issuedDate: typeof data.issuedDate === 'string'
-                        ? data.issuedDate
-                        : data.issuedDate.toISOString(),
-
-                    validUntil: typeof data.validUntil === 'string'
-                        ? data.validUntil
-                        : data.validUntil.toISOString(),
-
-                    // ✅ 修正點 2：存入乘以 100 後的整數 (5 -> 500)
-                    taxRate: taxRateForDB.toString(),
+                    issuedDate: data.issuedDate,
+                    validUntil: data.validUntil,
+                    taxRate: taxRateForDB,
 
                     totalAmount: totalAmountCents,
                 })
