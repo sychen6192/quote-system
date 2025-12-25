@@ -38,17 +38,17 @@ export async function createQuote(data: unknown) {
 
     const { items, taxRate, ...quoteData } = result.data;
 
-    // ✅ 1. 轉換稅率：前端 (5) -> DB Basis Points (500)
-    // 這裡會解決您遇到的 "5% 變 0.05%" 問題
+    // 1. 統一轉換稅率
     const taxRateBP = toBasisPoints(taxRate);
 
-    // ✅ 2. 轉換金額：前端 (元) -> DB Cents (分)
+    // 2. 轉換金額與保留 Taxable 資訊
     const itemsWithCents = items.map(item => ({
         ...item,
-        unitPrice: Math.round(item.unitPrice * 100)
+        unitPrice: Math.round(item.unitPrice * 100),
+        isTaxable: item.isTaxable // 關鍵：傳遞免稅設定
     }));
 
-    // ✅ 3. 統一計算：使用共用函式計算 Subtotal, Tax, Total
+    // 3. 使用統一計算邏輯
     const financials = calculateQuoteFinancials(itemsWithCents, taxRateBP);
 
     try {
@@ -75,9 +75,9 @@ export async function createQuote(data: unknown) {
                 shippingMethod: quoteData.shippingMethod,
                 notes: quoteData.notes,
 
-                // ✅ 4. 寫入計算好的正確金額
+                // 寫入正確金額
                 subtotal: financials.subtotal,
-                taxRate: taxRateBP,         // 存入 500
+                taxRate: taxRateBP,
                 taxAmount: financials.taxAmount,
                 totalAmount: financials.totalAmount,
             }).returning({ id: quotations.id });
@@ -88,8 +88,8 @@ export async function createQuote(data: unknown) {
                         quotationId: newQuote.id,
                         productName: item.productName,
                         quantity: item.quantity,
-                        unitPrice: item.unitPrice, // ✅ 這裡已經是分了，直接用
-                        isTaxable: item.isTaxable,
+                        unitPrice: item.unitPrice,
+                        isTaxable: item.isTaxable, // 寫入 DB
                     }))
                 );
             }
