@@ -78,7 +78,12 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
         toast.success(
           initialData?.id ? t("messages.updated") : t("messages.created")
         );
-        router.push("/");
+        if (initialData?.id) {
+          router.push(`/quotes/${initialData.id}`);
+        } else {
+          router.push("/");
+        }
+
         router.refresh();
       } else {
         toast.error(t("messages.error"));
