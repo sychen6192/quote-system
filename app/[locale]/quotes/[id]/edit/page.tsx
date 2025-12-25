@@ -40,7 +40,9 @@ export default async function EditQuotePage({ params }: EditQuotePageProps) {
     vatNumber: quote.customer?.vatNumber || "",
     address: quote.customer?.address || "",
     salesperson: quote.salesperson || "",
-    issuedDate: new Date(quote.issuedDate).toISOString().split("T")[0],
+    issuedDate: quote.issuedDate
+      ? new Date(quote.issuedDate).toISOString().split("T")[0]
+      : new Date().toISOString().split("T")[0],
     validUntil: new Date(quote.validUntil).toISOString().split("T")[0],
     taxRate: (Number(quote.taxRate) || 0) / 100,
     items: quote.items.map((item) => ({
