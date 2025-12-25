@@ -5,13 +5,10 @@ import {
   Text,
   View,
   StyleSheet,
-  Svg,
-  Path,
-  Rect,
   Image,
 } from "@react-pdf/renderer";
 import { COMPANY_INFO, PAYMENT_INFO } from "@/lib/company-info";
-import { calculateQuoteTotals } from "@/lib/calculations";
+import { toPercentage } from "@/lib/utils";
 
 const colors = {
   slate900: "#0f172a",
@@ -230,11 +227,9 @@ const fmtDate = (d: string | Date) =>
   });
 
 export const QuotePDFDocument = ({ quote }: { quote: any }) => {
-  const { subtotal, taxAmount, totalAmount } = calculateQuoteTotals(
-    quote.items,
-    Number(quote.taxRate)
-  );
-  const taxRateDisplay = (Number(quote.taxRate) || 0) / 100;
+  const { subtotal, taxAmount, totalAmount } = quote;
+
+  const taxRateDisplay = toPercentage(quote.taxRate || 0);
   const isExpired = new Date(quote.validUntil) < new Date();
 
   return (
