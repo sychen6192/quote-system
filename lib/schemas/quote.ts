@@ -1,12 +1,5 @@
 import { z } from 'zod';
 
-const quoteItemSchema = z.object({
-    productName: z.string().min(1, 'Product name is required'),
-    quantity: z.coerce.number().min(1),
-    unitPrice: z.coerce.number().min(0),
-    isTaxable: z.boolean().default(true),
-});
-
 export const quoteFormSchema = z.object({
     companyName: z.string().min(1, 'Company name is required'),
     contactPerson: z.string().optional(),
@@ -20,9 +13,14 @@ export const quoteFormSchema = z.object({
     shippingDate: z.string().optional(),
     paymentMethod: z.string().optional(),
     shippingMethod: z.string().optional(),
-    taxRate: z.coerce.number().default(5),
-    items: z.array(quoteItemSchema).min(1),
+    taxRate: z.coerce.number().min(0).default(5),
     notes: z.string().optional(),
+    items: z.array(z.object({
+        productName: z.string().min(1, "Product name is required."),
+        quantity: z.coerce.number().min(1, "Qty must be larger than 0"),
+        unitPrice: z.coerce.number().min(0, "Price must not be larger than 0"),
+        isTaxable: z.boolean().default(false),
+    })),
 });
 
 export type QuoteFormData = z.infer<typeof quoteFormSchema>;

@@ -153,9 +153,12 @@ export default async function QuoteDetailPage({ params }: PageProps) {
             <div className="grid grid-cols-2 gap-y-6 gap-x-4">
               <InfoField
                 label="Issued Date"
-                value={format.dateTime(new Date(quote.issuedDate), {
-                  dateStyle: "medium",
-                })}
+                value={format.dateTime(
+                  new Date(quote.issuedDate ?? new Date()),
+                  {
+                    dateStyle: "medium",
+                  }
+                )}
               />
               <InfoField
                 label="Valid Until"
