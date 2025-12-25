@@ -10,7 +10,7 @@ export function formatCurrency(amount: number) {
     style: "currency",
     currency: "TWD",
     maximumFractionDigits: 0,
-  }).format(amount / 100); // 假設輸入是分 (Cents)
+  }).format(amount / 100); // 輸入是分 (Cents)
 }
 
 // 定義 Basis Points 比例：1% = 100 BP
@@ -38,20 +38,26 @@ export function toPercentage(bp: number): number {
  * @param taxRateBP 稅率 (單位: Basis Points, e.g., 500)
  */
 export function calculateQuoteFinancials(
-  items: { quantity: number; unitPrice: number }[],
+  items: { quantity: number; unitPrice: number; isTaxable?: boolean | null }[],
   taxRateBP: number
 ) {
-  // 1. 計算小計 (Subtotal)
+  // 1. 計算小計 (Subtotal) - 所有項目的總和
   const subtotal = items.reduce((acc, item) => {
     return acc + (item.quantity * item.unitPrice);
   }, 0);
 
-  // 2. 計算稅額 (Tax Amount)
-  // 公式: 金額 * (BP / 10000)
-  // 例如: 100元 * (500 / 10000) = 5元
-  const taxAmount = Math.round(subtotal * (taxRateBP / (100 * TAX_RATE_SCALE)));
+  // 2. 計算稅基 (Taxable Subtotal) - 只加總需要課稅的項目
+  // 如果 isTaxable 為 null 或 undefined，預設視為 true (應稅)
+  const taxableSubtotal = items.reduce((acc, item) => {
+    const isTaxable = item.isTaxable ?? true;
+    return isTaxable ? acc + (item.quantity * item.unitPrice) : acc;
+  }, 0);
 
-  // 3. 計算總額 (Total)
+  // 3. 計算稅額 (Tax Amount)
+  // 公式: 應稅金額 * (BP / 10000)
+  const taxAmount = Math.round(taxableSubtotal * (taxRateBP / (100 * TAX_RATE_SCALE)));
+
+  // 4. 計算總額 (Total)
   const totalAmount = subtotal + taxAmount;
 
   return { subtotal, taxAmount, totalAmount };

@@ -2,19 +2,10 @@
 
 import { db } from '@/db';
 import { quotations, quotationItems, customers } from '@/db/schema';
-import { quoteFormSchema, type QuoteFormData } from '@/lib/schemas/quote';
+import { quoteFormSchema } from '@/lib/schemas/quote';
 import { revalidatePath } from 'next/cache';
-import { toBasisPoints, calculateQuoteFinancials } from '@/lib/utils';
 import { like, desc } from 'drizzle-orm';
-
-function calculateFinancials(items: QuoteFormData['items'], taxRate: number) {
-    const subtotal = items.reduce((acc, item) => acc + (item.quantity * Math.round(item.unitPrice * 100)), 0);
-    const taxRateBP = Math.round(taxRate * 100);
-    const taxAmount = Math.round(subtotal * (taxRateBP / 10000));
-    const totalAmount = subtotal + taxAmount;
-
-    return { subtotal, taxRateBP, taxAmount, totalAmount };
-}
+import { toBasisPoints, calculateQuoteFinancials } from '@/lib/utils';
 
 async function generateQuoteNumber(tx: any) {
     const today = new Date();
@@ -47,7 +38,18 @@ export async function createQuote(data: unknown) {
 
     const { items, taxRate, ...quoteData } = result.data;
 
-    const financials = calculateFinancials(items, taxRate);
+    // ✅ 1. 轉換稅率：前端 (5) -> DB Basis Points (500)
+    // 這裡會解決您遇到的 "5% 變 0.05%" 問題
+    const taxRateBP = toBasisPoints(taxRate);
+
+    // ✅ 2. 轉換金額：前端 (元) -> DB Cents (分)
+    const itemsWithCents = items.map(item => ({
+        ...item,
+        unitPrice: Math.round(item.unitPrice * 100)
+    }));
+
+    // ✅ 3. 統一計算：使用共用函式計算 Subtotal, Tax, Total
+    const financials = calculateQuoteFinancials(itemsWithCents, taxRateBP);
 
     try {
         await db.transaction(async (tx) => {
@@ -72,19 +74,21 @@ export async function createQuote(data: unknown) {
                 paymentMethod: quoteData.paymentMethod,
                 shippingMethod: quoteData.shippingMethod,
                 notes: quoteData.notes,
+
+                // ✅ 4. 寫入計算好的正確金額
                 subtotal: financials.subtotal,
-                taxRate: financials.taxRateBP,
+                taxRate: taxRateBP,         // 存入 500
                 taxAmount: financials.taxAmount,
                 totalAmount: financials.totalAmount,
             }).returning({ id: quotations.id });
 
-            if (items.length > 0) {
+            if (itemsWithCents.length > 0) {
                 await tx.insert(quotationItems).values(
-                    items.map((item) => ({
+                    itemsWithCents.map((item) => ({
                         quotationId: newQuote.id,
                         productName: item.productName,
                         quantity: item.quantity,
-                        unitPrice: Math.round(item.unitPrice * 100),
+                        unitPrice: item.unitPrice, // ✅ 這裡已經是分了，直接用
                         isTaxable: item.isTaxable,
                     }))
                 );
