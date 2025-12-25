@@ -7,7 +7,6 @@ import { QuotePDFDocument } from "@/components/pdf/QuotePDFDocument";
 import { NextResponse } from "next/server";
 import path from "path";
 
-// ✅ 這是唯一的字體註冊點
 Font.register({
   family: "Noto Sans TC",
   src: path.join(process.cwd(), "public", "fonts", "NotoSansTC-Regular.ttf"),

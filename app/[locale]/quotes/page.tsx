@@ -104,9 +104,12 @@ export default async function QuotesListPage() {
                       </div>
                       {/* 手機版把聯絡人也秀出來，因為可能隱藏了其他欄位 */}
                       <div className="text-xs text-muted-foreground md:hidden block">
-                        {format.dateTime(new Date(quote.issuedDate), {
-                          dateStyle: "short",
-                        })}
+                        {format.dateTime(
+                          new Date(quote.issuedDate ?? new Date()),
+                          {
+                            dateStyle: "short",
+                          }
+                        )}
                       </div>
                       <div className="text-xs text-muted-foreground hidden md:block">
                         {quote.customer?.contactPerson}
@@ -116,9 +119,12 @@ export default async function QuotesListPage() {
                       {quote.salesperson}
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
-                      {format.dateTime(new Date(quote.issuedDate), {
-                        dateStyle: "medium",
-                      })}
+                      {format.dateTime(
+                        new Date(quote.issuedDate ?? new Date()),
+                        {
+                          dateStyle: "medium",
+                        }
+                      )}
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
                       {new Date(quote.validUntil) < new Date() ? (
