@@ -29,6 +29,8 @@ import { updateQuote } from "@/actions/update-quote";
 import { quoteFormSchema, type QuoteFormData } from "@/lib/schemas/quote";
 import { toast } from "sonner";
 import { useTranslations, useFormatter } from "next-intl";
+// ✅ 引入統一計算邏輯
+import { toBasisPoints, calculateQuoteFinancials } from "@/lib/utils";
 
 interface QuoteFormProps {
   initialData: QuoteFormData & { id?: number };
@@ -40,33 +42,34 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
   const router = useRouter();
   const [isPending, setIsPending] = useState(false);
 
-  // ✅ 1. 初始化 Form (這裡就是原本缺少的定義)
   const form = useForm<QuoteFormData>({
     resolver: zodResolver(quoteFormSchema),
     defaultValues: initialData,
   });
 
-  // ✅ 2. 處理動態列表
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "items",
   });
 
-  // ✅ 3. 即時計算金額邏輯
+  // --- 🟢 即時計算邏輯 (修正版) ---
   const items = useWatch({ control: form.control, name: "items" });
   const taxRate = useWatch({ control: form.control, name: "taxRate" }) || 0;
 
-  // 使用 reduce 計算小計，確保數值安全
-  const subtotal = items.reduce((acc, item) => {
-    const qty = Math.floor(Number(item.quantity) || 0);
-    const price = Math.floor(Number(item.unitPrice) || 0);
-    return acc + qty * price;
-  }, 0);
+  // 1. 轉換資料格式 (元 -> 分)
+  // 移除 Math.floor，使用 Math.round 確保 4.3 不會變成 4
+  const itemsForCalc = (items || []).map((item) => ({
+    quantity: Number(item.quantity) || 0,
+    unitPrice: Math.round((Number(item.unitPrice) || 0) * 100),
+    isTaxable: item.isTaxable ?? true, // 處理免稅邏輯
+  }));
 
-  const taxAmount = Math.round(subtotal * (Number(taxRate) / 100));
-  const total = Math.round(subtotal + taxAmount);
+  const taxRateBP = toBasisPoints(Number(taxRate) || 0);
 
-  // ✅ 4. 送出表單邏輯
+  // 2. 呼叫共用函式
+  const financials = calculateQuoteFinancials(itemsForCalc, taxRateBP);
+  // --------------------------------------------------
+
   const onSubmit = async (data: QuoteFormData) => {
     setIsPending(true);
     try {
@@ -83,7 +86,6 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
         } else {
           router.push("/");
         }
-
         router.refresh();
       } else {
         toast.error(t("messages.error"));
@@ -110,10 +112,8 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
   return (
     <form
       onSubmit={form.handleSubmit(onSubmit)}
-      // ✅ 5. 間距優化 (手機版)
       className="space-y-8 max-w-5xl mx-auto py-4 md:py-10 px-4 md:px-0"
     >
-      {/* --- Section 1: Header --- */}
       <div className="border-b pb-4">
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
           {initialData?.id
@@ -125,7 +125,7 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
         </p>
       </div>
 
-      {/* --- Section 2: Customer Details --- */}
+      {/* Customer Details */}
       <Card>
         <CardHeader>
           <CardTitle>{t("sections.customerDetails")}</CardTitle>
@@ -182,8 +182,6 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
             required
             disabled={isPending}
           />
-
-          {/* Address */}
           <div className="col-span-1 md:col-span-2 space-y-2">
             <label className="text-sm font-medium">
               {t("fields.address")} <span className="text-destructive">*</span>
@@ -205,7 +203,7 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
         </CardContent>
       </Card>
 
-      {/* --- Section 3: Dates --- */}
+      {/* Dates */}
       <Card>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6">
           <FormField
@@ -227,19 +225,17 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
         </CardContent>
       </Card>
 
-      {/* --- Section 4: Items Table (Mobile Optimized) --- */}
+      {/* Items Table */}
       <Card>
         <CardHeader>
           <CardTitle>{t("sections.items")}</CardTitle>
         </CardHeader>
         <CardContent className="p-0 md:p-6">
-          {/* ✅ 6. 加入橫向捲軸，防止手機版輸入框被擠扁 */}
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  {/* ✅ 7. 設定 min-w 確保欄位不會消失 */}
-                  <TableHead className="w-[40%] min-w-[200px] pl-4">
+                  <TableHead className="w-[35%] min-w-[200px] pl-4">
                     {t("table.product")}
                   </TableHead>
                   <TableHead className="w-[15%] min-w-[80px]">
@@ -248,73 +244,87 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
                   <TableHead className="w-[20%] min-w-[100px]">
                     {t("table.price")}
                   </TableHead>
-                  <TableHead className="w-[20%] min-w-[100px] text-right">
+                  <TableHead className="w-[10%] min-w-[60px] text-center">
+                    {t("table.taxable")}
+                  </TableHead>
+                  <TableHead className="w-[15%] min-w-[100px] text-right">
                     {t("table.amount")}
                   </TableHead>
                   <TableHead className="w-[5%] min-w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {fields.map((field, index) => (
-                  <TableRow key={field.id}>
-                    <TableCell className="align-top pl-4">
-                      <Input
-                        {...form.register(`items.${index}.productName`)}
-                        placeholder={t("placeholders.itemName")}
-                        disabled={isPending}
-                        className={
-                          form.formState.errors.items?.[index]?.productName
-                            ? "border-destructive"
-                            : ""
-                        }
-                      />
-                    </TableCell>
-                    <TableCell className="align-top">
-                      <Input
-                        type="number"
-                        {...form.register(`items.${index}.quantity`, {
-                          valueAsNumber: true,
-                        })}
-                        min="1"
-                        disabled={isPending}
-                      />
-                    </TableCell>
-                    <TableCell className="align-top">
-                      <Input
-                        type="number"
-                        {...form.register(`items.${index}.unitPrice`, {
-                          valueAsNumber: true,
-                        })}
-                        min="0"
-                        step="1"
-                        disabled={isPending}
-                      />
-                    </TableCell>
-                    <TableCell className="text-right font-mono text-sm align-middle">
-                      {format.number(
-                        (items[index]?.quantity || 0) *
-                          (items[index]?.unitPrice || 0),
-                        {
+                {fields.map((field, index) => {
+                  const qty = Number(items?.[index]?.quantity) || 0;
+                  const price = Number(items?.[index]?.unitPrice) || 0;
+                  const lineAmount = qty * price;
+
+                  return (
+                    <TableRow key={field.id}>
+                      <TableCell className="align-top pl-4">
+                        <Input
+                          {...form.register(`items.${index}.productName`)}
+                          placeholder={t("placeholders.itemName")}
+                          disabled={isPending}
+                          className={
+                            form.formState.errors.items?.[index]?.productName
+                              ? "border-destructive"
+                              : ""
+                          }
+                        />
+                      </TableCell>
+                      <TableCell className="align-top">
+                        <Input
+                          type="number"
+                          {...form.register(`items.${index}.quantity`, {
+                            valueAsNumber: true,
+                          })}
+                          min="1"
+                          disabled={isPending}
+                        />
+                      </TableCell>
+                      <TableCell className="align-top">
+                        <Input
+                          type="number"
+                          {...form.register(`items.${index}.unitPrice`, {
+                            valueAsNumber: true,
+                          })}
+                          min="0"
+                          step="1"
+                          disabled={isPending}
+                        />
+                      </TableCell>
+                      <TableCell className="align-top text-center pt-3">
+                        {/* 使用標準 Checkbox 避免缺少元件錯誤 */}
+                        <input
+                          type="checkbox"
+                          {...form.register(`items.${index}.isTaxable`)}
+                          disabled={isPending}
+                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                        />
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm align-middle">
+                        {format.number(lineAmount, {
                           style: "currency",
                           currency: "TWD",
                           maximumFractionDigits: 0,
-                        }
-                      )}
-                    </TableCell>
-                    <TableCell className="align-top">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => remove(index)}
-                        disabled={isPending}
-                        className="text-muted-foreground hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                        })}
+                      </TableCell>
+                      <TableCell className="align-top">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => remove(index)}
+                          disabled={isPending}
+                          className="text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
@@ -329,7 +339,7 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
                   productName: "",
                   quantity: 1,
                   unitPrice: 0,
-                  isTaxable: true,
+                  isTaxable: true, // 預設應稅
                 })
               }
               disabled={isPending}
@@ -340,7 +350,7 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
         </CardContent>
       </Card>
 
-      {/* --- Section 5: Totals --- */}
+      {/* Totals Section */}
       <div className="flex justify-end">
         <Card className="w-full md:w-[350px]">
           <CardContent className="pt-6 space-y-4">
@@ -349,7 +359,8 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
                 {t("summary.subtotal")}:
               </span>
               <span className="font-medium">
-                {format.number(subtotal, {
+                {/* 顯示 Cents -> Dollars */}
+                {format.number(financials.subtotal / 100, {
                   style: "currency",
                   currency: "TWD",
                   maximumFractionDigits: 0,
@@ -365,6 +376,8 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
                 type="number"
                 {...form.register("taxRate", { valueAsNumber: true })}
                 className="w-20 h-8 text-right"
+                step="0.01"
+                min="0"
                 disabled={isPending}
               />
             </div>
@@ -374,7 +387,7 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
                 {t("summary.taxAmount")}:
               </span>
               <span className="font-medium">
-                {format.number(taxAmount, {
+                {format.number(financials.taxAmount / 100, {
                   style: "currency",
                   currency: "TWD",
                   maximumFractionDigits: 0,
@@ -385,7 +398,7 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
             <div className="border-t pt-4 flex justify-between items-center">
               <span className="font-bold text-lg">{t("summary.total")}:</span>
               <span className="font-bold text-2xl text-primary">
-                {format.number(total, {
+                {format.number(financials.totalAmount / 100, {
                   style: "currency",
                   currency: "TWD",
                   maximumFractionDigits: 0,
@@ -396,7 +409,6 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
         </Card>
       </div>
 
-      {/* --- Section 6: Bottom Actions --- */}
       <div className="flex flex-col-reverse sm:flex-row items-center justify-between border-t pt-6 mt-8 gap-4">
         <Button
           type="button"
@@ -430,9 +442,6 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
   );
 }
 
-// ------------------------------------------------------------
-// Type-Safe Sub-Component: FormField
-// ------------------------------------------------------------
 interface FormFieldProps {
   label: string;
   name: Path<QuoteFormData>;

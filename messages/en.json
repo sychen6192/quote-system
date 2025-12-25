@@ -71,6 +71,7 @@
       "product": "Product / Service",
       "qty": "Qty",
       "price": "Unit Price",
+      "taxable": "Taxable",
       "amount": "Amount"
     },
     "placeholders": {

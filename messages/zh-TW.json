@@ -71,6 +71,7 @@
       "product": "產品 / 服務",
       "qty": "數量",
       "price": "單價",
+      "taxable": "應稅",
       "amount": "金額"
     },
     "placeholders": {
