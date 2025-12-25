@@ -9,6 +9,7 @@ import Link from "next/link";
 import { getFormatter, getTranslations } from "next-intl/server";
 import QuoteActions from "@/components/quote-actions";
 import { COMPANY_INFO, PAYMENT_INFO } from "@/lib/company-info";
+import { calculateQuoteFinancials, toPercentage } from "@/lib/utils";
 
 interface PageProps {
   params: Promise<{
@@ -34,16 +35,9 @@ export default async function QuoteDetailPage({ params }: PageProps) {
 
   const format = await getFormatter();
 
-  // 計算金額
-  const subtotal = quote.items.reduce((acc, item) => {
-    return acc + item.quantity * item.unitPrice;
-  }, 0);
-
-  const taxRate = Number(quote.taxRate) || 0;
   // 四捨五入計算稅額 (與後端邏輯保持一致)
-  const taxAmount = Math.round(subtotal * (taxRate / 100));
-  const totalAmount = subtotal + taxAmount;
-  const taxRateDisplay = taxRate / 100;
+  const taxRateDisplay = toPercentage(quote.taxRate || 0); // 500 -> 5
+  const { subtotal, taxAmount, totalAmount } = quote;
 
   return (
     <div className="min-h-screen bg-gray-100/50 py-4 md:py-10 print:bg-white print:p-0">

@@ -5,6 +5,7 @@ import { quotations, quotationItems, customers } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { quoteFormSchema, type QuoteFormData } from '@/lib/schemas/quote'; //
+import { toBasisPoints, calculateQuoteFinancials } from '@/lib/utils';
 
 export async function updateQuote(id: number, rawData: QuoteFormData) {
     // 1. 加入資料驗證 (與 create-quote 保持一致，確保數字型別正確)
@@ -41,15 +42,12 @@ export async function updateQuote(id: number, rawData: QuoteFormData) {
 
             // 4. 計算金額與稅率
             // Zod 驗證後 data.taxRate 確定為數字 (例如 5)
-            const taxRateForDB = Math.round(data.taxRate * 100); // 5 -> 500
-
-            const subtotalCents = data.items.reduce((acc, item) => {
-                const priceCents = Math.round(item.unitPrice * 100);
-                return acc + (item.quantity * priceCents);
-            }, 0);
-
-            const taxAmountCents = Math.round((subtotalCents * taxRateForDB) / 10000);
-            const totalAmountCents = subtotalCents + taxAmountCents;
+            const taxRateBP = toBasisPoints(data.taxRate);
+            const itemsWithCents = data.items.map(item => ({
+                ...item,
+                unitPrice: Math.round(item.unitPrice * 100)
+            }));
+            const financials = calculateQuoteFinancials(itemsWithCents, taxRateBP);
 
             // 5. 更新報價單主表
             await tx
@@ -58,12 +56,13 @@ export async function updateQuote(id: number, rawData: QuoteFormData) {
                     salesperson: data.salesperson,
                     issuedDate: data.issuedDate,
                     validUntil: data.validUntil,
-                    // shippingDate, paymentMethod 等欄位如果需要更新也應在此加入
-                    taxRate: taxRateForDB,
-                    taxAmount: taxAmountCents, // 記得更新稅額
-                    subtotal: subtotalCents,   // 記得更新小計
-                    totalAmount: totalAmountCents,
                     notes: data.notes,
+
+                    // shippingDate, paymentMethod 等欄位如果需要更新也應在此加入
+                    taxRate: taxRateBP,
+                    subtotal: financials.subtotal,
+                    taxAmount: financials.taxAmount,
+                    totalAmount: financials.totalAmount,
                 })
                 .where(eq(quotations.id, id));
 
@@ -76,8 +75,8 @@ export async function updateQuote(id: number, rawData: QuoteFormData) {
                         quotationId: id,
                         productName: item.productName,
                         quantity: item.quantity,
-                        unitPrice: Math.round(item.unitPrice * 100),
-                        isTaxable: item.isTaxable ?? true,
+                        unitPrice: item.unitPrice,
+                        isTaxable: item.isTaxable,
                     }))
                 );
             }
