@@ -1,6 +1,6 @@
 # Company Quotation System (公司報價管理系統)
 
-這是一個基於 **Next.js 15 (App Router)** 建構的企業級報價單管理系統。本專案採用現代化的全端架構，強調**型別安全 (Type Safety)**、**資料一致性 (ACID)** 與 **高維護性**。
+這是一個基於 **Next.js 15 (App Router)** 建構的企業級報價單管理系統。本專案採用現代化的全端架構，強調**型別安全 (Type Safety)**、**資料一致性 (ACID)** 與 **極佳的使用者體驗 (UX)**。
 
 ## 🚀 Tech Stack (技術堆疊)
 
@@ -9,32 +9,57 @@
 - **Database**: [PostgreSQL](https://www.postgresql.org/) (via Docker)
 - **ORM**: [Drizzle ORM](https://orm.drizzle.team/) (Type-safe SQL)
 - **UI Components**: [shadcn/ui](https://ui.shadcn.com/) + [Tailwind CSS](https://tailwindcss.com/)
-- **Form Management**: React Hook Form + Zod Validation
+- **Validation**: React Hook Form + Zod
 
 ## 🌟 Key Features (核心功能)
 
-- **Dynamic Quotation Form**: 支援動態增減商品項目，無需刷新頁面。
-- **Real-time Calculation**: 前端即時計算小計、稅額與總金額，提供流暢使用者體驗。
-- **Financial Accuracy**: 所有的金額欄位在資料庫中皆以 **Integer (最小單位：分)** 儲存，避免浮點數運算誤差。
-- **Transactional Writes**: 使用 Database Transaction 確保報價單主檔與明細寫入的原子性 (All or Nothing)。
-- **Schema Validation**: 使用 Zod 定義前後端共用的資料驗證規則。
+### 💼 Quotation Management (報價管理)
 
-## 🛠️ Getting Started (開發指南)
+- **Dynamic Form**: 支援動態增減商品項目 (Field Array)，無需刷新頁面。
+- **Real-time Calculation**: 前端即時計算小計、稅額與總金額 (Client-side Math)。
+- **Financial Accuracy**: 金額在資料庫以 **Integer (分)** 儲存，杜絕浮點數誤差。
+
+### ⚡ User Experience & Loading States (使用者體驗與載入優化)
+
+- **Server Action Feedback**: 表單提交時自動觸發 `isPending` 載入狀態，防止重複提交並提供視覺回饋 (Loading Spinner/Pulse)。
+- **Optimized Performance**: 利用 Next.js App Router 機制，實現伺服器端渲染 (SSR) 與串流傳輸 (Streaming)，加快首屏載入速度。
+- **Instant Toast Notifications**: 操作成功或失敗時，即時彈出 Toast 訊息通知。
+
+### 🛡️ Data Integrity (資料完整性)
+
+- **Transactional Writes**: 使用 Database Transaction 確保報價單主檔與明細寫入的原子性 (All or Nothing)。
+- **Unified Schema**: 使用 Zod 定義前後端共用的資料驗證規則 (Single Source of Truth)。
+
+---
+
+## 🛠️ Getting Started (快速開始)
 
 ### 1. Prerequisites (前置需求)
 
 - Node.js 18+
 - Docker & Docker Compose (用於執行 PostgreSQL)
 
-### 2. Environment Setup (環境設定)
+### 2. Install Dependencies (安裝依賴)
 
-複製 `.env.example` 並重新命名為 `.env`：
+這是執行專案與資料庫工具的必要步驟：
 
 ```bash
-DATABASE_URL="postgres://postgres:password@localhost:5432/quote_db"
+npm install
 ```
 
-### 3. Database Initialization (資料庫啟動)
+### 3.Environment Setup (環境設定)
+
+請在專案根目錄建立 .env 檔案，供本機開發與 Drizzle Kit 使用：
+
+# 複製並重新命名 .env.example -> .env
+
+# 注意：本機連線請使用 localhost
+
+```bash
+DATABASE_URL="postgres://postgres:postgres@localhost:5432/quote-system"
+```
+
+### 4. Start Database (啟動資料庫)
 
 使用 Docker 啟動 PostgreSQL 容器：
 
@@ -42,71 +67,34 @@ DATABASE_URL="postgres://postgres:password@localhost:5432/quote_db"
 docker-compose up -d
 ```
 
-將 Schema 推送至資料庫 (Schema Migration)：
+### 5. Database Initialization (資料庫初始化)
+
+重要：首次啟動或修改 Schema 後，務必執行此指令來建立/更新資料表：
 
 ```bash
 npm run db:push
-# 或者直接執行: npx drizzle-kit push
 ```
 
-### 4\. Run Development Server (啟動專案)
+### 6. Run Development Server (啟動專案)
 
 ```bash
 npm run dev
 ```
 
-開啟瀏覽器訪問 [http://localhost:3000](https://www.google.com/search?q=http://localhost:3000)。
-
----
-
 ## 📂 Project Structure (專案結構)
 
-本專案採用「關注點分離」的架構設計：
-
-```text
 quote-system/
-├── actions/             # Server Actions (後端邏輯、DB 交易處理)
-├── app/                 # Next.js App Router (頁面與路由)
-├── components/          # React 元件
-│   ├── ui/              # shadcn/ui 基礎元件 (不含業務邏輯)
-│   └── quote-form.tsx   # 業務邏輯元件 (含表單計算)
-├── db/                  # 資料庫層
-│   ├── schema.ts        # Drizzle 資料表定義
-│   └── index.ts         # DB 連線設定
-├── lib/                 # 共用工具
-│   └── schemas/         # Zod 驗證定義 (前後端共用)
-└── public/              # 靜態資源
-```
+├── actions/ # Server Actions (後端邏輯、DB 交易處理)
+├── app/ # Next.js App Router (頁面與路由)
+├── components/ # React 元件
+│ ├── ui/ # shadcn/ui 基礎元件
+│ └── quote-form.tsx # 包含 Loading 狀態處理的表單元件
+├── db/ # 資料庫層 (Schema 定義)
+├── lib/ # 共用工具 (Zod Schema, Utils)
+└── public/ # 靜態資源
 
-## 💡 Architecture Decisions (設計決策)
+## Architecture Decisions (設計決策)
 
-### 1\. Money Handling (金額處理)
-
-為了符合金融系統標準，我們**不使用 Float/Double** 儲存金額。
-
-- **Frontend**: 使用者輸入 "元" (e.g., 100)。
-- **Backend/DB**: 系統自動轉換並儲存為 "分" (e.g., 10000)。
-- **Calculation**: 所有計算在轉換為整數後進行，顯示時再除以 100。
-
-### 2\. Server Actions over API Routes
-
-本專案不使用傳統 REST API (`pages/api`).
-我們利用 Next.js **Server Actions** 直接在伺服器端處理表單提交。這帶來了更好的型別推斷，並減少了 Client/Server 之間的資料傳輸開銷。
-
-### 3\. Zod Schema Sharing
-
-`lib/schemas/quote.ts` 是唯一的真理來源 (Single Source of Truth)。
-它同時被用於：
-
-1.  **前端**: 表單即時驗證 (React Hook Form)。
-2.  **後端**: API 接收資料前的安全性檢查。
-
----
-
-## 📝 Commands Cheat Sheet (指令速查)
-
-| 指令                                | 說明                                    |
-| :---------------------------------- | :-------------------------------------- |
-| `npx drizzle-kit push`              | 將 Schema 變更直接同步到資料庫 (開發用) |
-| `npx drizzle-kit studio`            | 開啟 GUI 介面查看/管理資料庫內容        |
-| `npx shadcn@latest add [component]` | 新增 UI 元件                            |
+1. Money Handling: 前端顯示「元」，後端與 DB 儲存「分」。
+2. Server Actions: 取代傳統 API Routes，獲得更好的型別推斷與開發體驗。
+3. Zod Schema Sharing: 前端 Form Validation 與後端 Payload Validation 共用同一份定義。
