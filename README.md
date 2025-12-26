@@ -51,10 +51,6 @@ npm install
 
 請在專案根目錄建立 .env 檔案，供本機開發與 Drizzle Kit 使用：
 
-# 複製並重新命名 .env.example -> .env
-
-# 注意：本機連線請使用 localhost
-
 ```bash
 DATABASE_URL="postgres://postgres:postgres@localhost:5432/quote-system"
 ```
@@ -83,6 +79,7 @@ npm run dev
 
 ## 📂 Project Structure (專案結構)
 
+```bash
 quote-system/
 ├── actions/ # Server Actions (後端邏輯、DB 交易處理)
 ├── app/ # Next.js App Router (頁面與路由)
@@ -92,6 +89,7 @@ quote-system/
 ├── db/ # 資料庫層 (Schema 定義)
 ├── lib/ # 共用工具 (Zod Schema, Utils)
 └── public/ # 靜態資源
+```
 
 ## Architecture Decisions (設計決策)
 
