@@ -390,35 +390,40 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
         </Card>
       </div>
 
-      <div className="flex flex-col-reverse sm:flex-row items-center justify-between border-t pt-6 mt-8 gap-4">
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={handleCancel}
-          disabled={isPending}
-          className="w-full sm:w-auto text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" /> {t("actions.cancel")}
-        </Button>
-
-        <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-sm border-t z-50 md:static md:bg-transparent md:border-0 md:p-0 md:mt-8">
+        <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-3 max-w-5xl mx-auto">
+          {/* 手機版不顯示上一頁，電腦版顯示 */}
           <Button
-            type="submit"
-            size="lg"
-            className="w-full sm:w-auto min-w-[150px] shadow-sm"
+            type="button"
+            variant="ghost"
+            onClick={handleCancel}
             disabled={isPending}
+            className="hidden md:flex w-full sm:w-auto text-muted-foreground hover:text-foreground"
           >
-            {isPending ? (
-              <span className="animate-pulse">{t("actions.saving")}</span>
-            ) : (
-              <>
-                <Save className="mr-2 h-4 w-4" />
-                {initialData?.id ? t("actions.update") : t("actions.save")}
-              </>
-            )}
+            <ArrowLeft className="h-4 w-4 mr-2" /> {t("actions.cancel")}
           </Button>
+
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+            {/* 儲存按鈕在手機上佔滿寬度，方便點擊 */}
+            <Button
+              type="submit"
+              size="lg"
+              className="w-full sm:w-auto min-w-[150px] shadow-sm font-bold"
+              disabled={isPending}
+            >
+              {isPending ? (
+                <span className="animate-pulse">{t("actions.saving")}</span>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  {initialData?.id ? t("actions.update") : t("actions.save")}
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
+      <div className="h-24 md:hidden"></div>
     </form>
   );
 }
