@@ -11,7 +11,13 @@
     "customers": "Customers",
     "recentQuotes": "Recent Quotations",
     "createQuote": "Create Quote",
-    "viewAll": "View All"
+    "viewAll": "View All",
+    "status": {
+      "draft": "Draft",
+      "sent": "Sent",
+      "accepted": "Accepted",
+      "rejected": "Rejected"
+    }
   },
   "Common": {
     "backToDashboard": "Back to Dashboard",
