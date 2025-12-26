@@ -1,12 +1,16 @@
 "use server";
 
 import { Resend } from "resend";
+import { db } from "@/db"; //
+import { quotations } from "@/db/schema"; //
+import { eq } from "drizzle-orm";
 import { QuoteEmail } from "@/components/emails/quote-template";
 import { QuotePDFDocument } from "@/components/pdf/QuotePDFDocument";
 import { renderToBuffer, Font } from "@react-pdf/renderer";
 import path from "path";
 import process from "process";
 import { MAIL_INFO } from "@/lib/company-info";
+import { revalidatePath } from "next/cache";
 
 // 1. 初始化 Resend
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -52,6 +56,16 @@ export async function sendQuoteEmail(quote: any): Promise<SendEmailState> {
     if (error) {
       console.error("Resend error:", error);
       return { error: error.message };
+    }
+
+    if (quote.id) {
+      await db
+        .update(quotations)
+        .set({ status: "sent" })
+        .where(eq(quotations.id, quote.id));
+
+      revalidatePath(`/quotes/${quote.id}`);
+      revalidatePath("/");
     }
 
     return { success: true };

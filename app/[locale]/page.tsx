@@ -175,7 +175,9 @@ export default async function DashboardPage() {
                         href={`/quotes/${q.id}`}
                         className="block w-full h-full"
                       >
-                        <Badge variant="outline">Sent</Badge>
+                        <Badge variant="outline">
+                          {t(`status.${q.status || "draft"}`)}
+                        </Badge>
                       </Link>
                     </TableCell>
                     <TableCell className="text-right font-mono font-medium">

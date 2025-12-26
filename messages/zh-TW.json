@@ -11,7 +11,13 @@
     "customers": "客戶總數",
     "recentQuotes": "最近報價單",
     "createQuote": "建立報價單",
-    "viewAll": "查看全部"
+    "viewAll": "查看全部",
+   "status": {
+      "draft": "草稿",
+      "sent": "已發送",
+      "accepted": "已成交",
+      "rejected": "已拒絕"
+    }
   },
   "Common": {
     "backToDashboard": "返回儀表板",
@@ -102,7 +108,7 @@
     "backToList": "返回列表",
     "export": "匯出",
     "downloadPdf": "下載 PDF",
-    "print": "列印 (網頁版)",
+    "print": "列印",
     "sendEmail": "寄送報價單",
     "sending": "寄送中...",
     "confirmSend": "確認寄送",
