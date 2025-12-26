@@ -69,7 +69,7 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
   const itemsForCalc = (items || []).map((item) => ({
     quantity: Number(item.quantity) || 0,
     unitPrice: Math.round((Number(item.unitPrice) || 0) * 100),
-    isTaxable: item.isTaxable ?? false,
+    isTaxable: item.isTaxable ?? true,
   }));
 
   const taxRateBP = toBasisPoints(Number(taxRate) || 0);
@@ -237,9 +237,6 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
                   <TableHead className="w-[20%] min-w-[100px]">
                     {t("table.price")}
                   </TableHead>
-                  <TableHead className="w-[10%] min-w-[60px] text-center">
-                    {t("table.taxable")}
-                  </TableHead>
                   <TableHead className="w-[15%] min-w-[100px] text-right">
                     {t("table.amount")}
                   </TableHead>
@@ -288,14 +285,6 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
                           disabled={isPending}
                         />
                       </TableCell>
-                      <TableCell className="align-top text-center pt-3">
-                        <input
-                          type="checkbox"
-                          {...form.register(`items.${index}.isTaxable`)}
-                          disabled={isPending}
-                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                        />
-                      </TableCell>
                       <TableCell className="text-right font-mono text-sm align-middle">
                         {format.number(lineAmount, {
                           style: "currency",
@@ -332,7 +321,7 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
                   productName: "",
                   quantity: 1,
                   unitPrice: 0,
-                  isTaxable: false,
+                  isTaxable: true,
                 })
               }
               disabled={isPending}
