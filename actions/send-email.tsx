@@ -6,6 +6,7 @@ import { QuotePDFDocument } from "@/components/pdf/QuotePDFDocument";
 import { renderToBuffer, Font } from "@react-pdf/renderer";
 import path from "path";
 import process from "process";
+import { MAIL_INFO } from "@/lib/company-info";
 
 // 1. 初始化 Resend
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -33,13 +34,13 @@ export async function sendQuoteEmail(quote: any): Promise<SendEmailState> {
     const pdfBuffer = await renderToBuffer(<QuotePDFDocument quote={quote} />);
 
     // 5. 寄出 Email (含附件)
-    const { data, error } = await resend.emails.send({
-      from: "Shangda Inc. <billing@sycomputer.org>",
+    const { error } = await resend.emails.send({
+      from: `${MAIL_INFO.name} <${MAIL_INFO.senderEmail}>`,
       to: [quote.customer.email],
+      cc: MAIL_INFO.ccEmails,
       subject: `Quotation #${quote.quotationNumber} from Shangda Inc.`,
       react: <QuoteEmail quote={quote} />, // 你的 HTML Email Template
 
-      // ✅ 這裡就是附加檔案的關鍵
       attachments: [
         {
           filename: `Quote-${quote.quotationNumber}.pdf`,
