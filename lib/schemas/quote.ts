@@ -33,5 +33,4 @@ export const quoteFormSchema = z.object({
     ).default([]),
 });
 
-// 這是輸出的嚴格型別
 export type QuoteFormData = z.infer<typeof quoteFormSchema>;
