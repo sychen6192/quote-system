@@ -114,7 +114,7 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
   return (
     <form
       onSubmit={form.handleSubmit(onSubmit)}
-      className="space-y-8 max-w-5xl mx-auto py-4 md:py-10 px-4 md:px-0"
+      className="space-y-8 max-w-5xl mx-auto py-4 md:py-10 px-4 md:px-0 pb-32 md:pb-10"
     >
       <div className="border-b pb-4">
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
@@ -390,9 +390,8 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
         </Card>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-sm border-t z-50 md:static md:bg-transparent md:border-0 md:p-0 md:mt-8">
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t z-50 md:static md:bg-transparent md:border-0 md:p-0 md:mt-8 safe-area-bottom">
         <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-3 max-w-5xl mx-auto">
-          {/* 手機版不顯示上一頁，電腦版顯示 */}
           <Button
             type="button"
             variant="ghost"
@@ -402,7 +401,6 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
           >
             <ArrowLeft className="h-4 w-4 mr-2" /> {t("actions.cancel")}
           </Button>
-
           <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
             {/* 儲存按鈕在手機上佔滿寬度，方便點擊 */}
             <Button
