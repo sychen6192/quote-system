@@ -25,7 +25,13 @@
     "customer": "客戶",
     "status": "狀態",
     "date": "日期",
-    "amount": "金額"
+    "amount": "金額",
+    "pagination": {
+      "previous": "上一頁",
+      "next": "下一頁",
+      "pageInfo": "第 {current} 頁，共 {total} 頁"
+    }
+
   },
   "QuotesList": {
     "title": "報價單列表",

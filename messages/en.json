@@ -25,7 +25,12 @@
     "customer": "Customer",
     "status": "Status",
     "date": "Date",
-    "amount": "Amount"
+    "amount": "Amount",
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "pageInfo": "Page {current} of {total}"
+    }
   },
   "QuotesList": {
     "title": "Quotations",
