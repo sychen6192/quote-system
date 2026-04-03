@@ -43,3 +43,6 @@ next-env.d.ts
 # postgres
 /postgres_data
 *company-info.ts
+
+# worktrees
+.worktrees/
