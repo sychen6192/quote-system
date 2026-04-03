@@ -1,0 +1,39 @@
+name: Deploy Next.js to Homelab
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/sychen6192/quote-system:latest
+
+  deploy-to-homelab:
+    needs: build-and-push
+    runs-on: [self-hosted, homelab]
+
+    steps:
+      - name: Pull and Restart Container
+        run: |
+          docker pull ghcr.io/sychen6192/quote-system:latest
+          docker stop my-next-app || true
+          docker rm my-next-app || true
+          docker run -d --name my-next-app -p 3000:3000 ghcr.io/sychen6192/quote-system:latest
