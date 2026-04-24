@@ -19,7 +19,7 @@ export const quoteFormSchema = z.object({
     shippingMethod: z.string().optional(),
 
     // ✅ 確保數字轉換
-    taxRate: z.coerce.number().min(0).default(5),
+    taxRate: z.coerce.number().min(0).max(20, "Tax rate must be between 0% and 20%").default(5),
     notes: z.string().optional(),
 
     items: z.array(
@@ -31,6 +31,9 @@ export const quoteFormSchema = z.object({
             isTaxable: z.boolean().default(false),
         })
     ).default([]),
-});
+}).refine(
+    (data) => new Date(data.validUntil) >= new Date(data.issuedDate),
+    { message: "Valid until date must be on or after issued date", path: ["validUntil"] },
+);
 
 export type QuoteFormData = z.infer<typeof quoteFormSchema>;
