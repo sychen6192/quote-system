@@ -91,7 +91,7 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
         router.refresh();
       } else {
         toast.error(t("messages.error"));
-        console.error("Server Action Error:", res.error);
+        console.error("Server Action Error:", res.code, res);
       }
     } catch (error) {
       console.error(error);

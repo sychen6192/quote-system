@@ -6,6 +6,7 @@ import { quoteFormSchema } from '@/lib/schemas/quote';
 import { revalidatePath } from 'next/cache';
 import { like, desc } from 'drizzle-orm';
 import { toBasisPoints, calculateQuoteFinancials } from '@/lib/utils';
+import type { ActionResult } from './types';
 
 async function generateQuoteNumber(tx: any) {
     const today = new Date();
@@ -32,9 +33,15 @@ async function generateQuoteNumber(tx: any) {
     return `${prefix}-${String(nextSeq).padStart(3, '0')}`;
 }
 
-export async function createQuote(data: unknown) {
+export async function createQuote(data: unknown): Promise<ActionResult> {
     const result = quoteFormSchema.safeParse(data);
-    if (!result.success) return { success: false, error: result.error.format() };
+    if (!result.success) {
+        return {
+            success: false,
+            code: 'VALIDATION',
+            fieldErrors: result.error.flatten().fieldErrors,
+        };
+    }
 
     const { items, taxRate, ...quoteData } = result.data;
 
@@ -95,8 +102,12 @@ export async function createQuote(data: unknown) {
             }
         });
     } catch (error) {
-        console.error('Transaction Failed:', error);
-        return { success: false, error: 'Transaction Failed' };
+        console.error('createQuote transaction failed:', error);
+        return {
+            success: false,
+            code: 'INTERNAL',
+            message: error instanceof Error ? error.message : 'Transaction failed',
+        };
     }
 
     revalidatePath('/');

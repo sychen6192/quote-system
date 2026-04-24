@@ -6,25 +6,36 @@ import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { quoteFormSchema, type QuoteFormData } from '@/lib/schemas/quote';
 import { toBasisPoints, calculateQuoteFinancials } from '@/lib/utils';
+import type { ActionResult } from './types';
 
-export async function updateQuote(id: number, rawData: QuoteFormData) {
+export async function updateQuote(id: number, rawData: QuoteFormData): Promise<ActionResult> {
     const result = quoteFormSchema.safeParse(rawData);
     if (!result.success) {
-        return { success: false, error: result.error.format() };
+        return {
+            success: false,
+            code: 'VALIDATION',
+            fieldErrors: result.error.flatten().fieldErrors,
+        };
     }
     const data = result.data;
 
+    const existingQuote = await db.query.quotations.findFirst({
+        where: eq(quotations.id, id),
+        columns: { id: true, customerId: true },
+    });
+
+    if (!existingQuote || !existingQuote.customerId) {
+        return {
+            success: false,
+            code: 'NOT_FOUND',
+            message: `Quote ${id} or its associated customer was not found`,
+        };
+    }
+
+    const customerId = existingQuote.customerId;
+
     try {
         await db.transaction(async (tx) => {
-            const existingQuote = await tx.query.quotations.findFirst({
-                where: eq(quotations.id, id),
-                with: { customer: true },
-            });
-
-            if (!existingQuote || !existingQuote.customerId) {
-                throw new Error("Quote or associated customer not found");
-            }
-
             // Update Customer
             await tx
                 .update(customers)
@@ -36,7 +47,7 @@ export async function updateQuote(id: number, rawData: QuoteFormData) {
                     vatNumber: data.vatNumber,
                     address: data.address,
                 })
-                .where(eq(customers.id, existingQuote.customerId));
+                .where(eq(customers.id, customerId));
 
             // Calculate Financials
             const taxRateBP = toBasisPoints(data.taxRate);
@@ -87,7 +98,11 @@ export async function updateQuote(id: number, rawData: QuoteFormData) {
         return { success: true };
 
     } catch (error) {
-        console.error("Update failed:", error);
-        return { success: false, error: "Failed to update quote" };
+        console.error("updateQuote transaction failed:", error);
+        return {
+            success: false,
+            code: 'INTERNAL',
+            message: error instanceof Error ? error.message : 'Failed to update quote',
+        };
     }
 }
