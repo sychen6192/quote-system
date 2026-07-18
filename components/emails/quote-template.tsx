@@ -1,4 +1,5 @@
-import { COMPANY_INFO, PAYMENT_INFO } from "@/lib/company-info";
+import { formatCurrency } from "@/lib/utils";
+import type { QuoteBranding } from "@/lib/config";
 import {
   Body,
   Container,
@@ -13,20 +14,15 @@ import {
   Link,
 } from "@react-email/components";
 
-const fmtMoney = (cents: number) =>
-  new Intl.NumberFormat("zh-TW", {
-    style: "currency",
-    currency: "TWD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(cents / 100);
-
 interface QuoteTemplateProps {
   quote: any;
+  branding: QuoteBranding;
 }
 
-export const QuoteEmail = ({ quote }: QuoteTemplateProps) => {
+export const QuoteEmail = ({ quote, branding }: QuoteTemplateProps) => {
   if (!quote) return null;
+
+  const fmtMoney = (cents: number) => formatCurrency(cents, branding.money);
 
   const customerName =
     quote.customer?.contactPerson ||
@@ -40,7 +36,7 @@ export const QuoteEmail = ({ quote }: QuoteTemplateProps) => {
       <Head />
       {/* ✅ 修正 Preview：只顯示文字，不放 Base64 亂碼 */}
       <Preview>
-        Quotation #{quoteNumber} from {COMPANY_INFO.name}
+        Quotation #{quoteNumber} from {branding.company.name}
       </Preview>
       <Tailwind
         config={{
@@ -64,7 +60,7 @@ export const QuoteEmail = ({ quote }: QuoteTemplateProps) => {
                 Quotation #{quoteNumber}
               </Heading>
               <Text className="text-sm text-slate500 mt-2">
-                {COMPANY_INFO.name}
+                {branding.company.name}
               </Text>
             </Section>
 
@@ -96,26 +92,48 @@ export const QuoteEmail = ({ quote }: QuoteTemplateProps) => {
 
             {/* Footer */}
             <Section className="text-center mt-8">
-              <div className="mb-6 text-xs text-slate-500">
-                <Text className="font-bold m-0 uppercase mb-2">
-                  Payment Details
-                </Text>
-                <Text className="m-0">Bank: {PAYMENT_INFO.bankName}</Text>
-                <Text className="m-0">Account: {PAYMENT_INFO.accountName}</Text>
-                <Text className="m-0">No: {PAYMENT_INFO.accountNumber}</Text>
-              </div>
+              {branding.payment ? (
+                <div className="mb-6 text-xs text-slate-500">
+                  <Text className="font-bold m-0 uppercase mb-2">
+                    Payment Details
+                  </Text>
+                  {branding.payment.bankName ? (
+                    <Text className="m-0">
+                      Bank: {branding.payment.bankName}
+                    </Text>
+                  ) : null}
+                  {branding.payment.accountName ? (
+                    <Text className="m-0">
+                      Account: {branding.payment.accountName}
+                    </Text>
+                  ) : null}
+                  {branding.payment.accountNumber ? (
+                    <Text className="m-0">
+                      No: {branding.payment.accountNumber}
+                    </Text>
+                  ) : null}
+                </div>
+              ) : null}
 
               <Text className="text-xs text-slate400 leading-relaxed m-0">
-                <strong>{COMPANY_INFO.name}</strong>
-                <br />
-                {COMPANY_INFO.address}
-                <br />
-                <Link
-                  href={`mailto:${COMPANY_INFO.email}`}
-                  className="text-slate400 underline"
-                >
-                  {COMPANY_INFO.email}
-                </Link>
+                <strong>{branding.company.name}</strong>
+                {branding.company.address ? (
+                  <>
+                    <br />
+                    {branding.company.address}
+                  </>
+                ) : null}
+                {branding.company.email ? (
+                  <>
+                    <br />
+                    <Link
+                      href={`mailto:${branding.company.email}`}
+                      className="text-slate400 underline"
+                    >
+                      {branding.company.email}
+                    </Link>
+                  </>
+                ) : null}
               </Text>
             </Section>
           </Container>

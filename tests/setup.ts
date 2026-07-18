@@ -1,7 +1,7 @@
 // 測試環境設置
 
-// 設置環境變數
-process.env.NODE_ENV = 'test';
+// 設置環境變數 (NODE_ENV 在型別上是 read-only,用 Object.assign 繞過)
+Object.assign(process.env, { NODE_ENV: 'test' });
 process.env.DATABASE_URL = 'postgres://test:test@localhost:5432/test_quote_system';
 
 // 全局測試輔助函數
@@ -74,14 +74,19 @@ expect.extend({
     }
   },
 
-  toThrowValidationError(received: Function, field?: string) {
+  toThrowValidationError(received: () => unknown, field?: string) {
     try {
       received();
       return {
         message: () => `expected function to throw a validation error`,
         pass: false,
       };
-    } catch (error: any) {
+    } catch (caught: unknown) {
+      const error = caught as {
+        name?: string;
+        message?: string;
+        details?: { field?: string };
+      };
       const isValidationError = error.name === 'ValidationError';
       const hasCorrectField = !field || (error.details?.field === field);
 

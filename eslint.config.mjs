@@ -12,7 +12,25 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Local-only directories:
+    ".worktrees/**",
+    "branding/**",
+    "postgres_data/**",
   ]),
+  {
+    rules: {
+      // Legacy debt: serialized quote payloads are still typed as `any`.
+      // Kept visible as warnings; do not add new ones.
+      "@typescript-eslint/no-explicit-any": "warn",
+    },
+  },
+  {
+    // Jest custom-matcher declarations require namespace merging.
+    files: ["tests/setup.ts"],
+    rules: {
+      "@typescript-eslint/no-namespace": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

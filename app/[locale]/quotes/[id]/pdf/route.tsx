@@ -6,6 +6,7 @@ import { renderToStream, Font } from "@react-pdf/renderer";
 import { QuotePDFDocument } from "@/components/pdf/QuotePDFDocument";
 import { NextResponse } from "next/server";
 import path from "path";
+import { getQuoteBranding } from "@/lib/config";
 
 Font.register({
   family: "Noto Sans TC",
@@ -26,7 +27,9 @@ export async function GET(
 
   if (!quote) return notFound();
 
-  const stream = await renderToStream(<QuotePDFDocument quote={quote} />);
+  const stream = await renderToStream(
+    <QuotePDFDocument quote={quote} branding={getQuoteBranding()} />
+  );
 
   return new NextResponse(stream as unknown as BodyInit, {
     headers: {

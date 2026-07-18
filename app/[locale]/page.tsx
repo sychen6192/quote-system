@@ -1,4 +1,5 @@
 import { formatCurrency } from "@/lib/utils";
+import { getAppConfig } from "@/lib/config";
 import { DollarSign, FileText, Plus, Users } from "lucide-react";
 import { Link } from "@/navigation";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const t = await getTranslations("Dashboard");
+  const { money } = getAppConfig();
   const [metrics, recentQuotes] = await Promise.all([
     getDashboardMetrics(),
     getRecentQuotes(),
@@ -40,7 +42,7 @@ export default async function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-3">
         <StatCard
           title={t("totalRevenue")}
-          value={formatCurrency(metrics.totalRevenue)}
+          value={formatCurrency(metrics.totalRevenue, money)}
           description="All time revenue"
           icon={DollarSign}
         />

@@ -7,8 +7,8 @@ import {
   StyleSheet,
   Image,
 } from "@react-pdf/renderer";
-import { COMPANY_INFO, PAYMENT_INFO } from "@/lib/company-info";
-import { toPercentage } from "@/lib/utils";
+import { formatCurrency, toPercentage } from "@/lib/utils";
+import type { QuoteBranding } from "@/lib/config";
 
 const colors = {
   slate900: "#0f172a",
@@ -212,13 +212,6 @@ const styles = StyleSheet.create({
   },
 });
 
-const fmtMoney = (cents: number) =>
-  new Intl.NumberFormat("zh-TW", {
-    style: "currency",
-    currency: "TWD",
-    minimumFractionDigits: 0,
-  }).format(cents / 100);
-
 const fmtDate = (d: string | Date) =>
   new Date(d).toLocaleDateString("en-US", {
     year: "numeric",
@@ -226,9 +219,16 @@ const fmtDate = (d: string | Date) =>
     day: "numeric",
   });
 
-export const QuotePDFDocument = ({ quote }: { quote: any }) => {
+export const QuotePDFDocument = ({
+  quote,
+  branding,
+}: {
+  quote: any;
+  branding: QuoteBranding;
+}) => {
   const { subtotal, taxAmount, totalAmount } = quote;
 
+  const fmtMoney = (cents: number) => formatCurrency(cents, branding.money);
   const taxRateDisplay = toPercentage(quote.taxRate || 0);
   const isExpired = new Date(quote.validUntil) < new Date();
 
@@ -238,7 +238,7 @@ export const QuotePDFDocument = ({ quote }: { quote: any }) => {
         <View style={styles.header}>
           <View style={styles.brandSection}>
             <Image
-              src={COMPANY_INFO.logoBase64}
+              src={branding.logoDataUri}
               style={{
                 width: 40,
                 height: 40,
@@ -247,11 +247,19 @@ export const QuotePDFDocument = ({ quote }: { quote: any }) => {
               }}
             />
             <View style={styles.brandInfoColumn}>
-              <Text style={styles.brandName}>{COMPANY_INFO.name}</Text>
-              <Text style={styles.brandSub}>{COMPANY_INFO.chineseName}</Text>
+              <Text style={styles.brandName}>{branding.company.name}</Text>
+              {branding.company.nameLocal ? (
+                <Text style={styles.brandSub}>
+                  {branding.company.nameLocal}
+                </Text>
+              ) : null}
               <View style={styles.contactInfo}>
-                <Text>{COMPANY_INFO.address}</Text>
-                <Text>VAT: {COMPANY_INFO.vatNumber}</Text>
+                {branding.company.address ? (
+                  <Text>{branding.company.address}</Text>
+                ) : null}
+                {branding.company.vatNumber ? (
+                  <Text>VAT: {branding.company.vatNumber}</Text>
+                ) : null}
               </View>
             </View>
           </View>
@@ -347,16 +355,32 @@ export const QuotePDFDocument = ({ quote }: { quote: any }) => {
                 <Text style={styles.textSmall}>{quote.notes}</Text>
               </View>
             ) : null}
-            <View>
-              <Text style={styles.label}>Bank Details</Text>
-              <Text style={styles.textSmall}>{PAYMENT_INFO.bankName}</Text>
-              <Text style={styles.textSmall}>{PAYMENT_INFO.accountName}</Text>
-              <Text style={styles.textSmall}>{PAYMENT_INFO.accountNumber}</Text>
-            </View>
+            {branding.payment ? (
+              <View>
+                <Text style={styles.label}>Bank Details</Text>
+                {branding.payment.bankName ? (
+                  <Text style={styles.textSmall}>
+                    {branding.payment.bankName}
+                  </Text>
+                ) : null}
+                {branding.payment.accountName ? (
+                  <Text style={styles.textSmall}>
+                    {branding.payment.accountName}
+                  </Text>
+                ) : null}
+                {branding.payment.accountNumber ? (
+                  <Text style={styles.textSmall}>
+                    {branding.payment.accountNumber}
+                  </Text>
+                ) : null}
+              </View>
+            ) : null}
           </View>
           <View style={[styles.footerCol, { alignItems: "flex-end" }]}>
             <View style={{ width: "100%", alignItems: "center" }}>
-              <Image src={COMPANY_INFO.stampBase64} style={styles.stampImage} />
+              {branding.stampDataUri ? (
+                <Image src={branding.stampDataUri} style={styles.stampImage} />
+              ) : null}
               <View style={styles.signatureLine} />
               <Text style={[styles.label, { marginTop: 4 }]}>
                 Authorized Signature

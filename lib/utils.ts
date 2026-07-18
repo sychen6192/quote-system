@@ -5,12 +5,20 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatCurrency(amount: number) {
-  return new Intl.NumberFormat("zh-TW", {
-    style: "currency",
-    currency: "TWD",
-    maximumFractionDigits: 0,
-  }).format(amount / 100); // 輸入是分 (Cents)
+export function formatCurrency(
+  cents: number,
+  money: { currency: string; currencyLocale: string }
+) {
+  try {
+    return new Intl.NumberFormat(money.currencyLocale, {
+      style: "currency",
+      currency: money.currency,
+      maximumFractionDigits: 0,
+    }).format(cents / 100); // 輸入是分 (Cents)
+  } catch (error) {
+    console.warn("formatCurrency: invalid currency config", money, error);
+    return `${money.currency} ${Math.round(cents / 100)}`;
+  }
 }
 
 // 定義 Basis Points 比例：1% = 100 BP

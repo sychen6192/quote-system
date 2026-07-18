@@ -20,9 +20,10 @@ type QuoteWithRelations = InferSelectModel<typeof quotations> & {
 
 interface QuoteActionsProps {
   quote: QuoteWithRelations;
+  mailEnabled: boolean;
 }
 
-export default function QuoteActions({ quote }: QuoteActionsProps) {
+export default function QuoteActions({ quote, mailEnabled }: QuoteActionsProps) {
   const t = useTranslations("QuoteActions");
 
   const handleDownload = () => {
@@ -35,7 +36,7 @@ export default function QuoteActions({ quote }: QuoteActionsProps) {
 
   return (
     <div className="flex items-center gap-2 print:hidden">
-      <SendEmailButton quote={quote} />
+      <SendEmailButton quote={quote} mailEnabled={mailEnabled} />
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
