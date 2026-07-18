@@ -42,7 +42,11 @@ next-env.d.ts
 
 # postgres
 /postgres_data
-*company-info.ts
+
+# branding (per-company assets, see branding-defaults/ for fallbacks)
+/branding/
 
 # worktrees
 .worktrees/
+# transitional: real company data until migrated (removed in T6)
+lib/company-info.ts
