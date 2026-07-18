@@ -12,10 +12,11 @@ import { ArrowRight } from "lucide-react";
 import { Link } from "@/navigation";
 import { getTranslations } from "next-intl/server";
 import { formatCurrency } from "@/lib/utils";
+import { getAppConfig } from "@/lib/config";
 
 // 定義資料型別 (建議從 schema 或 Drizzle 推導出的 type import)
 type QuoteData = {
-  id: string;
+  id: number;
   quotationNumber: string;
   totalAmount: number;
   status: string | null;
@@ -26,6 +27,7 @@ type QuoteData = {
 export async function RecentQuotesTable({ data }: { data: QuoteData[] }) {
   const t = await getTranslations("Dashboard");
   const tCommon = await getTranslations("Common");
+  const { money } = getAppConfig();
 
   return (
     <Card className="col-span-4">
@@ -77,7 +79,7 @@ export async function RecentQuotesTable({ data }: { data: QuoteData[] }) {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right font-mono font-medium">
-                    {formatCurrency(q.totalAmount)}
+                    {formatCurrency(q.totalAmount, money)}
                   </TableCell>
                   <TableCell>
                     <Link

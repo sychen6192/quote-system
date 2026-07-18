@@ -11,12 +11,14 @@ import { Eye, Pencil } from "lucide-react";
 import { Link } from "@/navigation";
 import { getTranslations, getFormatter } from "next-intl/server";
 import { formatCurrency } from "@/lib/utils";
+import { getAppConfig } from "@/lib/config";
 import { type QuoteListItem } from "@/services/quotes";
 import { QuoteStatusBadge } from "./quote-status-badge";
 
 export async function QuotesTable({ data }: { data: QuoteListItem[] }) {
   const t = await getTranslations("QuotesList");
   const format = await getFormatter();
+  const { money } = getAppConfig();
 
   return (
     <div className="border rounded-md overflow-hidden">
@@ -109,7 +111,7 @@ export async function QuotesTable({ data }: { data: QuoteListItem[] }) {
                   </TableCell>
 
                   <TableCell className="text-right font-mono font-medium">
-                    {formatCurrency(quote.totalAmount)}
+                    {formatCurrency(quote.totalAmount, money)}
                   </TableCell>
 
                   <TableCell className="text-right">
