@@ -31,6 +31,7 @@ import { quoteFormSchema, type QuoteFormData } from "@/lib/schemas/quote";
 import { toast } from "sonner";
 import { useTranslations, useFormatter } from "next-intl";
 import { toBasisPoints, calculateQuoteFinancials } from "@/lib/utils";
+import { useAppConfig } from "@/components/providers/app-config-provider";
 
 // ✅ 修正 Interface 定義，確保 id 是可選的
 interface QuoteFormProps {
@@ -41,6 +42,7 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
   const t = useTranslations("QuoteForm");
   const format = useFormatter();
   const router = useRouter();
+  const { currency, defaultTaxRate } = useAppConfig();
   const [isPending, setIsPending] = useState(false);
 
   // ✅ 修正 useForm 初始化
@@ -50,7 +52,7 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
     defaultValues: {
       ...initialData,
       items: initialData.items || [],
-      taxRate: initialData.taxRate ?? 5,
+      taxRate: initialData.taxRate ?? defaultTaxRate,
       companyName: initialData.companyName || "",
       salesperson: initialData.salesperson || "",
       email: initialData.email || "",
@@ -288,7 +290,7 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
                       <TableCell className="text-right font-mono text-sm align-middle">
                         {format.number(lineAmount, {
                           style: "currency",
-                          currency: "TWD",
+                          currency,
                           maximumFractionDigits: 0,
                         })}
                       </TableCell>
@@ -343,7 +345,7 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
               <span className="font-medium">
                 {format.number(financials.subtotal / 100, {
                   style: "currency",
-                  currency: "TWD",
+                  currency,
                   maximumFractionDigits: 0,
                 })}
               </span>
@@ -370,7 +372,7 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
               <span className="font-medium">
                 {format.number(financials.taxAmount / 100, {
                   style: "currency",
-                  currency: "TWD",
+                  currency,
                   maximumFractionDigits: 0,
                 })}
               </span>
@@ -381,7 +383,7 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
               <span className="font-bold text-2xl text-primary">
                 {format.number(financials.totalAmount / 100, {
                   style: "currency",
-                  currency: "TWD",
+                  currency,
                   maximumFractionDigits: 0,
                 })}
               </span>
