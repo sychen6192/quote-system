@@ -114,6 +114,7 @@
     "downloadPdf": "Download PDF",
     "print": "Print (Web)",
     "sendEmail": "Send Email",
+    "emailNotConfigured": "Email not configured",
     "sending": "Sending...",
     "confirmSend": "Confirm Send",
     "cancel": "Cancel",

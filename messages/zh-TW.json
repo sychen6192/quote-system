@@ -116,6 +116,7 @@
     "downloadPdf": "下載 PDF",
     "print": "列印",
     "sendEmail": "寄送報價單",
+    "emailNotConfigured": "尚未設定寄信功能",
     "sending": "寄送中...",
     "confirmSend": "確認寄送",
     "cancel": "取消",

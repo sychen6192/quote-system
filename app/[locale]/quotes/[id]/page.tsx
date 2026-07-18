@@ -8,8 +8,8 @@ import { ArrowLeft, Mail, Phone, MapPin, FileText } from "lucide-react";
 import Link from "next/link";
 import { getFormatter, getTranslations } from "next-intl/server";
 import QuoteActions from "@/components/quote-actions";
-import { COMPANY_INFO, PAYMENT_INFO } from "@/lib/company-info";
-import { calculateQuoteFinancials, toPercentage } from "@/lib/utils";
+import { getAppConfig, getQuoteBranding } from "@/lib/config";
+import { toPercentage } from "@/lib/utils";
 
 interface PageProps {
   params: Promise<{
@@ -34,6 +34,8 @@ export default async function QuoteDetailPage({ params }: PageProps) {
   if (!quote) return notFound();
 
   const format = await getFormatter();
+  const branding = getQuoteBranding();
+  const mailEnabled = getAppConfig().mail.enabled;
 
   // 四捨五入計算稅額 (與後端邏輯保持一致)
   const taxRateDisplay = toPercentage(quote.taxRate || 0); // 500 -> 5
@@ -51,7 +53,7 @@ export default async function QuoteDetailPage({ params }: PageProps) {
             </Button>
           </Link>
           <div className="w-full md:w-auto">
-            <QuoteActions quote={quote} />
+            <QuoteActions quote={quote} mailEnabled={mailEnabled} />
           </div>
         </div>
 
@@ -70,35 +72,47 @@ export default async function QuoteDetailPage({ params }: PageProps) {
                 <div className="flex items-center gap-3">
                   {/* 使用 Logo 圖片 */}
                   <img
-                    src={COMPANY_INFO.logoBase64}
+                    src={branding.logoDataUri}
                     alt="Logo"
                     className="h-10 md:h-12 w-auto object-contain"
                   />
                   <div>
                     <h2 className="text-xl font-bold text-slate-900 tracking-tight">
-                      {COMPANY_INFO.name}
+                      {branding.company.name}
                     </h2>
-                    <p className="text-sm text-slate-500">
-                      Tech Solutions Provider
-                    </p>
+                    {branding.company.nameLocal ? (
+                      <p className="text-sm text-slate-500">
+                        {branding.company.nameLocal}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
 
                 <div className="text-sm text-slate-500 space-y-2 mt-4">
-                  <p className="flex items-center gap-2">
-                    <MapPin className="h-3 w-3 shrink-0" />{" "}
-                    {COMPANY_INFO.address}
-                  </p>
-                  <p className="flex items-center gap-2">
-                    <Mail className="h-3 w-3 shrink-0" /> {COMPANY_INFO.email}
-                  </p>
-                  <p className="flex items-center gap-2">
-                    <Phone className="h-3 w-3 shrink-0" /> {COMPANY_INFO.phone}
-                  </p>
-                  <p className="flex items-center gap-2">
-                    <FileText className="h-3 w-3 shrink-0" />{" "}
-                    {COMPANY_INFO.vatNumber}
-                  </p>
+                  {branding.company.address ? (
+                    <p className="flex items-center gap-2">
+                      <MapPin className="h-3 w-3 shrink-0" />{" "}
+                      {branding.company.address}
+                    </p>
+                  ) : null}
+                  {branding.company.email ? (
+                    <p className="flex items-center gap-2">
+                      <Mail className="h-3 w-3 shrink-0" />{" "}
+                      {branding.company.email}
+                    </p>
+                  ) : null}
+                  {branding.company.phone ? (
+                    <p className="flex items-center gap-2">
+                      <Phone className="h-3 w-3 shrink-0" />{" "}
+                      {branding.company.phone}
+                    </p>
+                  ) : null}
+                  {branding.company.vatNumber ? (
+                    <p className="flex items-center gap-2">
+                      <FileText className="h-3 w-3 shrink-0" />{" "}
+                      {branding.company.vatNumber}
+                    </p>
+                  ) : null}
                 </div>
               </div>
 
@@ -168,7 +182,7 @@ export default async function QuoteDetailPage({ params }: PageProps) {
                 valueClassName="text-red-600"
               />
               <InfoField label="Salesperson" value={quote.salesperson || "-"} />
-              <InfoField label="Currency" value="TWD (NT$)" />
+              <InfoField label="Currency" value={branding.money.currency} />
             </div>
           </div>
 
@@ -224,11 +238,17 @@ export default async function QuoteDetailPage({ params }: PageProps) {
           <div className="px-6 md:px-12 pb-8">
             <div className="flex justify-end">
               <div className="w-full md:w-1/2 lg:w-1/3 space-y-3">
-                <SummaryRow label="Subtotal" value={subtotal} format={format} />
+                <SummaryRow
+                  label="Subtotal"
+                  value={subtotal}
+                  format={format}
+                  currency={branding.money.currency}
+                />
                 <SummaryRow
                   label={`Tax (${taxRateDisplay}%)`}
                   value={taxAmount}
                   format={format}
+                  currency={branding.money.currency}
                 />
 
                 <Separator className="bg-slate-900 my-2" />
@@ -240,7 +260,7 @@ export default async function QuoteDetailPage({ params }: PageProps) {
                   <span className="text-slate-900 font-bold text-2xl font-mono">
                     {format.number(totalAmount / 100, {
                       style: "currency",
-                      currency: "TWD",
+                      currency: branding.money.currency,
                       maximumFractionDigits: 0,
                     })}
                   </span>
@@ -263,31 +283,39 @@ export default async function QuoteDetailPage({ params }: PageProps) {
                     </p>
                   </div>
                 )}
-                <div>
-                  <h4 className="font-bold text-slate-900 mb-2">
-                    Payment Details
-                  </h4>
-                  <div className="text-slate-500 space-y-1">
-                    <p>
-                      Bank:{" "}
-                      <span className="font-medium text-slate-700">
-                        {PAYMENT_INFO.bankName}
-                      </span>
-                    </p>
-                    <p>
-                      Account:{" "}
-                      <span className="font-medium text-slate-700">
-                        {PAYMENT_INFO.accountName}
-                      </span>
-                    </p>
-                    <p>
-                      No:{" "}
-                      <span className="font-medium text-slate-700">
-                        {PAYMENT_INFO.accountNumber}
-                      </span>
-                    </p>
+                {branding.payment ? (
+                  <div>
+                    <h4 className="font-bold text-slate-900 mb-2">
+                      Payment Details
+                    </h4>
+                    <div className="text-slate-500 space-y-1">
+                      {branding.payment.bankName ? (
+                        <p>
+                          Bank:{" "}
+                          <span className="font-medium text-slate-700">
+                            {branding.payment.bankName}
+                          </span>
+                        </p>
+                      ) : null}
+                      {branding.payment.accountName ? (
+                        <p>
+                          Account:{" "}
+                          <span className="font-medium text-slate-700">
+                            {branding.payment.accountName}
+                          </span>
+                        </p>
+                      ) : null}
+                      {branding.payment.accountNumber ? (
+                        <p>
+                          No:{" "}
+                          <span className="font-medium text-slate-700">
+                            {branding.payment.accountNumber}
+                          </span>
+                        </p>
+                      ) : null}
+                    </div>
                   </div>
-                </div>
+                ) : null}
               </div>
 
               {/* 簽名區 */}
@@ -297,7 +325,9 @@ export default async function QuoteDetailPage({ params }: PageProps) {
                   <p className="font-bold text-slate-900">
                     Authorized Signature
                   </p>
-                  <p className="text-xs text-slate-400">{COMPANY_INFO.name}</p>
+                  <p className="text-xs text-slate-400">
+                    {branding.company.name}
+                  </p>
                 </div>
               </div>
             </div>
@@ -337,10 +367,12 @@ function SummaryRow({
   label,
   value,
   format,
+  currency,
 }: {
   label: string;
   value: number;
   format: any;
+  currency: string;
 }) {
   return (
     <div className="flex justify-between text-slate-500 text-sm">
@@ -348,7 +380,7 @@ function SummaryRow({
       <span className="font-mono text-slate-900 font-medium">
         {format.number(value / 100, {
           style: "currency",
-          currency: "TWD",
+          currency,
           maximumFractionDigits: 0,
         })}
       </span>

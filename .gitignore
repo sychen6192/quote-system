@@ -48,5 +48,3 @@ next-env.d.ts
 
 # worktrees
 .worktrees/
-# transitional: real company data until migrated (removed in T6)
-lib/company-info.ts

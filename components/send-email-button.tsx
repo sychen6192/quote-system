@@ -27,9 +27,13 @@ type QuoteWithRelations = InferSelectModel<typeof quotations> & {
 
 interface QuoteActionsProps {
   quote: QuoteWithRelations;
+  mailEnabled: boolean;
 }
 
-export default function SendEmailButton({ quote }: QuoteActionsProps) {
+export default function SendEmailButton({
+  quote,
+  mailEnabled,
+}: QuoteActionsProps) {
   const t = useTranslations("QuoteActions");
 
   const [open, setOpen] = useState(false);
@@ -57,6 +61,19 @@ export default function SendEmailButton({ quote }: QuoteActionsProps) {
       setIsSending(false);
     }
   };
+
+  if (!mailEnabled) {
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        disabled
+        title={t("emailNotConfigured")}
+      >
+        <Mail className="mr-2 h-4 w-4" /> {t("emailNotConfigured")}
+      </Button>
+    );
+  }
 
   if (!email) {
     return (
