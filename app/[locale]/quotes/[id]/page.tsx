@@ -371,7 +371,9 @@ function SummaryRow({
 }: {
   label: string;
   value: number;
-  format: any;
+  format: {
+    number: (value: number, options?: Record<string, unknown>) => string;
+  };
   currency: string;
 }) {
   return (

@@ -74,14 +74,19 @@ expect.extend({
     }
   },
 
-  toThrowValidationError(received: Function, field?: string) {
+  toThrowValidationError(received: () => unknown, field?: string) {
     try {
       received();
       return {
         message: () => `expected function to throw a validation error`,
         pass: false,
       };
-    } catch (error: any) {
+    } catch (caught: unknown) {
+      const error = caught as {
+        name?: string;
+        message?: string;
+        details?: { field?: string };
+      };
       const isValidationError = error.name === 'ValidationError';
       const hasCorrectField = !field || (error.details?.field === field);
 
