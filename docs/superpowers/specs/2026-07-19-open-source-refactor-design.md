@@ -103,11 +103,12 @@ export function toPublicConfig(c: AppConfig): PublicAppConfig;
 
 | 檔案 | Fallback 順序 | 用途 |
 |---|---|---|
-| `branding/logo.png` | → `branding/defaults/logo.png`(committed 中性圖) | 報價頁、PDF、Email 的 logo |
+| `branding/logo.png` | → `branding-defaults/logo.png`(committed 中性圖) | 報價頁、PDF、Email 的 logo |
 | `branding/stamp.png` | → 無;`null` 時 PDF 蓋章區塊不渲染 | 公司大小章 |
-| `branding/icon.png` | → `logo.png` → `defaults/logo.png` | 網站 favicon |
+| `branding/icon.png` | → `branding/logo.png` → `branding-defaults/logo.png` | 網站 favicon |
 
-- `.gitignore`:移除 `*company-info.ts` 規則;新增 `branding/*` 與 `!branding/defaults/`。
+- 預設圖放在**獨立的 committed 目錄 `branding-defaults/`**(不放 `branding/defaults/`):Docker 以 volume 掛載使用者的 `branding/` 時會遮蔽整個目錄,defaults 必須在掛載點之外才能 fallback。
+- `.gitignore`:移除 `*company-info.ts` 規則;新增 `branding/`(整個目錄 ignore)。
 - 讀取一律 `path.join(process.cwd(), "branding", ...)`,`try/catch` 包覆,只支援 PNG。
 - Favicon 走 runtime route `app/api/branding-icon/route.ts`(GET 回傳 PNG,`Cache-Control: public, max-age=3600`),`generateMetadata` 設 `icons: [{ url: "/api/branding-icon", type: "image/png" }]`。現有 middleware matcher(`proxy.ts`)只攔 `/` 與 locale 路徑,不會攔到 `/api/*`,無需調整。
 - 刪除 `public/` 下 6 個公司圖示檔(favicon.ico、favicon-16x16.png、favicon-32x32.png、apple-touch-icon.png、android-chrome-192x192.png、android-chrome-512x512.png)與 `site.webmanifest`。
@@ -136,10 +137,10 @@ export function toPublicConfig(c: AppConfig): PublicAppConfig;
 ### 新增
 | 檔案 | 內容 |
 |---|---|
-| `lib/config.ts` | 設定單一來源(如上) |
+| `lib/config.ts` | 設定單一來源(如上);另提供 `getQuoteBranding()` 組合 config + 圖檔 data URI,供詳細頁/PDF/Email 以單一 `QuoteBranding` 型別傳遞 |
 | `components/providers/app-config-provider.tsx` | Context + `useAppConfig` + `useFormatCurrency` |
 | `app/api/branding-icon/route.ts` | Runtime favicon |
-| `branding/defaults/logo.png` | 中性預設 logo(簡單幾何圖形,非任何公司品牌) |
+| `branding-defaults/logo.png` | 中性預設 logo(簡單幾何圖形,非任何公司品牌) |
 | `.env.example` | 全部環境變數附註解 |
 | `LICENSE` | MIT |
 | `README.md` | 英文重寫(見「文件」節) |
@@ -152,20 +153,21 @@ export function toPublicConfig(c: AppConfig): PublicAppConfig;
 | 檔案 | 變更 |
 |---|---|
 | `app/[locale]/layout.tsx` | 讀 config、包 provider、metadata title 規則、favicon icons |
-| `app/[locale]/quotes/[id]/page.tsx` | 改用 `getAppConfig()`;company 各欄位空值不渲染;payment 為 null 時隱藏付款卡;`Currency` 欄顯示 `config.money.currency`;傳 `mailEnabled` 給寄信按鈕 |
+| `app/[locale]/quotes/[id]/page.tsx` | 改用 `getQuoteBranding()`;company 各欄位空值不渲染;寫死的 "Tech Solutions Provider" 標語改為 `nameLocal`(空則不顯示);payment 為 null 時隱藏付款卡;`Currency` 欄顯示 `config.money.currency`;傳 `mailEnabled` 給 `QuoteActions` → `SendEmailButton` |
 | `app/[locale]/quotes/[id]/pdf/route.tsx` | 組 config props 傳入 `QuotePDFDocument` |
 | `components/pdf/QuotePDFDocument.tsx` | 移除 company-info import,改收 props(company、logoDataUri、stampDataUri、payment、money);stamp/payment 條件渲染 |
 | `components/emails/quote-template.tsx` | 同上(company、payment、money props;條件渲染) |
 | `actions/send-email.tsx` | `getAppConfig()`:未設 API key 直接回傳「未設定」錯誤;from/cc/subject 用 config;傳 props 給 Email 與 PDF 元件 |
 | `components/send-email-button.tsx` | 新增 `disabled`(mail 未設定)prop 與提示文字 |
-| `components/quote-form.tsx` | 預設稅率改 `useAppConfig().defaultTaxRate`;4 處 inline 格式化改 `useFormatCurrency()` |
+| `components/quote-form.tsx` | 預設稅率改 `useAppConfig().defaultTaxRate`;4 處 `format.number(..., currency: "TWD")` 的幣別改自 `useAppConfig().currency` |
+| `app/[locale]/quotes/new/page.tsx` | `defaultValues` 寫死的 `taxRate: 5` 改為 server 端 `getAppConfig().money.defaultTaxRate` |
 | `app/[locale]/page.tsx`、`components/quotes/quotes-table.tsx`、`components/dashboard/recent-quotes-table.tsx` | `formatCurrency` 改新簽名(server 傳參 / client 用 hook,依元件類型) |
 | `lib/utils.ts` | `formatCurrency` 新簽名 + fallback |
 | `messages/en.json` / `messages/zh-TW.json` | `Metadata.title` 改通用(`"Quote System"` / `"報價系統"`);公司名由 metadata 動態組合:`isDefault ? title : \`${name} | ${title}\`` |
 | `.github/workflows/deploy.yml` | 兩個 job 皆加 `if: github.repository_owner == 'sychen6192'`;image 改 `ghcr.io/${{ github.repository }}:latest`;`docker run` 加 `--env-file $HOME/quote-system/.env` 與 `-v $HOME/quote-system/branding:/app/branding`(runner 主機上的固定路徑,README 部署節說明) |
 | `docker-compose.yaml` | app service 加 `env_file: .env` 與 `volumes: ./branding:/app/branding`;postgres service 維持不動(避免影響作者既有資料) |
-| `Dockerfile` | `COPY branding/defaults ./branding/defaults`(確保 standalone 有 fallback 圖) |
-| `.gitignore` | 移除 `*company-info.ts`;新增 `branding/*`、`!branding/defaults/` |
+| `Dockerfile` | `COPY branding-defaults ./branding-defaults`(確保 standalone 有 fallback 圖,且在 volume 掛載點之外) |
+| `.gitignore` | 移除 `*company-info.ts`;新增 `branding/` |
 | `package.json` | 移除未使用的 `nodemailer`、`@types/nodemailer` |
 
 ### 刪除
@@ -201,7 +203,7 @@ export function toPublicConfig(c: AppConfig): PublicAppConfig;
 
 1. 讀取現有 `lib/company-info.ts` 的值,**append** 到 `.env`(保留既有 `DATABASE_URL`、`RESEND_API_KEY` 不動)。
 2. `logoBase64` / `stampBase64` 解碼寫入 `branding/logo.png`、`branding/stamp.png`;`android-chrome-512x512.png` 複製為 `branding/icon.png`(須在刪除 `public/` 圖示之前執行)。
-3. 驗證(帶真實設定跑 dev + PDF)後,本機刪除 `lib/company-info.ts`。
+3. 驗證(帶真實設定跑 dev + PDF)後,本機將 `lib/company-info.ts` 移至 `branding/company-info.legacy.ts` 保存(位於 gitignore 目錄內,不進 git、也不再被程式引用)。
 4. Homelab 部署主機:放置 `.env` 與 `branding/`,對應 `deploy.yml` 的 `--env-file` 與 volume 路徑。
 
 ## 驗收標準
