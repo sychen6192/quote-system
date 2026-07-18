@@ -9,8 +9,13 @@ services:
     restart: always
     ports:
       - "3000:3000"
+    env_file:
+      - .env
     environment:
+      # 覆蓋 .env 的 DATABASE_URL,讓容器連 compose 網路內的 postgres
       - DATABASE_URL=postgres://postgres:postgres@postgres:5432/quote-system
+    volumes:
+      - ./branding:/app/branding
     depends_on:
       - postgres
 
