@@ -6,6 +6,8 @@ import { Toaster } from "sonner";
 import { getMessages, getTranslations } from "next-intl/server";
 import { NextIntlClientProvider } from "next-intl";
 import NextTopLoader from "nextjs-toploader";
+import { getAppConfig, toPublicConfig } from "@/lib/config";
+import { AppConfigProvider } from "@/components/providers/app-config-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -17,10 +19,15 @@ export async function generateMetadata({
   const { locale } = await params;
 
   const t = await getTranslations({ locale, namespace: "Metadata" });
+  const config = getAppConfig();
+  const title = config.company.isDefault
+    ? t("title")
+    : `${config.company.name} | ${t("title")}`;
 
   return {
-    title: t("title"),
+    title,
     description: t("description"),
+    icons: { icon: "/api/branding-icon" },
   };
 }
 
@@ -33,6 +40,7 @@ export default async function RootLayout({
 }>) {
   const { locale } = await params;
   const messages = await getMessages();
+  const publicConfig = toPublicConfig(getAppConfig());
 
   return (
     <html lang={locale}>
@@ -48,9 +56,11 @@ export default async function RootLayout({
           speed={200}
           shadow="0 0 10px #2563eb,0 0 5px #2563eb"
         />
-        <NextIntlClientProvider messages={messages}>
-          {children}
-        </NextIntlClientProvider>
+        <AppConfigProvider value={publicConfig}>
+          <NextIntlClientProvider messages={messages}>
+            {children}
+          </NextIntlClientProvider>
+        </AppConfigProvider>
         <Toaster />
       </body>
     </html>
