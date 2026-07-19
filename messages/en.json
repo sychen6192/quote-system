@@ -21,6 +21,7 @@
   },
   "Common": {
     "backToDashboard": "Back to Dashboard",
+    "toggleTheme": "Toggle theme",
     "number": "Number",
     "customer": "Customer",
     "status": "Status",

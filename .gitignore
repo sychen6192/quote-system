@@ -52,3 +52,6 @@ next-env.d.ts
 
 # playwright mcp output
 .playwright-mcp/
+
+# superpowers brainstorm sessions
+.superpowers/

@@ -21,6 +21,7 @@
   },
   "Common": {
     "backToDashboard": "返回儀表板",
+    "toggleTheme": "切換主題",
     "number": "報價單號",
     "customer": "客戶",
     "status": "狀態",
