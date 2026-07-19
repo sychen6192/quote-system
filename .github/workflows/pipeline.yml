@@ -23,6 +23,9 @@ jobs:
     needs: ci
     if: github.event_name == 'push' && github.repository_owner == 'sychen6192'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
 
