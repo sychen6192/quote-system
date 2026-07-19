@@ -20,4 +20,10 @@ describe("statusStyle", () => {
     expect(statusStyle("weird")).toBe(statusStyle("draft"));
     expect(statusStyle("")).toBe(statusStyle("draft"));
   });
+
+  it("omits dark: variants when forceLight is set", () => {
+    const light = statusStyle("sent", true);
+    expect(light).toContain("blue");
+    expect(light).not.toContain("dark:");
+  });
 });
