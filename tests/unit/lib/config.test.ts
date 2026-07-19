@@ -73,6 +73,26 @@ describe("getAppConfig", () => {
     });
   });
 
+  it("strips surrounding quotes (docker --env-file keeps them literally)", () => {
+    const config = getAppConfig({
+      COMPANY_NAME: '"Shangda Intl."',
+      COMPANY_ADDRESS: "'123 Main St'",
+      CURRENCY: '"USD"',
+      CURRENCY_LOCALE: '"en-US"',
+      DEFAULT_TAX_RATE: '"8"',
+      RESEND_API_KEY: '""', // quoted-empty must count as unset
+      MAIL_CC_EMAILS: '"a@x.test, b@y.test"',
+    });
+    expect(config.company.name).toBe("Shangda Intl.");
+    expect(config.company.isDefault).toBe(false);
+    expect(config.company.address).toBe("123 Main St");
+    expect(config.money.currency).toBe("USD");
+    expect(config.money.currencyLocale).toBe("en-US");
+    expect(config.money.defaultTaxRate).toBe(8);
+    expect(config.mail.enabled).toBe(false);
+    expect(config.mail.ccEmails).toEqual(["a@x.test", "b@y.test"]);
+  });
+
   it("keeps payment non-null when only some bank fields are set", () => {
     const config = getAppConfig({ BANK_NAME: "Bank" });
     expect(config.payment).toEqual({

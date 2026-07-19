@@ -48,9 +48,26 @@ const DEFAULT_COMPANY_NAME = "Your Company";
 const DEFAULT_SENDER_EMAIL = "onboarding@resend.dev";
 const DEFAULT_TAX_RATE = 5;
 
+// docker `--env-file` keeps values literally, including surrounding quotes,
+// unlike dotenv / Next dev. Strip one layer of matching quotes so a quoted
+// .env (COMPANY_NAME="Acme") behaves the same whichever loads it.
+function clean(raw: string | undefined): string {
+  if (raw === undefined) return "";
+  const v = raw.trim();
+  if (
+    v.length >= 2 &&
+    ((v.startsWith('"') && v.endsWith('"')) ||
+      (v.startsWith("'") && v.endsWith("'")))
+  ) {
+    return v.slice(1, -1);
+  }
+  return v;
+}
+
 function parseTaxRate(raw: string | undefined): number {
-  if (raw === undefined || raw.trim() === "") return DEFAULT_TAX_RATE;
-  const value = Number(raw);
+  const s = clean(raw);
+  if (s === "") return DEFAULT_TAX_RATE;
+  const value = Number(s);
   if (Number.isNaN(value) || value < 0 || value > 100) return DEFAULT_TAX_RATE;
   return value;
 }
@@ -58,18 +75,18 @@ function parseTaxRate(raw: string | undefined): number {
 export function getAppConfig(
   env: Record<string, string | undefined> = process.env
 ): AppConfig {
-  const name = env.COMPANY_NAME?.trim() || DEFAULT_COMPANY_NAME;
-  const isDefault = !env.COMPANY_NAME?.trim();
+  const name = clean(env.COMPANY_NAME) || DEFAULT_COMPANY_NAME;
+  const isDefault = clean(env.COMPANY_NAME) === "";
 
-  const bankName = env.BANK_NAME?.trim() ?? "";
-  const accountName = env.BANK_ACCOUNT_NAME?.trim() ?? "";
-  const accountNumber = env.BANK_ACCOUNT_NUMBER?.trim() ?? "";
+  const bankName = clean(env.BANK_NAME);
+  const accountName = clean(env.BANK_ACCOUNT_NAME);
+  const accountNumber = clean(env.BANK_ACCOUNT_NUMBER);
   const payment =
     bankName || accountName || accountNumber
       ? { bankName, accountName, accountNumber }
       : null;
 
-  const ccEmails = (env.MAIL_CC_EMAILS ?? "")
+  const ccEmails = clean(env.MAIL_CC_EMAILS)
     .split(",")
     .map((entry) => entry.trim())
     .filter(Boolean);
@@ -78,22 +95,22 @@ export function getAppConfig(
     company: {
       name,
       isDefault,
-      nameLocal: env.COMPANY_NAME_LOCAL?.trim() ?? "",
-      address: env.COMPANY_ADDRESS?.trim() ?? "",
-      vatNumber: env.COMPANY_VAT_NUMBER?.trim() ?? "",
-      email: env.COMPANY_EMAIL?.trim() ?? "",
-      phone: env.COMPANY_PHONE?.trim() ?? "",
+      nameLocal: clean(env.COMPANY_NAME_LOCAL),
+      address: clean(env.COMPANY_ADDRESS),
+      vatNumber: clean(env.COMPANY_VAT_NUMBER),
+      email: clean(env.COMPANY_EMAIL),
+      phone: clean(env.COMPANY_PHONE),
     },
     payment,
     mail: {
-      enabled: Boolean(env.RESEND_API_KEY),
-      senderName: env.MAIL_SENDER_NAME?.trim() || name,
-      senderEmail: env.MAIL_SENDER_EMAIL?.trim() || DEFAULT_SENDER_EMAIL,
+      enabled: clean(env.RESEND_API_KEY) !== "",
+      senderName: clean(env.MAIL_SENDER_NAME) || name,
+      senderEmail: clean(env.MAIL_SENDER_EMAIL) || DEFAULT_SENDER_EMAIL,
       ccEmails,
     },
     money: {
-      currency: env.CURRENCY?.trim() || "TWD",
-      currencyLocale: env.CURRENCY_LOCALE?.trim() || "zh-TW",
+      currency: clean(env.CURRENCY) || "TWD",
+      currencyLocale: clean(env.CURRENCY_LOCALE) || "zh-TW",
       defaultTaxRate: parseTaxRate(env.DEFAULT_TAX_RATE),
     },
   };
