@@ -25,6 +25,3 @@ export function StatusBadge({ status, validUntil }: Props) {
     </span>
   );
 }
-
-// transitional alias, removed in Task 7
-export const QuoteStatusBadge = StatusBadge;

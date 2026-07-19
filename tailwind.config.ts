@@ -6,8 +6,7 @@ const config: Config = {
     content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
-    // 如果你有用 src 資料夾，要加下面這行
-    // "./src/**/*.{js,ts,jsx,tsx,mdx}",
+    "./lib/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
   	extend: {

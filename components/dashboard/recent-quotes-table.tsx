@@ -7,12 +7,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { ArrowRight } from "lucide-react";
 import { Link } from "@/navigation";
 import { getTranslations } from "next-intl/server";
 import { formatCurrency } from "@/lib/utils";
 import { getAppConfig } from "@/lib/config";
+import { StatusBadge } from "@/components/quotes/quote-status-badge";
 
 // 定義資料型別 (建議從 schema 或 Drizzle 推導出的 type import)
 type QuoteData = {
@@ -74,9 +74,7 @@ export async function RecentQuotesTable({ data }: { data: QuoteData[] }) {
                       : "-"}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline">
-                      {t(`status.${q.status || "draft"}`)}
-                    </Badge>
+                    <StatusBadge status={q.status} />
                   </TableCell>
                   <TableCell className="text-right font-medium tabular-nums">
                     {formatCurrency(q.totalAmount, money)}
