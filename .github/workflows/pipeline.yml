@@ -61,10 +61,12 @@ jobs:
         run: |
           docker stop my-next-app || true
           docker rm my-next-app || true
+          # 固定路徑 /opt/quote-system:host 與 runner 容器以同路徑掛載,
+          # --env-file 由 docker client(runner 容器內)讀、-v 由 host daemon 解析,同路徑兩者皆成立
           docker run -d --name my-next-app -p 3000:3000 \
             --restart unless-stopped \
-            --env-file $HOME/quote-system/.env \
-            -v $HOME/quote-system/branding:/app/branding \
+            --env-file /opt/quote-system/.env \
+            -v /opt/quote-system/branding:/app/branding \
             ghcr.io/${{ github.repository }}:sha-${{ github.sha }}
 
       - name: Health check
