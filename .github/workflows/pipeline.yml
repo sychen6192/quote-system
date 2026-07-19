@@ -57,25 +57,70 @@ jobs:
       group: homelab-deploy
       cancel-in-progress: false
     steps:
+      # checkout 供 drizzle-kit push 使用(schema.ts + drizzle.config.ts + package.json)
+      - uses: actions/checkout@v4
+
+      - name: Ensure shared docker network
+        run: docker network create quote-net 2>/dev/null || true
+
+      - name: Ensure PostgreSQL (persistent; data survives redeploys)
+        run: |
+          if [ -n "$(docker ps -q -f name=^/quote-db$)" ]; then
+            echo "quote-db already running"
+          elif [ -n "$(docker ps -aq -f name=^/quote-db$)" ]; then
+            echo "quote-db exists but stopped; starting"
+            docker start quote-db
+          else
+            echo "creating quote-db"
+            docker run -d --name quote-db \
+              --network quote-net \
+              --restart unless-stopped \
+              -e POSTGRES_USER=postgres \
+              -e POSTGRES_PASSWORD=postgres \
+              -e POSTGRES_DB=quote-system \
+              -v quote-db-data:/var/lib/postgresql/data \
+              postgres:16-alpine
+          fi
+          echo "waiting for postgres to accept connections..."
+          for i in $(seq 1 30); do
+            docker exec quote-db pg_isready -U postgres && break
+            sleep 2
+          done
+
+      - name: Apply DB schema (drizzle push; idempotent)
+        run: |
+          # 用乾淨的 node 容器跑 push;$GITHUB_WORKSPACE 在 runner 容器與 host 同路徑,
+          # 故 host daemon 掛得到這份 checkout。DATABASE_URL 指向 network 內的 quote-db。
+          docker run --rm --network quote-net \
+            -v "$GITHUB_WORKSPACE":/app -w /app \
+            -e DATABASE_URL="postgres://postgres:postgres@quote-db:5432/quote-system" \
+            node:22-alpine \
+            sh -c "npm ci --no-audit --no-fund --loglevel=error && npx drizzle-kit push --force"
+
       - name: Pull exact CI-verified image
         run: docker pull ghcr.io/${{ github.repository }}:sha-${{ github.sha }}
 
-      - name: Replace container
+      - name: Replace app container
         run: |
           docker stop my-next-app || true
           docker rm my-next-app || true
           # 固定路徑 /opt/quote-system:host 與 runner 容器以同路徑掛載,
-          # --env-file 由 docker client(runner 容器內)讀、-v 由 host daemon 解析,同路徑兩者皆成立
-          docker run -d --name my-next-app -p 3000:3000 \
+          # --env-file 由 docker client(runner 容器內)讀、-v 由 host daemon 解析,同路徑兩者皆成立。
+          # -e DATABASE_URL 覆蓋 .env 內的值:應用改用 network 內的 quote-db,不必手動改 homelab 的 .env。
+          docker run -d --name my-next-app \
+            --network quote-net \
+            -p 3000:3000 \
             --restart unless-stopped \
             --env-file /opt/quote-system/.env \
+            -e DATABASE_URL="postgres://postgres:postgres@quote-db:5432/quote-system" \
             -v /opt/quote-system/branding:/app/branding \
             ghcr.io/${{ github.repository }}:sha-${{ github.sha }}
 
-      - name: Health check
+      - name: Health check (exercises the database)
         run: |
-          for i in $(seq 1 15); do
-            if curl -fsS http://localhost:3000/api/branding-icon > /dev/null; then
+          # 打 /zh-TW(儀表板要查 Postgres)——DB 若壞,部署就會失敗,不再誤報健康
+          for i in $(seq 1 20); do
+            if curl -fsS http://localhost:3000/zh-TW > /dev/null; then
               echo "healthy after ${i} attempt(s)"
               exit 0
             fi
