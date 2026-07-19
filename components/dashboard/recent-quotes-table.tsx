@@ -44,7 +44,7 @@ export async function RecentQuotesTable({ data }: { data: QuoteData[] }) {
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
                 <TableHead>{tCommon("number")}</TableHead>
                 <TableHead>{tCommon("customer")}</TableHead>
                 <TableHead>{tCommon("date")}</TableHead>
@@ -78,7 +78,7 @@ export async function RecentQuotesTable({ data }: { data: QuoteData[] }) {
                       {t(`status.${q.status || "draft"}`)}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right font-mono font-medium">
+                  <TableCell className="text-right font-medium tabular-nums">
                     {formatCurrency(q.totalAmount, money)}
                   </TableCell>
                   <TableCell>

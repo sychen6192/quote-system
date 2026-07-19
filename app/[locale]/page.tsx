@@ -19,7 +19,7 @@ export default async function DashboardPage() {
   ]);
 
   return (
-    <div className="container mx-auto py-4 md:py-10 space-y-8 px-4 md:px-0">
+    <div className="mx-auto max-w-6xl space-y-8 px-4 py-6 md:px-6">
       {/* Header Section */}
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -41,18 +41,21 @@ export default async function DashboardPage() {
           value={formatCurrency(metrics.totalRevenue, money)}
           description="All time revenue"
           icon={DollarSign}
+          variant="brand"
         />
         <StatCard
           title={t("totalQuotes")}
           value={metrics.totalQuotes}
           description="Issued in total"
           icon={FileText}
+          variant="sky"
         />
         <StatCard
           title={t("customers")}
           value={metrics.totalCustomers}
           description="Active clients"
           icon={Users}
+          variant="amber"
         />
       </div>
       <RecentQuotesTable data={recentQuotes} />
