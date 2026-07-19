@@ -13,7 +13,7 @@ import { getTranslations, getFormatter } from "next-intl/server";
 import { formatCurrency } from "@/lib/utils";
 import { getAppConfig } from "@/lib/config";
 import { type QuoteListItem } from "@/services/quotes";
-import { QuoteStatusBadge } from "./quote-status-badge";
+import { StatusBadge } from "./quote-status-badge";
 
 export async function QuotesTable({ data }: { data: QuoteListItem[] }) {
   const t = await getTranslations("QuotesList");
@@ -103,7 +103,8 @@ export async function QuotesTable({ data }: { data: QuoteListItem[] }) {
                   </TableCell>
 
                   <TableCell className="hidden lg:table-cell">
-                    <QuoteStatusBadge
+                    <StatusBadge
+                      status={quote.status}
                       validUntil={
                         quote.validUntil ? new Date(quote.validUntil) : null
                       }

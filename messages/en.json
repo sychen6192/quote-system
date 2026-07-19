@@ -7,6 +7,13 @@
     "dashboard": "Dashboard",
     "quotes": "Quotations"
   },
+  "Status": {
+    "draft": "Draft",
+    "sent": "Sent",
+    "accepted": "Accepted",
+    "rejected": "Rejected",
+    "expired": "Expired"
+  },
   "Dashboard": {
     "title": "Dashboard",
     "subtitle": "Overview of your business performance",

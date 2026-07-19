@@ -1,31 +1,30 @@
-import { Badge } from "@/components/ui/badge";
 import { useTranslations } from "next-intl";
+import { cn } from "@/lib/utils";
+import { statusStyle, EXPIRED_STYLE } from "@/lib/status";
 
 interface Props {
-  validUntil: Date | string | null;
+  status: string | null;
+  validUntil?: Date | string | null;
 }
 
-export function QuoteStatusBadge({ validUntil }: Props) {
-  const t = useTranslations("QuotesList.status");
-
-  if (!validUntil) return <Badge variant="outline">-</Badge>;
-
-  const isExpired = new Date(validUntil) < new Date();
-
-  if (isExpired) {
-    return (
-      <Badge variant="destructive" className="whitespace-nowrap">
-        {t("expired")}
-      </Badge>
-    );
-  }
+export function StatusBadge({ status, validUntil }: Props) {
+  const t = useTranslations("Status");
+  const expired = validUntil ? new Date(validUntil) < new Date() : false;
+  const key = status || "draft";
+  const cls = expired ? EXPIRED_STYLE : statusStyle(key);
+  const label = expired ? t("expired") : t(key);
 
   return (
-    <Badge
-      variant="secondary"
-      className="bg-green-100 text-green-800 hover:bg-green-100 whitespace-nowrap"
+    <span
+      className={cn(
+        "inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold",
+        cls
+      )}
     >
-      {t("active")}
-    </Badge>
+      {label}
+    </span>
   );
 }
+
+// transitional alias, removed in Task 7
+export const QuoteStatusBadge = StatusBadge;
