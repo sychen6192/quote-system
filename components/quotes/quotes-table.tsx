@@ -14,6 +14,7 @@ import { formatCurrency } from "@/lib/utils";
 import { getAppConfig } from "@/lib/config";
 import { type QuoteListItem } from "@/services/quotes";
 import { StatusBadge } from "./quote-status-badge";
+import { DeleteQuoteButton } from "@/components/delete-quote-button";
 
 export async function QuotesTable({ data }: { data: QuoteListItem[] }) {
   const t = await getTranslations("QuotesList");
@@ -140,9 +141,13 @@ export async function QuotesTable({ data }: { data: QuoteListItem[] }) {
                       </Link>
                       <Link href={`/quotes/${quote.id}`}>
                         <Button variant="ghost" size="icon" title="View">
-                          <Eye className="h-4 w-4 text-muted-foreground hover:text-black transition-colors" />
+                          <Eye className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
                         </Button>
                       </Link>
+                      <DeleteQuoteButton
+                        id={quote.id}
+                        quotationNumber={quote.quotationNumber}
+                      />
                     </div>
                   </TableCell>
                 </TableRow>

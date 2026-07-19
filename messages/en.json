@@ -14,6 +14,16 @@
     "rejected": "Rejected",
     "expired": "Expired"
   },
+  "DeleteQuote": {
+    "delete": "Delete",
+    "title": "Delete this quotation?",
+    "desc": "This permanently deletes quotation",
+    "cancel": "Cancel",
+    "confirm": "Delete",
+    "deleting": "Deleting...",
+    "deleted": "Quotation deleted",
+    "error": "Failed to delete quotation"
+  },
   "Dashboard": {
     "title": "Dashboard",
     "subtitle": "Overview of your business performance",

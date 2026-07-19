@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown, Download, Printer } from "lucide-react";
 import SendEmailButton from "@/components/send-email-button";
+import { DeleteQuoteButton } from "@/components/delete-quote-button";
 import { type InferSelectModel } from "drizzle-orm";
 import { customers, quotations, quotationItems } from "@/db/schema";
 import { useTranslations } from "next-intl";
@@ -36,6 +37,11 @@ export default function QuoteActions({ quote, mailEnabled }: QuoteActionsProps) 
 
   return (
     <div className="flex items-center gap-2 print:hidden">
+      <DeleteQuoteButton
+        id={quote.id}
+        quotationNumber={quote.quotationNumber}
+        variant="button"
+      />
       <SendEmailButton quote={quote} mailEnabled={mailEnabled} />
 
       <DropdownMenu>

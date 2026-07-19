@@ -14,6 +14,16 @@
     "rejected": "已拒絕",
     "expired": "已過期"
   },
+  "DeleteQuote": {
+    "delete": "刪除",
+    "title": "確定刪除這張報價單?",
+    "desc": "這會永久刪除報價單",
+    "cancel": "取消",
+    "confirm": "確認刪除",
+    "deleting": "刪除中...",
+    "deleted": "報價單已刪除",
+    "error": "刪除失敗"
+  },
   "Dashboard": {
     "title": "儀表板",
     "subtitle": "您的業務概況總覽",
