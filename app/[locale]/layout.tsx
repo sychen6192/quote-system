@@ -60,7 +60,7 @@ export default async function RootLayout({
           disableTransitionOnChange
         >
           <NextTopLoader
-            color="#6366f1"
+            color="#1D4ED8"
             initialPosition={0.08}
             crawlSpeed={200}
             height={3}
@@ -68,7 +68,7 @@ export default async function RootLayout({
             showSpinner={false}
             easing="ease"
             speed={200}
-            shadow="0 0 10px #6366f1,0 0 5px #6366f1"
+            shadow="0 0 10px #1D4ED8,0 0 5px #1D4ED8"
           />
           <AppConfigProvider value={publicConfig}>
             <NextIntlClientProvider messages={messages}>
