@@ -1,0 +1,81 @@
+name: Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+  build-and-push:
+    needs: ci
+    if: github.event_name == 'push' && github.repository_owner == 'sychen6192'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:sha-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    # needs 的 job 被 skip 時本 job 會自動 skip(PR 與 fork 都不會部署)
+    needs: build-and-push
+    runs-on: [self-hosted, homelab]
+    concurrency:
+      group: homelab-deploy
+      cancel-in-progress: false
+    steps:
+      - name: Pull exact CI-verified image
+        run: docker pull ghcr.io/${{ github.repository }}:sha-${{ github.sha }}
+
+      - name: Replace container
+        run: |
+          docker stop my-next-app || true
+          docker rm my-next-app || true
+          docker run -d --name my-next-app -p 3000:3000 \
+            --restart unless-stopped \
+            --env-file $HOME/quote-system/.env \
+            -v $HOME/quote-system/branding:/app/branding \
+            ghcr.io/${{ github.repository }}:sha-${{ github.sha }}
+
+      - name: Health check
+        run: |
+          for i in $(seq 1 15); do
+            if curl -fsS http://localhost:3000/api/branding-icon > /dev/null; then
+              echo "healthy after ${i} attempt(s)"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "health check failed; container logs:"
+          docker logs my-next-app || true
+          exit 1
