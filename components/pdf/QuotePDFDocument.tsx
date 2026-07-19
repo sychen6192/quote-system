@@ -16,7 +16,7 @@ const colors = {
   slate500: "#64748b",
   slate100: "#e2e8f0",
   white: "#ffffff",
-  brand: "#6366f1",
+  brand: "#1D4ED8",
 };
 
 const styles = StyleSheet.create({
