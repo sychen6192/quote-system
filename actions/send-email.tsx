@@ -34,7 +34,10 @@ export async function sendQuoteEmail(quote: any): Promise<SendEmailState> {
     }
 
     const branding = getQuoteBranding();
-    const resend = new Resend(process.env.RESEND_API_KEY);
+    // Use the cleaned key from config, not process.env directly: docker
+    // --env-file keeps surrounding quotes literally and Resend rejects a
+    // quoted key with 400 "API key is invalid".
+    const resend = new Resend(config.mail.apiKey);
 
     // 生成 PDF Buffer (在記憶體中產生 PDF 檔案)
     const pdfBuffer = await renderToBuffer(

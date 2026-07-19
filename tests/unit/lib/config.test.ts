@@ -94,6 +94,18 @@ describe("getAppConfig", () => {
     expect(config.mail.ccEmails).toEqual(["a@x.test", "b@y.test"]);
   });
 
+  it("exposes the API key with surrounding quotes stripped", () => {
+    // docker --env-file keeps quotes literally; Resend rejects a quoted key
+    // with 400 "API key is invalid", so the key must be cleaned like the rest.
+    expect(getAppConfig({ RESEND_API_KEY: '"re_abc123"' }).mail.apiKey).toBe(
+      "re_abc123"
+    );
+    expect(getAppConfig({ RESEND_API_KEY: "re_abc123" }).mail.apiKey).toBe(
+      "re_abc123"
+    );
+    expect(getAppConfig({}).mail.apiKey).toBe("");
+  });
+
   it("defaults twVatLookup to false", () => {
     expect(getAppConfig({}).features.twVatLookup).toBe(false);
   });
