@@ -60,7 +60,7 @@ export async function QuotesTable({ data }: { data: QuoteListItem[] }) {
                     </div>
                     <p className="text-muted-foreground">{t("emptyState")}</p>
                     <Link href="/quotes/new">
-                      <Button variant="gradient" size="sm">
+                      <Button size="sm">
                         <Plus className="mr-2 h-4 w-4" /> {t("createQuote")}
                       </Button>
                     </Link>
@@ -84,7 +84,7 @@ export async function QuotesTable({ data }: { data: QuoteListItem[] }) {
 
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-grad-brand text-xs font-bold text-white">
+                      <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent text-xs font-bold text-primary">
                         {(
                           quote.customer?.companyName || t("unknownCustomer")
                         ).slice(0, 1)}

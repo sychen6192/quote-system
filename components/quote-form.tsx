@@ -338,10 +338,12 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
 
       {/* Totals Section */}
       <div className="flex justify-end">
-        <Card className="w-full border-0 bg-grad-brand text-white shadow-brand md:w-[350px]">
+        <Card className="w-full border-primary/20 bg-accent/50 md:w-[350px]">
           <CardContent className="space-y-4 pt-6">
             <div className="flex justify-between text-sm">
-              <span className="text-white/80">{t("summary.subtotal")}:</span>
+              <span className="text-muted-foreground">
+                {t("summary.subtotal")}:
+              </span>
               <span className="font-medium tabular-nums">
                 {format.number(financials.subtotal / 100, {
                   style: "currency",
@@ -352,13 +354,13 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
             </div>
 
             <div className="flex items-center justify-between text-sm">
-              <span className="text-white/80">
+              <span className="text-muted-foreground">
                 {t("summary.taxRate")} (%):
               </span>
               <Input
                 type="number"
                 {...form.register("taxRate", { valueAsNumber: true })}
-                className="h-8 w-20 border-white/30 bg-white/15 text-right text-white placeholder:text-white/60"
+                className="h-8 w-20 text-right"
                 step="0.01"
                 min="0"
                 disabled={isPending}
@@ -366,7 +368,9 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
             </div>
 
             <div className="flex justify-between text-sm">
-              <span className="text-white/80">{t("summary.taxAmount")}:</span>
+              <span className="text-muted-foreground">
+                {t("summary.taxAmount")}:
+              </span>
               <span className="font-medium tabular-nums">
                 {format.number(financials.taxAmount / 100, {
                   style: "currency",
@@ -376,9 +380,9 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
               </span>
             </div>
 
-            <div className="flex items-center justify-between border-t border-white/25 pt-4">
+            <div className="flex items-center justify-between border-t pt-4">
               <span className="text-lg font-bold">{t("summary.total")}:</span>
-              <span className="text-2xl font-black tabular-nums">
+              <span className="text-2xl font-bold tabular-nums text-primary">
                 {format.number(financials.totalAmount / 100, {
                   style: "currency",
                   currency,
@@ -406,7 +410,6 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
             <Button
               type="submit"
               size="lg"
-              variant="gradient"
               className="w-full min-w-[150px] font-bold sm:w-auto"
               disabled={isPending}
             >

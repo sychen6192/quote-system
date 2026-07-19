@@ -12,10 +12,11 @@ interface StatCardProps {
   variant?: Variant;
 }
 
-const gradients: Record<Exclude<Variant, "plain">, string> = {
-  brand: "bg-grad-brand",
-  sky: "bg-grad-sky",
-  amber: "bg-grad-amber",
+const chipClass: Record<Variant, string> = {
+  brand: "bg-white/20 text-white",
+  sky: "bg-sky-100 text-sky-600 dark:bg-sky-400/20 dark:text-sky-300",
+  amber: "bg-amber-100 text-amber-600 dark:bg-amber-400/20 dark:text-amber-300",
+  plain: "bg-accent text-primary",
 };
 
 export function StatCard({
@@ -25,26 +26,30 @@ export function StatCard({
   icon: Icon,
   variant = "plain",
 }: StatCardProps) {
-  const filled = variant !== "plain";
+  const filled = variant === "brand";
   return (
     <Card
       className={cn(
-        "overflow-hidden",
-        filled && `border-0 text-white shadow-brand ${gradients[variant]}`
+        filled && "border-0 bg-primary text-primary-foreground shadow-md shadow-primary/20"
       )}
     >
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle
-          className={cn("text-sm font-medium", filled && "text-white/85")}
+          className={cn(
+            "text-sm font-medium",
+            filled ? "text-primary-foreground/85" : "text-muted-foreground"
+          )}
         >
           {title}
         </CardTitle>
-        <Icon
+        <span
           className={cn(
-            "h-4 w-4",
-            filled ? "text-white/85" : "text-muted-foreground"
+            "flex h-8 w-8 items-center justify-center rounded-lg",
+            chipClass[variant]
           )}
-        />
+        >
+          <Icon className="h-4 w-4" />
+        </span>
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold tracking-tight tabular-nums">
@@ -53,7 +58,7 @@ export function StatCard({
         <p
           className={cn(
             "text-xs",
-            filled ? "text-white/75" : "text-muted-foreground"
+            filled ? "text-primary-foreground/75" : "text-muted-foreground"
           )}
         >
           {description}

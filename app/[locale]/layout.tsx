@@ -67,7 +67,7 @@ export default async function RootLayout({
           <AppConfigProvider value={publicConfig}>
             <NextIntlClientProvider messages={messages}>
               <TopNav />
-              <main className="app-bg min-h-[calc(100vh-3.5rem)]">
+              <main className="min-h-[calc(100vh-3.5rem)] bg-muted/30">
                 {children}
               </main>
             </NextIntlClientProvider>

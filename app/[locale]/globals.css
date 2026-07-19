@@ -117,10 +117,3 @@
   }
 }
 
-@layer utilities {
-  .bg-grad-brand { background-image: linear-gradient(135deg, #6366f1, #8b5cf6); }
-  .bg-grad-sky   { background-image: linear-gradient(135deg, #0ea5e9, #22d3ee); }
-  .bg-grad-amber { background-image: linear-gradient(135deg, #f59e0b, #f97316); }
-  .shadow-brand  { box-shadow: 0 12px 26px -10px rgba(99, 102, 241, 0.55); }
-  .app-bg        { background-image: linear-gradient(160deg, hsl(var(--background)), hsl(var(--accent))); }
-}

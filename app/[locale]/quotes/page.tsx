@@ -29,7 +29,7 @@ export default async function QuotesListPage({ searchParams }: PageProps) {
           {t("title")}
         </h1>
         <Link href="/quotes/new" className="w-full sm:w-auto">
-          <Button variant="gradient" className="w-full sm:w-auto">
+          <Button className="w-full sm:w-auto">
             <Plus className="mr-2 h-4 w-4" /> {t("createQuote")}
           </Button>
         </Link>
