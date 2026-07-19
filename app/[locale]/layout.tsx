@@ -7,6 +7,7 @@ import { getMessages, getTranslations } from "next-intl/server";
 import { NextIntlClientProvider } from "next-intl";
 import NextTopLoader from "nextjs-toploader";
 import { getAppConfig, toPublicConfig } from "@/lib/config";
+import { pickCompanyName } from "@/lib/company-name";
 import { AppConfigProvider } from "@/components/providers/app-config-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { TopNav } from "@/components/app-shell/top-nav";
@@ -22,9 +23,14 @@ export async function generateMetadata({
 
   const t = await getTranslations({ locale, namespace: "Metadata" });
   const config = getAppConfig();
+  const displayName = pickCompanyName(
+    config.company.name,
+    config.company.nameLocal,
+    locale
+  );
   const title = config.company.isDefault
     ? t("title")
-    : `${config.company.name} | ${t("title")}`;
+    : `${displayName} | ${t("title")}`;
 
   return {
     title,

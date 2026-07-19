@@ -2,15 +2,18 @@
 
 import Image from "next/image";
 import { Link, usePathname } from "@/navigation";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useAppConfig } from "@/components/providers/app-config-provider";
+import { pickCompanyName } from "@/lib/company-name";
 import LanguageSwitcher from "@/components/language-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
 export function TopNav() {
   const t = useTranslations("Nav");
-  const { companyName } = useAppConfig();
+  const { companyName, companyNameLocal } = useAppConfig();
+  const locale = useLocale();
+  const displayName = pickCompanyName(companyName, companyNameLocal, locale);
   const pathname = usePathname();
 
   const links = [
@@ -38,7 +41,7 @@ export function TopNav() {
             unoptimized
           />
           <span className="hidden max-w-[32vw] truncate sm:inline">
-            {companyName}
+            {displayName}
           </span>
         </Link>
         <nav className="flex items-center gap-0.5 text-sm sm:gap-1">

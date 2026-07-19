@@ -15,15 +15,64 @@ import { getAppConfig } from "@/lib/config";
 import { type QuoteListItem } from "@/services/quotes";
 import { StatusBadge } from "./quote-status-badge";
 import { DeleteQuoteButton } from "@/components/delete-quote-button";
+import { QuoteCards, type QuoteCardItem } from "./quote-cards";
 
 export async function QuotesTable({ data }: { data: QuoteListItem[] }) {
   const t = await getTranslations("QuotesList");
   const format = await getFormatter();
   const { money } = getAppConfig();
 
+  const cardItems: QuoteCardItem[] = data.map((quote) => ({
+    id: quote.id,
+    quotationNumber: quote.quotationNumber,
+    customerName: quote.customer?.companyName || t("unknownCustomer"),
+    dateLabel: quote.issuedDate
+      ? format.dateTime(new Date(quote.issuedDate), { dateStyle: "medium" })
+      : "-",
+    amountLabel: formatCurrency(quote.totalAmount, money),
+    status: quote.status,
+    validUntil: quote.validUntil,
+  }));
+
+  if (data.length === 0) {
+    return (
+      <div className="rounded-xl border bg-card p-10 shadow-sm">
+        <div className="flex flex-col items-center justify-center gap-3 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent text-primary">
+            <FileText className="h-6 w-6" />
+          </div>
+          <p className="text-muted-foreground">{t("emptyState")}</p>
+          <Link href="/quotes/new">
+            <Button size="sm">
+              <Plus className="mr-2 h-4 w-4" /> {t("createQuote")}
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
-      <div className="overflow-x-auto">
+      {(
+        <QuoteCards
+          items={cardItems}
+          renderActions={(item) => (
+            <>
+              <Link href={`/quotes/${item.id}/edit`}>
+                <Button variant="ghost" size="icon" title="Edit">
+                  <Pencil className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </Link>
+              <DeleteQuoteButton
+                id={item.id}
+                quotationNumber={item.quotationNumber}
+              />
+            </>
+          )}
+        />
+      )}
+      <div className="hidden overflow-x-auto md:block">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground hover:bg-muted/40">
@@ -51,24 +100,7 @@ export async function QuotesTable({ data }: { data: QuoteListItem[] }) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.length === 0 ? (
-              <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={7} className="h-64">
-                  <div className="flex flex-col items-center justify-center gap-3 text-center">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent text-primary">
-                      <FileText className="h-6 w-6" />
-                    </div>
-                    <p className="text-muted-foreground">{t("emptyState")}</p>
-                    <Link href="/quotes/new">
-                      <Button size="sm">
-                        <Plus className="mr-2 h-4 w-4" /> {t("createQuote")}
-                      </Button>
-                    </Link>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : (
-              data.map((quote) => (
+            {data.map((quote) => (
                 <TableRow
                   key={quote.id}
                   className="group hover:bg-muted/50 transition-colors"
@@ -151,8 +183,7 @@ export async function QuotesTable({ data }: { data: QuoteListItem[] }) {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
+            ))}
           </TableBody>
         </Table>
       </div>

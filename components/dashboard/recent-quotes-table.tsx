@@ -13,6 +13,10 @@ import { getTranslations } from "next-intl/server";
 import { formatCurrency } from "@/lib/utils";
 import { getAppConfig } from "@/lib/config";
 import { StatusBadge } from "@/components/quotes/quote-status-badge";
+import {
+  QuoteCards,
+  type QuoteCardItem,
+} from "@/components/quotes/quote-cards";
 
 // 定義資料型別 (建議從 schema 或 Drizzle 推導出的 type import)
 type QuoteData = {
@@ -29,19 +33,31 @@ export async function RecentQuotesTable({ data }: { data: QuoteData[] }) {
   const tCommon = await getTranslations("Common");
   const { money } = getAppConfig();
 
+  const cardItems: QuoteCardItem[] = data.map((q) => ({
+    id: q.id,
+    quotationNumber: q.quotationNumber,
+    customerName: q.customer?.companyName || "Unknown",
+    dateLabel: q.issuedDate
+      ? new Date(q.issuedDate).toLocaleDateString("zh-TW")
+      : "-",
+    amountLabel: formatCurrency(q.totalAmount, money),
+    status: q.status,
+  }));
+
   return (
     <Card className="col-span-4">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>{t("recentQuotes")}</CardTitle>
         <Link
           href="/quotes"
-          className="text-sm text-blue-600 hover:underline flex items-center"
+          className="flex items-center text-sm text-primary hover:underline"
         >
           {t("viewAll")} <ArrowRight className="ml-1 h-4 w-4" />
         </Link>
       </CardHeader>
       <CardContent className="p-0 md:p-6">
-        <div className="overflow-x-auto">
+        <QuoteCards items={cardItems} />
+        <div className="hidden overflow-x-auto md:block">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
