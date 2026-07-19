@@ -7,13 +7,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Eye, Pencil } from "lucide-react";
+import { Eye, Pencil, FileText, Plus } from "lucide-react";
 import { Link } from "@/navigation";
 import { getTranslations, getFormatter } from "next-intl/server";
 import { formatCurrency } from "@/lib/utils";
 import { getAppConfig } from "@/lib/config";
 import { type QuoteListItem } from "@/services/quotes";
-import { QuoteStatusBadge } from "./quote-status-badge";
+import { StatusBadge } from "./quote-status-badge";
 
 export async function QuotesTable({ data }: { data: QuoteListItem[] }) {
   const t = await getTranslations("QuotesList");
@@ -21,11 +21,11 @@ export async function QuotesTable({ data }: { data: QuoteListItem[] }) {
   const { money } = getAppConfig();
 
   return (
-    <div className="border rounded-md overflow-hidden">
+    <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow>
+            <TableRow className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground hover:bg-muted/40">
               <TableHead className="w-[120px]">
                 {t("table.quoteNumber")}
               </TableHead>
@@ -51,12 +51,19 @@ export async function QuotesTable({ data }: { data: QuoteListItem[] }) {
           </TableHeader>
           <TableBody>
             {data.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={7}
-                  className="text-center h-24 text-muted-foreground"
-                >
-                  {t("emptyState")}
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={7} className="h-64">
+                  <div className="flex flex-col items-center justify-center gap-3 text-center">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent text-primary">
+                      <FileText className="h-6 w-6" />
+                    </div>
+                    <p className="text-muted-foreground">{t("emptyState")}</p>
+                    <Link href="/quotes/new">
+                      <Button variant="gradient" size="sm">
+                        <Plus className="mr-2 h-4 w-4" /> {t("createQuote")}
+                      </Button>
+                    </Link>
+                  </div>
                 </TableCell>
               </TableRow>
             ) : (
@@ -68,25 +75,34 @@ export async function QuotesTable({ data }: { data: QuoteListItem[] }) {
                   <TableCell className="font-medium">
                     <Link
                       href={`/quotes/${quote.id}`}
-                      className="hover:underline text-blue-600 block min-w-max"
+                      className="block min-w-max font-semibold text-primary hover:underline"
                     >
                       {quote.quotationNumber}
                     </Link>
                   </TableCell>
 
                   <TableCell>
-                    <div className="font-medium truncate max-w-[150px] md:max-w-none">
-                      {quote.customer?.companyName || t("unknownCustomer")}
-                    </div>
-                    <div className="text-xs text-muted-foreground md:hidden block mt-1">
-                      {quote.issuedDate
-                        ? format.dateTime(new Date(quote.issuedDate), {
-                            dateStyle: "short",
-                          })
-                        : "-"}
-                    </div>
-                    <div className="text-xs text-muted-foreground hidden md:block">
-                      {quote.customer?.contactPerson}
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-grad-brand text-xs font-bold text-white">
+                        {(
+                          quote.customer?.companyName || t("unknownCustomer")
+                        ).slice(0, 1)}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="truncate max-w-[150px] font-medium md:max-w-none">
+                          {quote.customer?.companyName || t("unknownCustomer")}
+                        </div>
+                        <div className="mt-0.5 block text-xs text-muted-foreground md:hidden">
+                          {quote.issuedDate
+                            ? format.dateTime(new Date(quote.issuedDate), {
+                                dateStyle: "short",
+                              })
+                            : "-"}
+                        </div>
+                        <div className="hidden text-xs text-muted-foreground md:block">
+                          {quote.customer?.contactPerson}
+                        </div>
+                      </div>
                     </div>
                   </TableCell>
 
@@ -103,14 +119,15 @@ export async function QuotesTable({ data }: { data: QuoteListItem[] }) {
                   </TableCell>
 
                   <TableCell className="hidden lg:table-cell">
-                    <QuoteStatusBadge
+                    <StatusBadge
+                      status={quote.status}
                       validUntil={
                         quote.validUntil ? new Date(quote.validUntil) : null
                       }
                     />
                   </TableCell>
 
-                  <TableCell className="text-right font-mono font-medium">
+                  <TableCell className="text-right font-semibold tabular-nums">
                     {formatCurrency(quote.totalAmount, money)}
                   </TableCell>
 

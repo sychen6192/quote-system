@@ -10,6 +10,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import QuoteActions from "@/components/quote-actions";
 import { getAppConfig, getQuoteBranding } from "@/lib/config";
 import { toPercentage } from "@/lib/utils";
+import { StatusBadge } from "@/components/quotes/quote-status-badge";
 
 interface PageProps {
   params: Promise<{
@@ -42,7 +43,7 @@ export default async function QuoteDetailPage({ params }: PageProps) {
   const { subtotal, taxAmount, totalAmount } = quote;
 
   return (
-    <div className="min-h-screen bg-gray-100/50 py-4 md:py-10 print:bg-white print:p-0">
+    <div className="py-4 md:py-10 print:bg-white print:p-0">
       {/* 限制最大寬度，並在手機上增加左右邊距 px-4 */}
       <div className="container mx-auto max-w-[210mm] px-4 md:px-0">
         {/* --- 頂部動作列 --- */}
@@ -60,7 +61,7 @@ export default async function QuoteDetailPage({ params }: PageProps) {
         {/* --- 報價單主體 (模擬 A4 紙張) --- */}
         <div
           id="printable-content"
-          className="bg-white shadow-xl rounded-sm border print:shadow-none print:border-none print:rounded-none min-h-[297mm] relative flex flex-col"
+          className="relative flex min-h-[297mm] flex-col rounded-sm border bg-white text-slate-900 shadow-xl print:rounded-none print:border-none print:shadow-none"
         >
           {/* 1. Header 區塊 */}
           {/* 關鍵修改：手機版 p-6 / 電腦版 p-12 */}
@@ -125,10 +126,12 @@ export default async function QuoteDetailPage({ params }: PageProps) {
                   #{quote.quotationNumber}
                 </p>
 
-                <div className="mt-4 inline-block px-4 py-1 rounded-full bg-slate-100 text-slate-600 text-sm font-semibold uppercase tracking-wide">
-                  {new Date(quote.validUntil) < new Date()
-                    ? "Expired"
-                    : "Valid"}
+                <div className="mt-4">
+                  <StatusBadge
+                    status={quote.status}
+                    validUntil={quote.validUntil}
+                    forceLight
+                  />
                 </div>
               </div>
             </div>

@@ -3,6 +3,17 @@
     "title": "報價系統",
     "description": "專業的線上報價單管理系統"
   },
+  "Nav": {
+    "dashboard": "儀表板",
+    "quotes": "報價單"
+  },
+  "Status": {
+    "draft": "草稿",
+    "sent": "已發送",
+    "accepted": "已成交",
+    "rejected": "已拒絕",
+    "expired": "已過期"
+  },
   "Dashboard": {
     "title": "儀表板",
     "subtitle": "您的業務概況總覽",
@@ -21,6 +32,7 @@
   },
   "Common": {
     "backToDashboard": "返回儀表板",
+    "toggleTheme": "切換主題",
     "number": "報價單號",
     "customer": "客戶",
     "status": "狀態",

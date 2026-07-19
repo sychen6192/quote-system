@@ -16,6 +16,7 @@ const colors = {
   slate500: "#64748b",
   slate100: "#e2e8f0",
   white: "#ffffff",
+  brand: "#6366f1",
 };
 
 const styles = StyleSheet.create({
@@ -32,8 +33,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.slate100,
+    borderBottomWidth: 2,
+    borderBottomColor: colors.brand,
     paddingBottom: 20,
     alignItems: "flex-start",
   },
@@ -173,7 +174,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
     paddingTop: 6,
     borderTopWidth: 2,
-    borderTopColor: colors.slate900,
+    borderTopColor: colors.brand,
   },
   totalLabel: { fontSize: 9, color: colors.slate600 },
   totalValue: { fontSize: 9, fontWeight: "bold", color: colors.slate900 },
