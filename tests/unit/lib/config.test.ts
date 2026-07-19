@@ -6,6 +6,7 @@ import {
   toPublicConfig,
   getBrandingDataUri,
 } from "@/lib/config";
+import { pickCompanyName } from "@/lib/company-name";
 
 // 1x1 transparent PNG
 const TINY_PNG = Buffer.from(
@@ -145,12 +146,30 @@ describe("toPublicConfig", () => {
     );
     expect(pub).toEqual({
       companyName: "Acme Ltd.",
+      companyNameLocal: "",
       currency: "TWD",
       currencyLocale: "zh-TW",
       defaultTaxRate: 5,
       twVatLookup: false,
     });
     expect(JSON.stringify(pub)).not.toContain("secret-999");
+  });
+});
+
+describe("pickCompanyName", () => {
+  it("uses the local name for Chinese locales when set", () => {
+    expect(pickCompanyName("Acme Ltd.", "頂尖公司", "zh-TW")).toBe("頂尖公司");
+    expect(pickCompanyName("Acme Ltd.", "頂尖公司", "zh")).toBe("頂尖公司");
+  });
+
+  it("uses the main name for non-Chinese locales", () => {
+    expect(pickCompanyName("Acme Ltd.", "頂尖公司", "en")).toBe("Acme Ltd.");
+    expect(pickCompanyName("Acme Ltd.", "頂尖公司", "ja")).toBe("Acme Ltd.");
+  });
+
+  it("falls back to the main name when no local name is set", () => {
+    expect(pickCompanyName("Acme Ltd.", "", "zh-TW")).toBe("Acme Ltd.");
+    expect(pickCompanyName("Acme Ltd.", "   ", "zh-TW")).toBe("Acme Ltd.");
   });
 });
 

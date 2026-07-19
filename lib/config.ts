@@ -34,6 +34,7 @@ export type AppConfig = {
 
 export type PublicAppConfig = {
   companyName: string;
+  companyNameLocal: string;
   currency: string;
   currencyLocale: string;
   defaultTaxRate: number;
@@ -128,6 +129,7 @@ export function getAppConfig(
 export function toPublicConfig(config: AppConfig): PublicAppConfig {
   return {
     companyName: config.company.name,
+    companyNameLocal: config.company.nameLocal,
     currency: config.money.currency,
     currencyLocale: config.money.currencyLocale,
     defaultTaxRate: config.money.defaultTaxRate,
