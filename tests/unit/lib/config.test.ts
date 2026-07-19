@@ -93,6 +93,21 @@ describe("getAppConfig", () => {
     expect(config.mail.ccEmails).toEqual(["a@x.test", "b@y.test"]);
   });
 
+  it("defaults twVatLookup to false", () => {
+    expect(getAppConfig({}).features.twVatLookup).toBe(false);
+  });
+
+  it("enables twVatLookup when TW_VAT_LOOKUP is truthy", () => {
+    expect(getAppConfig({ TW_VAT_LOOKUP: "1" }).features.twVatLookup).toBe(true);
+    expect(getAppConfig({ TW_VAT_LOOKUP: "true" }).features.twVatLookup).toBe(
+      true
+    );
+    expect(getAppConfig({ TW_VAT_LOOKUP: "0" }).features.twVatLookup).toBe(
+      false
+    );
+    expect(getAppConfig({ TW_VAT_LOOKUP: "" }).features.twVatLookup).toBe(false);
+  });
+
   it("keeps payment non-null when only some bank fields are set", () => {
     const config = getAppConfig({ BANK_NAME: "Bank" });
     expect(config.payment).toEqual({
@@ -133,6 +148,7 @@ describe("toPublicConfig", () => {
       currency: "TWD",
       currencyLocale: "zh-TW",
       defaultTaxRate: 5,
+      twVatLookup: false,
     });
     expect(JSON.stringify(pub)).not.toContain("secret-999");
   });

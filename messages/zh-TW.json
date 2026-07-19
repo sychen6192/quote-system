@@ -111,6 +111,13 @@
     "placeholders": {
       "itemName": "輸入項目名稱"
     },
+    "vatLookup": {
+      "button": "查詢",
+      "filled": "已用統編帶入公司資料",
+      "invalid": "請輸入 8 位數統編",
+      "notFound": "查無此統編",
+      "error": "查詢失敗,請稍後再試或手動輸入"
+    },
     "summary": {
       "subtotal": "小計",
       "taxRate": "稅率",

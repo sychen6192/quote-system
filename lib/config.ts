@@ -27,6 +27,9 @@ export type AppConfig = {
     currencyLocale: string;
     defaultTaxRate: number;
   };
+  features: {
+    twVatLookup: boolean;
+  };
 };
 
 export type PublicAppConfig = {
@@ -34,6 +37,7 @@ export type PublicAppConfig = {
   currency: string;
   currencyLocale: string;
   defaultTaxRate: number;
+  twVatLookup: boolean;
 };
 
 export type QuoteBranding = {
@@ -91,6 +95,8 @@ export function getAppConfig(
     .map((entry) => entry.trim())
     .filter(Boolean);
 
+  const twVat = clean(env.TW_VAT_LOOKUP).toLowerCase();
+
   return {
     company: {
       name,
@@ -113,6 +119,9 @@ export function getAppConfig(
       currencyLocale: clean(env.CURRENCY_LOCALE) || "zh-TW",
       defaultTaxRate: parseTaxRate(env.DEFAULT_TAX_RATE),
     },
+    features: {
+      twVatLookup: twVat === "1" || twVat === "true",
+    },
   };
 }
 
@@ -122,6 +131,7 @@ export function toPublicConfig(config: AppConfig): PublicAppConfig {
     currency: config.money.currency,
     currencyLocale: config.money.currencyLocale,
     defaultTaxRate: config.money.defaultTaxRate,
+    twVatLookup: config.features.twVatLookup,
   };
 }
 

@@ -110,6 +110,13 @@
     "placeholders": {
       "itemName": "Item name"
     },
+    "vatLookup": {
+      "button": "Look up",
+      "filled": "Company details filled from VAT number",
+      "invalid": "Enter an 8-digit VAT number",
+      "notFound": "No company found for this VAT number",
+      "error": "Lookup failed — try again or enter manually"
+    },
     "summary": {
       "subtotal": "Subtotal",
       "taxRate": "Tax Rate",
