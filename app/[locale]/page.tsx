@@ -28,7 +28,7 @@ export default async function DashboardPage() {
         </div>
 
         <Link href="/quotes/new">
-          <Button variant="gradient">
+          <Button>
             <Plus className="mr-2 h-4 w-4" /> {t("createQuote")}
           </Button>
         </Link>
