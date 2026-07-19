@@ -1,6 +1,6 @@
 import { Link } from "@/navigation";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { getQuotesList } from "@/services/quotes";
 import { QuotesTable } from "@/components/quotes/quotes-table";
@@ -22,22 +22,17 @@ export default async function QuotesListPage({ searchParams }: PageProps) {
   const { data, metadata } = await getQuotesList(page, pageSize);
 
   return (
-    <div className="container mx-auto py-4 md:py-10 px-4 md:px-0">
+    <div className="mx-auto max-w-6xl px-4 py-6 md:px-6">
       {/* Header Section */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold">{t("title")}</h1>
-        <div className="flex gap-2 w-full sm:w-auto">
-          <Link href="/" className="w-full sm:w-auto">
-            <Button variant="outline" className="w-full sm:w-auto">
-              <ArrowLeft className="mr-2 h-4 w-4" /> {t("backToDashboard")}
-            </Button>
-          </Link>
-          <Link href="/quotes/new" className="w-full sm:w-auto">
-            <Button className="w-full sm:w-auto">
-              <Plus className="mr-2 h-4 w-4" /> {t("createQuote")}
-            </Button>
-          </Link>
-        </div>
+      <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
+          {t("title")}
+        </h1>
+        <Link href="/quotes/new" className="w-full sm:w-auto">
+          <Button variant="gradient" className="w-full sm:w-auto">
+            <Plus className="mr-2 h-4 w-4" /> {t("createQuote")}
+          </Button>
+        </Link>
       </div>
 
       <QuotesTable data={data} key={page} />

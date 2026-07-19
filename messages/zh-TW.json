@@ -3,6 +3,10 @@
     "title": "報價系統",
     "description": "專業的線上報價單管理系統"
   },
+  "Nav": {
+    "dashboard": "儀表板",
+    "quotes": "報價單"
+  },
   "Dashboard": {
     "title": "儀表板",
     "subtitle": "您的業務概況總覽",

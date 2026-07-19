@@ -9,6 +9,7 @@ import NextTopLoader from "nextjs-toploader";
 import { getAppConfig, toPublicConfig } from "@/lib/config";
 import { AppConfigProvider } from "@/components/providers/app-config-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { TopNav } from "@/components/app-shell/top-nav";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -65,7 +66,10 @@ export default async function RootLayout({
           />
           <AppConfigProvider value={publicConfig}>
             <NextIntlClientProvider messages={messages}>
-              {children}
+              <TopNav />
+              <main className="app-bg min-h-[calc(100vh-3.5rem)]">
+                {children}
+              </main>
             </NextIntlClientProvider>
           </AppConfigProvider>
           <Toaster />

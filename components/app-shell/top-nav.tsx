@@ -1,0 +1,62 @@
+"use client";
+
+import Image from "next/image";
+import { Link, usePathname } from "@/navigation";
+import { useTranslations } from "next-intl";
+import { useAppConfig } from "@/components/providers/app-config-provider";
+import LanguageSwitcher from "@/components/language-switcher";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { cn } from "@/lib/utils";
+
+export function TopNav() {
+  const t = useTranslations("Nav");
+  const { companyName } = useAppConfig();
+  const pathname = usePathname();
+
+  const links = [
+    { href: "/", label: t("dashboard"), active: pathname === "/" },
+    {
+      href: "/quotes",
+      label: t("quotes"),
+      active: pathname.startsWith("/quotes"),
+    },
+  ] as const;
+
+  return (
+    <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur print:hidden">
+      <div className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4 md:gap-6 md:px-6">
+        <Link href="/" className="flex items-center gap-2 font-semibold">
+          <Image
+            src="/api/branding-icon"
+            alt=""
+            width={24}
+            height={24}
+            className="rounded"
+            unoptimized
+          />
+          <span className="max-w-[38vw] truncate">{companyName}</span>
+        </Link>
+        <nav className="flex items-center gap-1 text-sm">
+          {links.map((l) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              className={cn(
+                "rounded-md px-3 py-1.5 transition-colors",
+                l.active
+                  ? "bg-accent font-medium text-accent-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+            >
+              {l.label}
+            </Link>
+          ))}
+        </nav>
+        <div className="ml-auto flex items-center gap-1">
+          <LanguageSwitcher />
+          <ThemeToggle />
+        </div>
+      </div>
+    </header>
+  );
+}

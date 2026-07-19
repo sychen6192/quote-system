@@ -3,6 +3,10 @@
     "title": "Quote System",
     "description": "Professional quote management system"
   },
+  "Nav": {
+    "dashboard": "Dashboard",
+    "quotes": "Quotations"
+  },
   "Dashboard": {
     "title": "Dashboard",
     "subtitle": "Overview of your business performance",

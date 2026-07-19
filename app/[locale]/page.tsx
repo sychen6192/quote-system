@@ -4,7 +4,6 @@ import { DollarSign, FileText, Plus, Users } from "lucide-react";
 import { Link } from "@/navigation";
 import { Button } from "@/components/ui/button";
 import { getTranslations } from "next-intl/server";
-import LanguageSwitcher from "@/components/language-switcher";
 import { getDashboardMetrics, getRecentQuotes } from "@/services/dashboard";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { RecentQuotesTable } from "@/components/dashboard/recent-quotes-table";
@@ -28,14 +27,11 @@ export default async function DashboardPage() {
           <p className="text-muted-foreground">{t("subtitle")}</p>
         </div>
 
-        <div className="flex items-center gap-4">
-          <LanguageSwitcher />
-          <Link href="/quotes/new">
-            <Button>
-              <Plus className="mr-2 h-4 w-4" /> {t("createQuote")}
-            </Button>
-          </Link>
-        </div>
+        <Link href="/quotes/new">
+          <Button variant="gradient">
+            <Plus className="mr-2 h-4 w-4" /> {t("createQuote")}
+          </Button>
+        </Link>
       </header>
 
       {/* Metrics Grid */}
