@@ -18,6 +18,8 @@ export type AppConfig = {
   } | null;
   mail: {
     enabled: boolean;
+    /** Cleaned Resend key — never expose to the client. */
+    apiKey: string;
     senderName: string;
     senderEmail: string;
     ccEmails: string[];
@@ -111,6 +113,7 @@ export function getAppConfig(
     payment,
     mail: {
       enabled: clean(env.RESEND_API_KEY) !== "",
+      apiKey: clean(env.RESEND_API_KEY),
       senderName: clean(env.MAIL_SENDER_NAME) || name,
       senderEmail: clean(env.MAIL_SENDER_EMAIL) || DEFAULT_SENDER_EMAIL,
       ccEmails,
