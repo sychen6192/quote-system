@@ -3,6 +3,7 @@ import { quotations } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import QuoteForm from "@/components/quote-form";
+import { getCustomerOptions } from "@/services/customers";
 
 // 1. 定義 params 為 Promise
 interface EditQuotePageProps {
@@ -31,6 +32,8 @@ export default async function EditQuotePage({ params }: EditQuotePageProps) {
     notFound();
   }
 
+  const companyOptions = await getCustomerOptions();
+
   const initialData = {
     id: quote.id,
     companyName: quote.customer?.companyName || "",
@@ -55,7 +58,7 @@ export default async function EditQuotePage({ params }: EditQuotePageProps) {
 
   return (
     <div className="container mx-auto">
-      <QuoteForm initialData={initialData} />
+      <QuoteForm initialData={initialData} companyOptions={companyOptions} />
     </div>
   );
 }

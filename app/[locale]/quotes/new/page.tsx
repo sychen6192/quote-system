@@ -1,10 +1,12 @@
 import QuoteForm from "@/components/quote-form";
 import { getAppConfig } from "@/lib/config";
+import { getCustomerOptions } from "@/services/customers";
 
 // 每次請求即時渲染:預設日期要是「今天」,稅率要反映 runtime env,不能在 build 期凍結
 export const dynamic = "force-dynamic";
 
 export default async function NewQuotePage() {
+  const companyOptions = await getCustomerOptions();
   const defaultValues = {
     items: [{ productName: "", quantity: 1, unitPrice: 0, isTaxable: true }],
     taxRate: getAppConfig().money.defaultTaxRate,
@@ -23,7 +25,7 @@ export default async function NewQuotePage() {
 
   return (
     <div className="container mx-auto">
-      <QuoteForm initialData={defaultValues} />
+      <QuoteForm initialData={defaultValues} companyOptions={companyOptions} />
     </div>
   );
 }

@@ -6,6 +6,7 @@ import {
   useForm,
   useFieldArray,
   useWatch,
+  Controller,
   // Path,
   UseFormRegister,
   FieldError,
@@ -24,7 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Trash2, Save, ArrowLeft } from "lucide-react";
+import { Plus, Trash2, Save, ArrowLeft, Search, Loader2 } from "lucide-react";
 import { createQuote } from "@/actions/create-quote";
 import { updateQuote } from "@/actions/update-quote";
 import { quoteFormSchema, type QuoteFormData } from "@/lib/schemas/quote";
@@ -32,18 +33,26 @@ import { toast } from "sonner";
 import { useTranslations, useFormatter } from "next-intl";
 import { toBasisPoints, calculateQuoteFinancials } from "@/lib/utils";
 import { useAppConfig } from "@/components/providers/app-config-provider";
+import { CompanyCombobox } from "@/components/company-combobox";
+import { lookupVatNumber } from "@/actions/lookup-vat";
+import type { CustomerOption } from "@/services/customers";
 
 // ✅ 修正 Interface 定義，確保 id 是可選的
 interface QuoteFormProps {
   initialData: Partial<QuoteFormData> & { id?: number };
+  companyOptions?: CustomerOption[];
 }
 
-export default function QuoteForm({ initialData }: QuoteFormProps) {
+export default function QuoteForm({
+  initialData,
+  companyOptions = [],
+}: QuoteFormProps) {
   const t = useTranslations("QuoteForm");
   const format = useFormatter();
   const router = useRouter();
-  const { currency, defaultTaxRate } = useAppConfig();
+  const { currency, defaultTaxRate, twVatLookup } = useAppConfig();
   const [isPending, setIsPending] = useState(false);
+  const [vatLoading, setVatLoading] = useState(false);
 
   // ✅ 修正 useForm 初始化
   const form = useForm<QuoteFormData>({
@@ -103,6 +112,38 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
     }
   };
 
+  const handleVatLookup = async () => {
+    setVatLoading(true);
+    try {
+      const res = await lookupVatNumber(form.getValues("vatNumber") || "");
+      if (res.ok) {
+        form.setValue("companyName", res.company.companyName, {
+          shouldDirty: true,
+          shouldValidate: true,
+        });
+        if (res.company.address) {
+          form.setValue("address", res.company.address, { shouldDirty: true });
+        }
+        if (!form.getValues("contactPerson") && res.company.responsibleName) {
+          form.setValue("contactPerson", res.company.responsibleName, {
+            shouldDirty: true,
+          });
+        }
+        toast.success(t("vatLookup.filled"));
+      } else {
+        const key =
+          res.reason === "INVALID"
+            ? "invalid"
+            : res.reason === "NOT_FOUND"
+              ? "notFound"
+              : "error";
+        toast.error(t(`vatLookup.${key}`));
+      }
+    } finally {
+      setVatLoading(false);
+    }
+  };
+
   const handleCancel = () => {
     if (form.formState.isDirty) {
       if (window.confirm(t("messages.confirmDiscard"))) {
@@ -137,15 +178,52 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <FormField
-            label={t("fields.companyName")}
-            name="companyName"
-            register={form.register}
-            error={form.formState.errors.companyName}
-            disabled={isPending}
-            required
-            placeholder="Acme Corp."
-          />
+          <div className="space-y-2">
+            <label className="flex items-center gap-1 text-sm font-medium">
+              {t("fields.companyName")}
+              <span className="text-destructive">*</span>
+            </label>
+            <Controller
+              name="companyName"
+              control={form.control}
+              render={({ field }) => (
+                <CompanyCombobox
+                  id="companyName"
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  options={companyOptions}
+                  disabled={isPending}
+                  placeholder="Acme Corp."
+                  onSelect={(o) => {
+                    form.setValue("companyName", o.companyName, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    });
+                    form.setValue("contactPerson", o.contactPerson ?? "", {
+                      shouldDirty: true,
+                    });
+                    form.setValue("email", o.email ?? "", {
+                      shouldDirty: true,
+                    });
+                    form.setValue("phone", o.phone ?? "", {
+                      shouldDirty: true,
+                    });
+                    form.setValue("vatNumber", o.vatNumber ?? "", {
+                      shouldDirty: true,
+                    });
+                    form.setValue("address", o.address ?? "", {
+                      shouldDirty: true,
+                    });
+                  }}
+                />
+              )}
+            />
+            {form.formState.errors.companyName && (
+              <p className="text-xs font-medium text-destructive">
+                {form.formState.errors.companyName.message}
+              </p>
+            )}
+          </div>
           <FormField
             label={t("fields.contactPerson")}
             name="contactPerson"
@@ -171,13 +249,37 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
             disabled={isPending}
             placeholder="+1 234 567 890"
           />
-          <FormField
-            label={t("fields.vatNumber")}
-            name="vatNumber"
-            register={form.register}
-            error={form.formState.errors.vatNumber}
-            disabled={isPending}
-          />
+          <div className="space-y-2">
+            <label className="text-sm font-medium">
+              {t("fields.vatNumber")}
+            </label>
+            <div className="flex gap-2">
+              <Input
+                {...form.register("vatNumber")}
+                disabled={isPending}
+                className={
+                  form.formState.errors.vatNumber ? "border-destructive" : ""
+                }
+              />
+              {twVatLookup && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isPending || vatLoading}
+                  onClick={handleVatLookup}
+                >
+                  {vatLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Search className="h-4 w-4" />
+                  )}
+                  <span className="ml-1 hidden sm:inline">
+                    {t("vatLookup.button")}
+                  </span>
+                </Button>
+              )}
+            </div>
+          </div>
           <FormField
             label={t("fields.salesperson")}
             name="salesperson"
