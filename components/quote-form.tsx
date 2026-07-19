@@ -132,7 +132,9 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
       {/* Customer Details */}
       <Card>
         <CardHeader>
-          <CardTitle>{t("sections.customerDetails")}</CardTitle>
+          <CardTitle className="text-xl">
+            {t("sections.customerDetails")}
+          </CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField
@@ -223,7 +225,7 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
       {/* Items Table */}
       <Card>
         <CardHeader>
-          <CardTitle>{t("sections.items")}</CardTitle>
+          <CardTitle className="text-xl">{t("sections.items")}</CardTitle>
         </CardHeader>
         <CardContent className="p-0 md:p-6">
           <div className="overflow-x-auto">
@@ -336,13 +338,11 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
 
       {/* Totals Section */}
       <div className="flex justify-end">
-        <Card className="w-full md:w-[350px]">
-          <CardContent className="pt-6 space-y-4">
+        <Card className="w-full border-0 bg-grad-brand text-white shadow-brand md:w-[350px]">
+          <CardContent className="space-y-4 pt-6">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">
-                {t("summary.subtotal")}:
-              </span>
-              <span className="font-medium">
+              <span className="text-white/80">{t("summary.subtotal")}:</span>
+              <span className="font-medium tabular-nums">
                 {format.number(financials.subtotal / 100, {
                   style: "currency",
                   currency,
@@ -351,14 +351,14 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
               </span>
             </div>
 
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-muted-foreground">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-white/80">
                 {t("summary.taxRate")} (%):
               </span>
               <Input
                 type="number"
                 {...form.register("taxRate", { valueAsNumber: true })}
-                className="w-20 h-8 text-right"
+                className="h-8 w-20 border-white/30 bg-white/15 text-right text-white placeholder:text-white/60"
                 step="0.01"
                 min="0"
                 disabled={isPending}
@@ -366,10 +366,8 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
             </div>
 
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">
-                {t("summary.taxAmount")}:
-              </span>
-              <span className="font-medium">
+              <span className="text-white/80">{t("summary.taxAmount")}:</span>
+              <span className="font-medium tabular-nums">
                 {format.number(financials.taxAmount / 100, {
                   style: "currency",
                   currency,
@@ -378,9 +376,9 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
               </span>
             </div>
 
-            <div className="border-t pt-4 flex justify-between items-center">
-              <span className="font-bold text-lg">{t("summary.total")}:</span>
-              <span className="font-bold text-2xl text-primary">
+            <div className="flex items-center justify-between border-t border-white/25 pt-4">
+              <span className="text-lg font-bold">{t("summary.total")}:</span>
+              <span className="text-2xl font-black tabular-nums">
                 {format.number(financials.totalAmount / 100, {
                   style: "currency",
                   currency,
@@ -408,7 +406,8 @@ export default function QuoteForm({ initialData }: QuoteFormProps) {
             <Button
               type="submit"
               size="lg"
-              className="w-full sm:w-auto min-w-[150px] shadow-sm font-bold"
+              variant="gradient"
+              className="w-full min-w-[150px] font-bold sm:w-auto"
               disabled={isPending}
             >
               {isPending ? (
