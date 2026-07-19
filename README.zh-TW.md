@@ -100,7 +100,9 @@ docker run -d --name quote-system -p 3000:3000 \
 
 首次部署對資料庫執行一次 `npm run db:push` 建表。
 
-> `.github/workflows/deploy.yml` 是原作者個人 homelab 的部署流程,已用 `repository_owner` 條件保護 — fork 不會觸發。
+> `.github/workflows/pipeline.yml` 對每個 push 與 PR 執行 lint/test/build;在原作者的 repo 上,**CI 通過後**才會建置 Docker image(`latest` 與 `sha-<commit>` 雙標籤)並部署到 homelab self-hosted runner,部署後有健康檢查 — 這兩步都有 `repository_owner` 條件保護,fork 不會觸發。
+>
+> **回滾**:每次部署都綁定 commit — 用前一個標籤重跑容器即可:`docker run ... ghcr.io/<owner>/quote-system:sha-<前一個 commit>`(標籤清單在 GitHub Packages 頁)。
 
 ## 資安須知
 

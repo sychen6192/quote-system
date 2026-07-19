@@ -100,7 +100,9 @@ docker run -d --name quote-system -p 3000:3000 \
 
 Run `npm run db:push` against your database once to create the tables.
 
-> `.github/workflows/deploy.yml` is the author's personal homelab pipeline and is guarded by a `repository_owner` condition — it will not run on forks.
+> `.github/workflows/pipeline.yml` runs lint/test/build on every push and PR. On the author's repo it additionally builds a Docker image (tagged `latest` and `sha-<commit>`) **only after CI passes**, then deploys it to a homelab self-hosted runner with a post-deploy health check — both steps are guarded by a `repository_owner` condition and will not run on forks.
+>
+> **Rollback:** every deploy is pinned to its commit — rerun the container with a previous tag: `docker run ... ghcr.io/<owner>/quote-system:sha-<previous-commit>` (tags are listed under GitHub Packages).
 
 ## Security
 
