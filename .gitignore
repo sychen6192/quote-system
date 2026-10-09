@@ -55,3 +55,6 @@ next-env.d.ts
 
 # superpowers brainstorm sessions
 .superpowers/
+
+# per-build output dirs (NEXT_DIST_DIR)
+/.next-*/
