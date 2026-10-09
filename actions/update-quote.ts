@@ -1,108 +1,81 @@
-'use server';
+"use server";
 
-import { db } from '@/db';
-import { quotations, quotationItems, customers } from '@/db/schema';
-import { eq } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
-import { quoteFormSchema, type QuoteFormData } from '@/lib/schemas/quote';
-import { toBasisPoints, calculateQuoteFinancials } from '@/lib/utils';
-import type { ActionResult } from './types';
+import { revalidatePath } from "next/cache";
+import { and, eq, ne, sql } from "drizzle-orm";
+import { db } from "@/db";
+import { customers, quotationItems, quotations } from "@/db/schema";
+import { quoteRecordValues } from "@/lib/quote-view";
+import { quoteFormSchema, quoteIdSchema, toFieldErrors } from "@/lib/schemas/quote";
+import { recordQuoteEvent } from "@/services/events";
+import {
+  internalError,
+  notFound,
+  requireAuth,
+  validationError,
+  type ActionResult,
+} from "./types";
 
-export async function updateQuote(id: number, rawData: QuoteFormData): Promise<ActionResult> {
-    const result = quoteFormSchema.safeParse(rawData);
-    if (!result.success) {
-        return {
-            success: false,
-            code: 'VALIDATION',
-            fieldErrors: result.error.flatten().fieldErrors,
-        };
-    }
-    const data = result.data;
+class QuoteNotFound extends Error {}
 
-    const existingQuote = await db.query.quotations.findFirst({
-        where: eq(quotations.id, id),
-        columns: { id: true, customerId: true },
+export async function updateQuote(id: unknown, data: unknown): Promise<ActionResult> {
+  const denied = await requireAuth();
+  if (denied) return denied;
+
+  const idResult = quoteIdSchema.safeParse(id);
+  if (!idResult.success) return validationError({ id: ["invalidId"] });
+  const quoteId = idResult.data;
+
+  const parsed = quoteFormSchema.safeParse(data);
+  if (!parsed.success) return validationError(toFieldErrors(parsed.error));
+  const values = quoteRecordValues(parsed.data);
+
+  try {
+    await db.transaction(async (tx) => {
+      const [existing] = await tx
+        .select({ id: quotations.id, customerId: quotations.customerId })
+        .from(quotations)
+        .where(eq(quotations.id, quoteId))
+        .for("update");
+      if (!existing) throw new QuoteNotFound();
+
+      // The bill-to row is this quote's own snapshot. Legacy rows may lack one
+      // or share it with another quote; never edit another quote's snapshot.
+      let customerId = existing.customerId;
+      if (customerId !== null) {
+        const [shared] = await tx
+          .select({ n: sql<number>`count(*)`.mapWith(Number) })
+          .from(quotations)
+          .where(and(eq(quotations.customerId, customerId), ne(quotations.id, quoteId)));
+        if ((shared?.n ?? 0) > 0) customerId = null;
+      }
+      if (customerId === null) {
+        const [created] = await tx
+          .insert(customers)
+          .values(values.customer)
+          .returning({ id: customers.id });
+        customerId = created.id;
+      } else {
+        await tx.update(customers).set(values.customer).where(eq(customers.id, customerId));
+      }
+
+      await tx
+        .update(quotations)
+        .set({ ...values.quote, customerId, updatedAt: new Date() })
+        .where(eq(quotations.id, quoteId));
+
+      await tx.delete(quotationItems).where(eq(quotationItems.quotationId, quoteId));
+      await tx
+        .insert(quotationItems)
+        .values(values.items.map((item) => ({ ...item, quotationId: quoteId })));
+
+      await recordQuoteEvent(tx, quoteId, "updated");
     });
+  } catch (error) {
+    if (error instanceof QuoteNotFound) return notFound(`Quote ${quoteId}`);
+    console.error("updateQuote transaction failed:", error);
+    return internalError("Failed to update quote");
+  }
 
-    if (!existingQuote || !existingQuote.customerId) {
-        return {
-            success: false,
-            code: 'NOT_FOUND',
-            message: `Quote ${id} or its associated customer was not found`,
-        };
-    }
-
-    const customerId = existingQuote.customerId;
-
-    try {
-        await db.transaction(async (tx) => {
-            // Update Customer
-            await tx
-                .update(customers)
-                .set({
-                    companyName: data.companyName,
-                    contactPerson: data.contactPerson,
-                    email: data.email || null,
-                    phone: data.phone,
-                    vatNumber: data.vatNumber,
-                    address: data.address,
-                })
-                .where(eq(customers.id, customerId));
-
-            // Calculate Financials
-            const taxRateBP = toBasisPoints(data.taxRate);
-            const itemsWithCents = data.items.map(item => ({
-                ...item,
-                unitPrice: Math.round(item.unitPrice * 100),
-                isTaxable: item.isTaxable // 關鍵
-            }));
-
-            const financials = calculateQuoteFinancials(itemsWithCents, taxRateBP);
-
-            // Update Quote
-            await tx
-                .update(quotations)
-                .set({
-                    salesperson: data.salesperson,
-                    issuedDate: data.issuedDate,
-                    validUntil: data.validUntil,
-                    notes: data.notes,
-
-                    // Update Financials
-                    taxRate: taxRateBP,
-                    subtotal: financials.subtotal,
-                    taxAmount: financials.taxAmount,
-                    totalAmount: financials.totalAmount,
-                })
-                .where(eq(quotations.id, id));
-
-            // Update Items
-            await tx.delete(quotationItems).where(eq(quotationItems.quotationId, id));
-
-            if (itemsWithCents.length > 0) {
-                await tx.insert(quotationItems).values(
-                    itemsWithCents.map((item) => ({
-                        quotationId: id,
-                        productName: item.productName,
-                        quantity: item.quantity,
-                        unitPrice: item.unitPrice,
-                        isTaxable: item.isTaxable,
-                    }))
-                );
-            }
-        });
-
-        revalidatePath('/');
-        revalidatePath(`/quotes/${id}`);
-
-        return { success: true };
-
-    } catch (error) {
-        console.error("updateQuote transaction failed:", error);
-        return {
-            success: false,
-            code: 'INTERNAL',
-            message: error instanceof Error ? error.message : 'Failed to update quote',
-        };
-    }
+  revalidatePath("/[locale]", "layout");
+  return { success: true, id: quoteId };
 }

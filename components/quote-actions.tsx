@@ -12,7 +12,7 @@ import SendEmailButton from "@/components/send-email-button";
 import { DeleteQuoteButton } from "@/components/delete-quote-button";
 import { type InferSelectModel } from "drizzle-orm";
 import { customers, quotations, quotationItems } from "@/db/schema";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 type QuoteWithRelations = InferSelectModel<typeof quotations> & {
   customer: InferSelectModel<typeof customers> | null;
@@ -26,10 +26,10 @@ interface QuoteActionsProps {
 
 export default function QuoteActions({ quote, mailEnabled }: QuoteActionsProps) {
   const t = useTranslations("QuoteActions");
-
-  const handleDownload = () => {
-    window.open(`/api/quotes/${quote.id}/pdf`, "_blank");
-  };
+  const locale = useLocale();
+  // A plain link (not window.open): popup blockers and standalone PWAs
+  // swallow new windows; the route answers with Content-Disposition: attachment.
+  const pdfUrl = `/api/quotes/${quote.id}/pdf?download=1&lang=${encodeURIComponent(locale)}`;
 
   const handlePrint = () => {
     window.print();
@@ -52,8 +52,10 @@ export default function QuoteActions({ quote, mailEnabled }: QuoteActionsProps) 
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={handleDownload} className="cursor-pointer">
-            <Download className="mr-2 h-4 w-4" /> {t("downloadPdf")}{" "}
+          <DropdownMenuItem asChild className="cursor-pointer">
+            <a href={pdfUrl} download>
+              <Download className="mr-2 h-4 w-4" /> {t("downloadPdf")}{" "}
+            </a>
           </DropdownMenuItem>
           <DropdownMenuItem onClick={handlePrint} className="cursor-pointer">
             <Printer className="mr-2 h-4 w-4" /> {t("print")}{" "}

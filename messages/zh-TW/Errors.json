@@ -1,0 +1,13 @@
+{
+  "notFound": {
+    "title": "找不到這個頁面",
+    "description": "您要找的頁面不存在，或可能已被移除。"
+  },
+  "error": {
+    "title": "系統發生錯誤",
+    "description": "發生非預期的錯誤，請再試一次。若問題持續發生，請聯絡系統管理員。",
+    "retry": "重試",
+    "reference": "錯誤代碼：{digest}"
+  },
+  "backToDashboard": "返回儀表板"
+}

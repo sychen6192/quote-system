@@ -4,8 +4,15 @@
 
 @layer base {
   :root {
+    color-scheme: light;
     --background: 0 0% 100%;
     --foreground: 222 47% 11%;
+    /* Backdrop behind the A4 paper in previews; its own token so it can move
+       independently of --muted (the resting fill of inputs and chips). */
+    --ground: 220 14% 94%;
+    /* The quote sheet is paper: white with dark ink in both themes. */
+    --paper: 0 0% 100%;
+    --paper-foreground: 222 47% 11%;
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
@@ -15,14 +22,24 @@
     --secondary: 220 14% 96%;
     --secondary-foreground: 222 47% 11%;
     --muted: 220 14% 96%;
-    --muted-foreground: 220 9% 46%;
+    /* 46% was 4.4:1 on --muted (inactive tabs, chips); 43% is 4.9:1. */
+    --muted-foreground: 220 9% 43%;
     --accent: 214 100% 97%;
     --accent-foreground: 226 71% 40%;
-    --destructive: 0 84% 60%;
+    /* Status colours are dark enough for text on white and on their own /10
+       tint (>= 4.5:1), and for white text on the solid fill. */
+    --destructive: 0 72% 46%;
     --destructive-foreground: 0 0% 100%;
+    --success: 142 72% 26%;
+    --success-foreground: 0 0% 100%;
+    --warning: 25 90% 35%;
+    --warning-foreground: 0 0% 100%;
+    --info: 201 96% 32%;
+    --info-foreground: 0 0% 100%;
     --border: 220 13% 91%;
     --input: 220 13% 91%;
     --ring: 224 76% 48%;
+    --shadow-color: 222 47% 11%;
     --radius: 0.75rem;
     --chart-1: 224 76% 48%;
     --chart-2: 199 89% 48%;
@@ -32,25 +49,39 @@
   }
 
   .dark {
+    color-scheme: dark;
     --background: 222 47% 7%;
     --foreground: 210 40% 96%;
+    /* Darker than the page so the paper still lifts. */
+    --ground: 222 47% 4%;
     --card: 221 39% 16%;
     --card-foreground: 210 40% 96%;
     --popover: 221 39% 16%;
     --popover-foreground: 210 40% 96%;
     --primary: 217 91% 62%;
-    --primary-foreground: 0 0% 100%;
+    /* White on this blue is 3.4:1; dark text is 5.7:1. */
+    --primary-foreground: 222 47% 7%;
     --secondary: 217 33% 20%;
     --secondary-foreground: 210 40% 96%;
     --muted: 217 33% 20%;
     --muted-foreground: 215 20% 65%;
     --accent: 217 33% 24%;
     --accent-foreground: 210 40% 96%;
-    --destructive: 0 63% 45%;
-    --destructive-foreground: 0 0% 100%;
+    /* Light fills with dark text: a mid red cannot reach 4.5:1 both as text on
+       the dark card and under white text. 69% keeps text-destructive >= 4.5:1
+       on its own /10 tint over the card too (66% was 4.4:1). */
+    --destructive: 0 88% 69%;
+    --destructive-foreground: 222 47% 7%;
+    --success: 142 69% 58%;
+    --success-foreground: 144 61% 10%;
+    --warning: 38 92% 56%;
+    --warning-foreground: 26 83% 12%;
+    --info: 199 89% 64%;
+    --info-foreground: 204 80% 12%;
     --border: 217 33% 23%;
     --input: 217 33% 23%;
     --ring: 217 91% 62%;
+    --shadow-color: 0 0% 0%;
     --chart-1: 217 91% 62%;
     --chart-2: 199 89% 55%;
     --chart-3: 27 96% 61%;
@@ -63,10 +94,77 @@
   * {
     @apply border-border;
   }
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background font-sans text-foreground;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Keyboard focus is always visible. :where() keeps specificity at 0 so any
+     component's own focus-visible:ring / outline-none wins. tabindex=-1
+     targets (skip-link destinations, roving menu items) are excluded. */
+  :where(:focus-visible:not([tabindex="-1"])) {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
   }
 }
+
+@layer utilities {
+  /* env(safe-area-inset-*) needs viewport-fit=cover. These REPLACE the
+     padding; for "spacing + inset" use pb-safe-4 etc. (tailwind.config.ts). */
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .pl-safe {
+    padding-left: env(safe-area-inset-left, 0px);
+  }
+  .pr-safe {
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+  .px-safe {
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+  .mb-safe {
+    margin-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Money and other figures that line up in columns. */
+  .money {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Near-zero rather than none so Radix still receives animationend and
+     unmounts closing dialogs/sheets. */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 @layer utilities {
   @media print {
     /* 1. 歸零瀏覽器預設邊距 */
@@ -116,4 +214,3 @@
     }
   }
 }
-

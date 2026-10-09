@@ -3,8 +3,10 @@ import { Inter } from "next/font/google";
 
 import "./globals.css";
 import { Toaster } from "sonner";
-import { getMessages, getTranslations } from "next-intl/server";
-import { NextIntlClientProvider } from "next-intl";
+import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
+import { NextIntlClientProvider, hasLocale } from "next-intl";
+import { notFound } from "next/navigation";
+import { routing } from "@/navigation";
 import NextTopLoader from "nextjs-toploader";
 import { getAppConfig, toPublicConfig } from "@/lib/config";
 import { pickCompanyName } from "@/lib/company-name";
@@ -14,12 +16,21 @@ import { TopNav } from "@/components/app-shell/top-nav";
 
 const inter = Inter({ subsets: ["latin"] });
 
+// Only the configured locales exist: anything else in the first segment
+// (/foo, /sw.js, /manifest.webmanifest) is a 404, never the dashboard.
+export const dynamicParams = false;
+
+export function generateStaticParams() {
+  return routing.locales.map((locale) => ({ locale }));
+}
+
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
+  if (!hasLocale(routing.locales, locale)) notFound();
 
   const t = await getTranslations({ locale, namespace: "Metadata" });
   const config = getAppConfig();
@@ -47,6 +58,9 @@ export default async function RootLayout({
   params: Promise<{ locale: string }>;
 }>) {
   const { locale } = await params;
+  if (!hasLocale(routing.locales, locale)) notFound();
+  setRequestLocale(locale);
+
   const messages = await getMessages();
   const publicConfig = toPublicConfig(getAppConfig());
 

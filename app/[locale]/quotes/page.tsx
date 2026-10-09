@@ -19,7 +19,7 @@ export default async function QuotesListPage({ searchParams }: PageProps) {
   const page = Number(resolvedSearchParams.page) || 1;
   const pageSize = 10;
 
-  const { data, metadata } = await getQuotesList(page, pageSize);
+  const { data, metadata } = await getQuotesList({ page, pageSize });
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 md:px-6">

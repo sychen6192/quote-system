@@ -1,7 +1,29 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { authEnabled } from "@/lib/auth/session";
+import {
+  SETTINGS_DEFAULTS,
+  mergeSettings,
+  type EnvSettings,
+} from "@/lib/settings/merge";
+import {
+  isBrandColor,
+  isSupportedLocale,
+  isSupportedTimeZone,
+  isWebsite,
+  MAX_VALIDITY_DAYS,
+  MIN_VALIDITY_DAYS,
+  type SettingsLayer,
+} from "@/lib/settings/schema";
+import { validateQuoteNumberPattern } from "@/lib/quote-number";
+import type { BrandingKind } from "@/lib/settings/types";
+
+// Env-only configuration. Runtime code should use services/settings.ts
+// getSettings(), which layers the Settings page (DB) on top of this.
 
 export type AppConfig = {
+  /** APP_NAME (installed-app name override), "" when unset */
+  appName: string;
   company: {
     name: string;
     isDefault: boolean;
@@ -10,9 +32,11 @@ export type AppConfig = {
     vatNumber: string;
     email: string;
     phone: string;
+    website: string;
   };
   payment: {
     bankName: string;
+    bankCode: string;
     accountName: string;
     accountNumber: string;
   } | null;
@@ -23,12 +47,21 @@ export type AppConfig = {
     senderName: string;
     senderEmail: string;
     ccEmails: string[];
+    replyTo: string;
   };
   money: {
     currency: string;
     currencyLocale: string;
     defaultTaxRate: number;
   };
+  quote: {
+    numberPattern: string;
+    validityDays: number;
+    defaultNotes: string;
+    defaultTerms: string;
+  };
+  appearance: { brandColor: string };
+  region: { timezone: string };
   features: {
     twVatLookup: boolean;
   };
@@ -51,9 +84,7 @@ export type QuoteBranding = {
   money: AppConfig["money"];
 };
 
-const DEFAULT_COMPANY_NAME = "Your Company";
-const DEFAULT_SENDER_EMAIL = "onboarding@resend.dev";
-const DEFAULT_TAX_RATE = 5;
+type Env = Record<string, string | undefined>;
 
 // docker `--env-file` keeps values literally, including surrounding quotes,
 // unlike dotenv / Next dev. Strip one layer of matching quotes so a quoted
@@ -71,61 +102,156 @@ function clean(raw: string | undefined): string {
   return v;
 }
 
-function parseTaxRate(raw: string | undefined): number {
+// Env files cannot hold real line breaks; let multi-line texts use "\n".
+function cleanMultiline(raw: string | undefined): string {
+  return clean(raw).replace(/\\n/g, "\n");
+}
+
+function parseTaxRate(raw: string | undefined): number | undefined {
   const s = clean(raw);
-  if (s === "") return DEFAULT_TAX_RATE;
+  if (s === "") return undefined;
   const value = Number(s);
-  if (Number.isNaN(value) || value < 0 || value > 100) return DEFAULT_TAX_RATE;
+  if (Number.isNaN(value) || value < 0 || value > 100) return undefined;
   return value;
 }
 
-export function getAppConfig(
-  env: Record<string, string | undefined> = process.env
-): AppConfig {
-  const name = clean(env.COMPANY_NAME) || DEFAULT_COMPANY_NAME;
-  const isDefault = clean(env.COMPANY_NAME) === "";
+function parseValidityDays(raw: string | undefined): number | undefined {
+  const s = clean(raw);
+  if (!/^\d+$/.test(s)) return undefined;
+  const days = Number(s);
+  return days >= MIN_VALIDITY_DAYS && days <= MAX_VALIDITY_DAYS ? days : undefined;
+}
 
-  const bankName = clean(env.BANK_NAME);
-  const accountName = clean(env.BANK_ACCOUNT_NAME);
-  const accountNumber = clean(env.BANK_ACCOUNT_NUMBER);
-  const payment =
-    bankName || accountName || accountNumber
-      ? { bankName, accountName, accountNumber }
-      : null;
+function parseBrandColor(raw: string | undefined): string | undefined {
+  const s = clean(raw);
+  const color = s.startsWith("#") ? s : `#${s}`;
+  return isBrandColor(color) ? color.toUpperCase() : undefined;
+}
 
-  const ccEmails = clean(env.MAIL_CC_EMAILS)
-    .split(",")
-    .map((entry) => entry.trim())
-    .filter(Boolean);
+function parseTimeZone(...candidates: (string | undefined)[]): string | undefined {
+  for (const raw of candidates) {
+    const zone = clean(raw);
+    if (zone && isSupportedTimeZone(zone)) return zone;
+  }
+  return undefined;
+}
 
-  const twVat = clean(env.TW_VAT_LOOKUP).toLowerCase();
+// Only "1" / "true" have ever enabled a flag; keep it that way so existing
+// .env files ("yes", "on", …) do not silently switch features on.
+function parseBoolean(raw: string | undefined): boolean | undefined {
+  const s = clean(raw).toLowerCase();
+  if (s === "") return undefined;
+  return s === "1" || s === "true";
+}
 
-  return {
-    company: {
-      name,
-      isDefault,
+/** Drops unset (undefined / "" / []) fields so the layer only holds what env sets. */
+function compact<T extends Record<string, unknown>>(fields: T): Partial<T> | undefined {
+  const out: Partial<T> = {};
+  for (const [key, value] of Object.entries(fields)) {
+    if (value === undefined || value === "") continue;
+    if (Array.isArray(value) && value.length === 0) continue;
+    (out as Record<string, unknown>)[key] = value;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/** The env-var layer of the settings (only variables that are set and valid). */
+export function getEnvSettings(env: Env = process.env): EnvSettings {
+  const currency = clean(env.CURRENCY).toUpperCase();
+  const currencyLocale = clean(env.CURRENCY_LOCALE);
+  const pattern = clean(env.QUOTE_NUMBER_PATTERN);
+
+  const layer: SettingsLayer = {
+    company: compact({
+      name: clean(env.COMPANY_NAME),
       nameLocal: clean(env.COMPANY_NAME_LOCAL),
       address: clean(env.COMPANY_ADDRESS),
       vatNumber: clean(env.COMPANY_VAT_NUMBER),
       email: clean(env.COMPANY_EMAIL),
       phone: clean(env.COMPANY_PHONE),
+      website: isWebsite(clean(env.COMPANY_WEBSITE)) ? clean(env.COMPANY_WEBSITE) : undefined,
+    }),
+    payment: compact({
+      bankName: clean(env.BANK_NAME),
+      bankCode: clean(env.BANK_CODE),
+      accountName: clean(env.BANK_ACCOUNT_NAME),
+      accountNumber: clean(env.BANK_ACCOUNT_NUMBER),
+    }),
+    quote: compact({
+      numberPattern: pattern && validateQuoteNumberPattern(pattern).ok ? pattern : undefined,
+      validityDays: parseValidityDays(env.QUOTE_VALIDITY_DAYS),
+      defaultTaxRate: parseTaxRate(env.DEFAULT_TAX_RATE),
+      defaultNotes: cleanMultiline(env.DEFAULT_NOTES),
+      defaultTerms: cleanMultiline(env.DEFAULT_TERMS),
+    }),
+    money: compact({
+      // Kept lenient (any 3 letters) like before: Intl formats unknown codes.
+      currency: /^[A-Z]{3}$/.test(currency) ? currency : undefined,
+      currencyLocale: isSupportedLocale(currencyLocale) ? currencyLocale : undefined,
+    }),
+    appearance: compact({ brandColor: parseBrandColor(env.BRAND_COLOR) }),
+    region: compact({ timezone: parseTimeZone(env.APP_TIMEZONE, env.TZ) }),
+    mail: compact({
+      senderName: clean(env.MAIL_SENDER_NAME),
+      senderEmail: clean(env.MAIL_SENDER_EMAIL),
+      ccEmails: clean(env.MAIL_CC_EMAILS)
+        .split(",")
+        .map((entry) => entry.trim())
+        .filter(Boolean),
+      replyTo: clean(env.MAIL_REPLY_TO),
+    }),
+    features: compact({ twVatLookup: parseBoolean(env.TW_VAT_LOOKUP) }),
+  };
+
+  return {
+    layer,
+    apiKey: clean(env.RESEND_API_KEY),
+    authEnabled: authEnabled(env),
+  };
+}
+
+/** APP_NAME, "" when unset. */
+export function getAppNameOverride(env: Env = process.env): string {
+  return clean(env.APP_NAME);
+}
+
+export function getAppConfig(env: Env = process.env): AppConfig {
+  const s = mergeSettings(SETTINGS_DEFAULTS, getEnvSettings(env), {});
+  return {
+    appName: getAppNameOverride(env),
+    company: {
+      name: s.company.name,
+      isDefault: s.company.isDefault,
+      nameLocal: s.company.nameLocal,
+      address: s.company.address,
+      vatNumber: s.company.vatNumber,
+      email: s.company.email,
+      phone: s.company.phone,
+      website: s.company.website,
     },
-    payment,
+    payment: s.payment,
     mail: {
-      enabled: clean(env.RESEND_API_KEY) !== "",
-      apiKey: clean(env.RESEND_API_KEY),
-      senderName: clean(env.MAIL_SENDER_NAME) || name,
-      senderEmail: clean(env.MAIL_SENDER_EMAIL) || DEFAULT_SENDER_EMAIL,
-      ccEmails,
+      enabled: s.mail.enabled,
+      apiKey: s.mail.apiKey,
+      senderName: s.mail.senderName,
+      senderEmail: s.mail.senderEmail,
+      ccEmails: s.mail.ccEmails,
+      replyTo: s.mail.replyTo,
     },
     money: {
-      currency: clean(env.CURRENCY) || "TWD",
-      currencyLocale: clean(env.CURRENCY_LOCALE) || "zh-TW",
-      defaultTaxRate: parseTaxRate(env.DEFAULT_TAX_RATE),
+      currency: s.money.currency,
+      currencyLocale: s.money.currencyLocale,
+      defaultTaxRate: s.quote.defaultTaxRate,
     },
-    features: {
-      twVatLookup: twVat === "1" || twVat === "true",
+    quote: {
+      numberPattern: s.quote.numberPattern,
+      validityDays: s.quote.validityDays,
+      defaultNotes: s.quote.defaultNotes,
+      defaultTerms: s.quote.defaultTerms,
     },
+    appearance: s.appearance,
+    region: s.region,
+    features: s.features,
   };
 }
 
@@ -140,9 +266,8 @@ export function toPublicConfig(config: AppConfig): PublicAppConfig {
   };
 }
 
-type BrandingKind = "logo" | "stamp" | "icon";
-
-function brandingCandidates(kind: BrandingKind, baseDir: string): string[] {
+/** On-disk branding files in fallback order (branding/ is the legacy mount). */
+export function brandingCandidates(kind: BrandingKind, baseDir: string = process.cwd()): string[] {
   const user = (file: string) => path.join(baseDir, "branding", file);
   const fallback = (file: string) =>
     path.join(baseDir, "branding-defaults", file);
@@ -179,6 +304,7 @@ export function getBrandingDataUri(
   return `data:image/png;base64,${file.toString("base64")}`;
 }
 
+/** Env/disk-only branding; prefer services/settings getDocumentBranding("pdf"). */
 export function getQuoteBranding(): QuoteBranding {
   const config = getAppConfig();
   return {

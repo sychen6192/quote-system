@@ -55,6 +55,8 @@ export type EffectiveSettings = {
 };
 
 export type PublicAppConfig = {
+  /** Installed-app name: APP_NAME env || local/main company name || "Quote System" */
+  appName: string;
   companyName: string;
   companyNameLocal: string;
   isDefaultCompany: boolean;
@@ -94,3 +96,5 @@ export type DocumentBranding = {
 };
 
 export type BrandingAsset = { data: Buffer; mime: string; version: string };
+
+export type { SettingsSection } from "./schema";

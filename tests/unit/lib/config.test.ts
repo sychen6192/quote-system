@@ -3,6 +3,8 @@ import * as os from "node:os";
 import * as path from "node:path";
 import {
   getAppConfig,
+  getAppNameOverride,
+  getEnvSettings,
   toPublicConfig,
   getBrandingDataUri,
 } from "@/lib/config";
@@ -60,6 +62,7 @@ describe("getAppConfig", () => {
     expect(config.company.nameLocal).toBe("頂尖有限公司");
     expect(config.payment).toEqual({
       bankName: "Bank",
+      bankCode: "",
       accountName: "Acme",
       accountNumber: "000-111",
     });
@@ -125,6 +128,7 @@ describe("getAppConfig", () => {
     const config = getAppConfig({ BANK_NAME: "Bank" });
     expect(config.payment).toEqual({
       bankName: "Bank",
+      bankCode: "",
       accountName: "",
       accountNumber: "",
     });
@@ -146,6 +150,126 @@ describe("getAppConfig", () => {
       expect(config.money.defaultTaxRate).toBe(5);
     }
   );
+});
+
+describe("getAppConfig — v1.0 env vars", () => {
+  it("defaults the new fields", () => {
+    const config = getAppConfig({});
+    expect(config.appName).toBe("");
+    expect(config.company.website).toBe("");
+    expect(config.mail.replyTo).toBe("");
+    expect(config.quote).toEqual({
+      numberPattern: "QT-{YYYY}{MM}{DD}-{SEQ:3}",
+      validityDays: 30,
+      defaultNotes: "",
+      defaultTerms: "",
+    });
+    expect(config.appearance).toEqual({ brandColor: "#1D4ED8" });
+    expect(config.region).toEqual({ timezone: "Asia/Taipei" });
+  });
+
+  it("maps APP_NAME, COMPANY_WEBSITE, BANK_CODE, MAIL_REPLY_TO and quote defaults", () => {
+    const config = getAppConfig({
+      APP_NAME: '"Acme Quotes"',
+      COMPANY_WEBSITE: "https://acme.test",
+      BANK_CODE: "812",
+      MAIL_REPLY_TO: "sales@acme.test",
+      QUOTE_NUMBER_PATTERN: "ACME-{ROC}{MM}-{SEQ:4}",
+      QUOTE_VALIDITY_DAYS: "45",
+      DEFAULT_NOTES: "Prices exclude shipping.\\nThank you!",
+      DEFAULT_TERMS: "Net 30",
+      BRAND_COLOR: "#0F766E",
+      APP_TIMEZONE: "Asia/Tokyo",
+    });
+    expect(config.appName).toBe("Acme Quotes");
+    expect(config.company.website).toBe("https://acme.test");
+    expect(config.payment).toEqual({
+      bankName: "",
+      bankCode: "812",
+      accountName: "",
+      accountNumber: "",
+    });
+    expect(config.mail.replyTo).toBe("sales@acme.test");
+    expect(config.quote).toEqual({
+      numberPattern: "ACME-{ROC}{MM}-{SEQ:4}",
+      validityDays: 45,
+      defaultNotes: "Prices exclude shipping.\nThank you!",
+      defaultTerms: "Net 30",
+    });
+    expect(config.appearance.brandColor).toBe("#0F766E");
+    expect(config.region.timezone).toBe("Asia/Tokyo");
+  });
+
+  it.each<[Record<string, string>, string]>([
+    [{}, "Asia/Taipei"],
+    [{ TZ: "Europe/Berlin" }, "Europe/Berlin"],
+    [{ TZ: "Europe/Berlin", APP_TIMEZONE: "UTC" }, "UTC"],
+    [{ APP_TIMEZONE: "Not/AZone", TZ: "Europe/Berlin" }, "Europe/Berlin"],
+    [{ APP_TIMEZONE: "+08:00" }, "Asia/Taipei"],
+    [{ TZ: ":/etc/localtime" }, "Asia/Taipei"],
+  ])("timezone from %p is %p", (env, expected) => {
+    expect(getAppConfig(env).region.timezone).toBe(expected);
+  });
+
+  it.each([["0"], ["366"], ["7.5"], ["abc"]])(
+    "falls back QUOTE_VALIDITY_DAYS to 30 for %p",
+    (value) => {
+      expect(getAppConfig({ QUOTE_VALIDITY_DAYS: value }).quote.validityDays).toBe(30);
+    }
+  );
+
+  it.each([["no-seq"], ["{SEQ}{SEQ}"], ["{BAD}-{SEQ}"]])(
+    "ignores an invalid QUOTE_NUMBER_PATTERN %p",
+    (value) => {
+      expect(getAppConfig({ QUOTE_NUMBER_PATTERN: value }).quote.numberPattern).toBe(
+        "QT-{YYYY}{MM}{DD}-{SEQ:3}"
+      );
+    }
+  );
+
+  it("ignores a COMPANY_WEBSITE that is not an http(s) site", () => {
+    expect(getAppConfig({ COMPANY_WEBSITE: "javascript:alert(1).com" }).company.website).toBe("");
+  });
+
+  it.each([["#12345"], ["blue"], ["#GGGGGG"]])("ignores an invalid BRAND_COLOR %p", (value) => {
+    expect(getAppConfig({ BRAND_COLOR: value }).appearance.brandColor).toBe("#1D4ED8");
+  });
+
+  it("upper-cases the currency and ignores an unsupported currency locale", () => {
+    const config = getAppConfig({ CURRENCY: "usd", CURRENCY_LOCALE: "not a locale" });
+    expect(config.money.currency).toBe("USD");
+    expect(config.money.currencyLocale).toBe("zh-TW");
+  });
+});
+
+describe("getEnvSettings", () => {
+  it("only contains the variables that are set", () => {
+    expect(getEnvSettings({ COMPANY_NAME: "Acme", BANK_CODE: " " })).toEqual({
+      layer: {
+        company: { name: "Acme" },
+        payment: undefined,
+        quote: undefined,
+        money: undefined,
+        appearance: undefined,
+        region: undefined,
+        mail: undefined,
+        features: undefined,
+      },
+      apiKey: "",
+      authEnabled: false,
+    });
+  });
+
+  it("treats TW_VAT_LOOKUP=0 as an explicit false and APP_PASSWORD as auth", () => {
+    const env = getEnvSettings({ TW_VAT_LOOKUP: "0", APP_PASSWORD: "'pw'" });
+    expect(env.layer.features).toEqual({ twVatLookup: false });
+    expect(env.authEnabled).toBe(true);
+  });
+
+  it("getAppNameOverride strips quotes", () => {
+    expect(getAppNameOverride({ APP_NAME: "'Acme'" })).toBe("Acme");
+    expect(getAppNameOverride({})).toBe("");
+  });
 });
 
 describe("toPublicConfig", () => {

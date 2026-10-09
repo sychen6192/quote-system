@@ -35,4 +35,5 @@ describe("i18n messages", () => {
       expect(keyPaths(read(locale, ns)).sort()).toEqual(expected);
     }
   });
+
 });

@@ -47,13 +47,13 @@ export default function SendEmailButton({
 
     setIsSending(true);
     try {
-      const res = await sendQuoteEmail(quote);
+      const res = await sendQuoteEmail({ id: quote.id });
 
       if (res.success) {
         toast.success(t("success"));
         setOpen(false);
       } else {
-        toast.error(res.error || t("error"));
+        toast.error(t("error"));
       }
     } catch (err) {
       console.error(err);

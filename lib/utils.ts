@@ -1,72 +1,41 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import {
+  BASIS_POINTS_PER_PERCENT,
+  calculateQuoteFinancials as calculateFinancials,
+  formatMoney,
+  type MoneyItem,
+} from "./money";
+
+export { toBasisPoints, toPercentage } from "./money";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * @deprecated Use formatMoney from "@/lib/money". Kept for older call
+ * sites; fraction digits now follow the currency (USD shows cents).
+ */
 export function formatCurrency(
   cents: number,
-  money: { currency: string; currencyLocale: string }
+  money: { currency: string; currencyLocale: string; fractionDigits?: number }
 ) {
-  try {
-    return new Intl.NumberFormat(money.currencyLocale, {
-      style: "currency",
-      currency: money.currency,
-      maximumFractionDigits: 0,
-    }).format(cents / 100); // 輸入是分 (Cents)
-  } catch (error) {
-    console.warn("formatCurrency: invalid currency config", money, error);
-    return `${money.currency} ${Math.round(cents / 100)}`;
-  }
+  return formatMoney(cents, money);
 }
 
-// 定義 Basis Points 比例：1% = 100 BP
-export const TAX_RATE_SCALE = 100;
+/** 1 % = 100 basis points */
+export const TAX_RATE_SCALE = BASIS_POINTS_PER_PERCENT;
 
 /**
- * 將百分比轉為 Basis Points (存入 DB 用)
- * 例如: 5 (%) -> 500
+ * @deprecated Use calculateQuoteFinancials from "@/lib/money" (discount and
+ * other fees). This 2-argument form has neither.
  */
-export function toBasisPoints(percent: number): number {
-  return Math.round(percent * TAX_RATE_SCALE);
-}
-
-/**
- * 將 Basis Points 轉為百分比 (前端顯示用)
- * 例如: 500 -> 5 (%)
- */
-export function toPercentage(bp: number): number {
-  return bp / TAX_RATE_SCALE;
-}
-
-/**
- * 集中化的金額計算邏輯
- * @param items 商品列表 (unitPrice 單位: 分)
- * @param taxRateBP 稅率 (單位: Basis Points, e.g., 500)
- */
-export function calculateQuoteFinancials(
-  items: { quantity: number; unitPrice: number; isTaxable?: boolean | null }[],
-  taxRateBP: number
-) {
-  // 1. 計算小計 (Subtotal) - 所有項目的總和
-  const subtotal = items.reduce((acc, item) => {
-    return acc + (item.quantity * item.unitPrice);
-  }, 0);
-
-  // 2. 計算稅基 (Taxable Subtotal) - 只加總需要課稅的項目
-  // 如果 isTaxable 為 null 或 undefined，預設視為 true (應稅)
-  const taxableSubtotal = items.reduce((acc, item) => {
-    const isTaxable = item.isTaxable ?? true;
-    return isTaxable ? acc + (item.quantity * item.unitPrice) : acc;
-  }, 0);
-
-  // 3. 計算稅額 (Tax Amount)
-  // 公式: 應稅金額 * (BP / 10000)
-  const taxAmount = Math.round(taxableSubtotal * (taxRateBP / (100 * TAX_RATE_SCALE)));
-
-  // 4. 計算總額 (Total)
-  const totalAmount = subtotal + taxAmount;
-
-  return { subtotal, taxAmount, totalAmount };
+export function calculateQuoteFinancials(items: MoneyItem[], taxRateBP: number) {
+  const totals = calculateFinancials(items, { taxRateBp: taxRateBP });
+  return {
+    subtotal: totals.subtotal,
+    taxAmount: totals.tax,
+    totalAmount: totals.total,
+  };
 }

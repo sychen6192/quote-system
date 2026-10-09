@@ -1,9 +1,9 @@
-import { db } from "@/db";
-import { quotations } from "@/db/schema";
-import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import QuoteForm from "@/components/quote-form";
+import { formValuesFromRecord } from "@/lib/quote-view";
+import type { QuoteFormData } from "@/lib/schemas/quote";
 import { getCustomerOptions } from "@/services/customers";
+import { getQuoteById } from "@/services/quotes";
 
 // 1. 定義 params 為 Promise
 interface EditQuotePageProps {
@@ -14,46 +14,18 @@ export default async function EditQuotePage({ params }: EditQuotePageProps) {
   // 2. 必須先 await 解開 params
   const { id } = await params;
 
-  const quoteId = Number(id);
-
-  if (isNaN(quoteId)) {
-    notFound();
-  }
-
-  const quote = await db.query.quotations.findFirst({
-    where: eq(quotations.id, quoteId),
-    with: {
-      customer: true,
-      items: true,
-    },
-  });
-
+  const quote = await getQuoteById(id);
   if (!quote) {
     notFound();
   }
 
   const companyOptions = await getCustomerOptions();
 
+  // Every saved field goes into the form state (even ones the form has no
+  // input for yet), so saving never drops title, discount, terms, etc.
   const initialData = {
     id: quote.id,
-    companyName: quote.customer?.companyName || "",
-    contactPerson: quote.customer?.contactPerson || "",
-    email: quote.customer?.email || "",
-    phone: quote.customer?.phone || "",
-    vatNumber: quote.customer?.vatNumber || "",
-    address: quote.customer?.address || "",
-    salesperson: quote.salesperson || "",
-    issuedDate: quote.issuedDate
-      ? new Date(quote.issuedDate).toISOString().split("T")[0]
-      : new Date().toISOString().split("T")[0],
-    validUntil: new Date(quote.validUntil).toISOString().split("T")[0],
-    taxRate: (Number(quote.taxRate) || 0) / 100,
-    items: quote.items.map((item) => ({
-      productName: item.productName || "",
-      quantity: item.quantity,
-      unitPrice: item.unitPrice / 100,
-      isTaxable: item.isTaxable ?? true,
-    })),
+    ...(formValuesFromRecord(quote) as Partial<QuoteFormData>),
   };
 
   return (

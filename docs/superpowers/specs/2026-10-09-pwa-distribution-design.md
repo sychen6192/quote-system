@@ -43,15 +43,15 @@ Public share/accept links, quote → invoice conversion, multi-currency per quot
 | `/api/branding/[kind]` | `logo\|stamp\|icon` image; `?v=<version>` → immutable cache. `/api/branding-icon` kept as an alias. |
 | `/api/health` | `SELECT 1` → `{status:"ok"}` / 503. Public. |
 | `/api/auth/login` · `/api/auth/logout` | Public (form POST) |
-| `/manifest.webmanifest`, `/sw.js`, `/offline.html`, `/icons/<file>.png` | Public PWA assets (dotted paths are skipped by the proxy matcher) |
+| `/manifest.webmanifest`, `/sw.js`, `/offline.html`, `/icons/<file>.png` | Public PWA assets (allow-listed in `lib/auth/proxy-rules.ts`) |
 
-Locale validation: the `[locale]` layout calls `hasLocale` → `notFound()`, `generateStaticParams`, `dynamicParams = false`; `app/[locale]/[...rest]/page.tsx` → `notFound()`. **Never** expose private data at a path ending in `.<ext>` (the proxy skips those).
+Locale validation: the `[locale]` layout calls `hasLocale` → `notFound()`, `generateStaticParams`, `dynamicParams = false`; `app/[locale]/[...rest]/page.tsx` → `notFound()`. Ids are parsed as digits only (`/^\\d+$/`), so `1.0` is not a second URL for quote 1.
 
 ## 2. Auth (optional, off by default)
 
 - Enabled iff `APP_PASSWORD` is non-empty. `AUTH_SECRET` (≥32 chars) signs sessions; if unset, derive from APP_PASSWORD with a warning log.
 - Token `v1.<exp>.<b64url(HMAC-SHA256)>`, key = SHA-256(`AUTH_SECRET \0 APP_PASSWORD`), 30 days, cookie `qs_session` httpOnly, SameSite=Lax, `Secure` when `x-forwarded-proto: https`.
-- `proxy.ts` matcher `/((?!_next/static|_next/image|.*\\.\\w+$).*)`. Public: `/api/health`, `/api/auth/*`, `/api/branding/*`, `/api/branding-icon`, `/<locale>/login`. Requests with a `next-action` header are never public. Unauthenticated: `/api/*` and actions → 401, pages → 307 to `/<locale>/login?next=`.
+- `proxy.ts` matcher `/((?!_next/static|_next/image).*)` — dotted paths go through the proxy too (a dotted path skipping it let `[locale]` render the dashboard for `/favicon.ico`, and `/en/quotes/1.0` rendered quote 1 unauthenticated). Public assets pass through without auth or locale: `/sw.js`, `/manifest.webmanifest`, `/offline.html`, `/icons/<file>.<ext>`; any other path whose first segment contains a dot is an empty 404. Public routes: `/api/health`, `/api/auth/*`, `/api/branding/(logo|icon)` (the stamp needs a session), `/api/branding-icon`, `/<locale>/login`. Any non-GET/HEAD request to a page counts as a possible Server Action (also no-JS multipart posts without a `next-action` header) and is never public. Unauthenticated: `/api/*` and actions → 401, pages → 307 to `/<locale>/login?next=`. New public dotted files must be added to `PUBLIC_ASSETS` in `lib/auth/proxy-rules.ts`.
 - Defence in depth: `assertAuthenticated()` (`lib/auth/guard.ts`) is the first call in **every** server action and private route handler.
 - Login: same-origin check, in-memory throttle (5 failures / 15 min / IP), `safeNextPath()` against open redirects. Logout clears the cookie (and the client clears SW caches).
 - `install.sh` generates a random `APP_PASSWORD` so new installs are protected by default; existing deployments without it keep working.

@@ -38,7 +38,7 @@ export default async function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-3">
         <StatCard
           title={t("totalRevenue")}
-          value={formatCurrency(metrics.totalRevenue, money)}
+          value={formatCurrency(metrics.acceptedTotalValue, money)}
           description="All time revenue"
           icon={DollarSign}
           variant="brand"

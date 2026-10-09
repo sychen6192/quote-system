@@ -48,6 +48,7 @@ export default function QuoteForm({
   companyOptions = [],
 }: QuoteFormProps) {
   const t = useTranslations("QuoteForm");
+  const tv = useTranslations("Validation");
   const format = useFormatter();
   const router = useRouter();
   const { currency, defaultTaxRate, twVatLookup } = useAppConfig();
@@ -116,7 +117,7 @@ export default function QuoteForm({
     setVatLoading(true);
     try {
       const res = await lookupVatNumber(form.getValues("vatNumber") || "");
-      if (res.ok) {
+      if (res.success) {
         form.setValue("companyName", res.company.companyName, {
           shouldDirty: true,
           shouldValidate: true,
@@ -132,9 +133,9 @@ export default function QuoteForm({
         toast.success(t("vatLookup.filled"));
       } else {
         const key =
-          res.reason === "INVALID"
+          res.code === "INVALID"
             ? "invalid"
-            : res.reason === "NOT_FOUND"
+            : res.code === "NOT_FOUND"
               ? "notFound"
               : "error";
         toast.error(t(`vatLookup.${key}`));
@@ -220,7 +221,7 @@ export default function QuoteForm({
             />
             {form.formState.errors.companyName && (
               <p className="text-xs font-medium text-destructive">
-                {form.formState.errors.companyName.message}
+                {tv(form.formState.errors.companyName.message ?? "required")}
               </p>
             )}
           </div>
@@ -554,6 +555,7 @@ function FormField({
   required,
   placeholder,
 }: FormFieldProps) {
+  const tv = useTranslations("Validation");
   return (
     <div className="space-y-2">
       <label className="text-sm font-medium flex items-center gap-1">
@@ -571,7 +573,7 @@ function FormField({
       />
       {error && (
         <p className="text-destructive text-xs font-medium animate-in fade-in-0 slide-in-from-top-1">
-          {error.message}
+          {tv(error.message ?? "required")}
         </p>
       )}
     </div>

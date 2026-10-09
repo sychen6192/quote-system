@@ -19,6 +19,10 @@ export const MESSAGE_NAMESPACES = [
   "NewQuote",
   "QuoteForm",
   "QuoteActions",
+  "Auth",
+  "Errors",
+  "Validation",
+  "UI",
 ] as const;
 
 export async function loadMessages(locale: string): Promise<AbstractIntlMessages> {
