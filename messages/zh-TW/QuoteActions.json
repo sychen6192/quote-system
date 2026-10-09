@@ -1,0 +1,16 @@
+{
+  "backToList": "返回列表",
+  "export": "匯出",
+  "downloadPdf": "下載 PDF",
+  "print": "列印",
+  "sendEmail": "寄送報價單",
+  "emailNotConfigured": "尚未設定寄信功能",
+  "sending": "寄送中...",
+  "confirmSend": "確認寄送",
+  "cancel": "取消",
+  "dialogTitle": "寄送報價單？",
+  "dialogDesc": "確定要將此報價單寄送給：",
+  "success": "Email 寄送成功！",
+  "error": "Email 寄送失敗",
+  "genericError": "發生錯誤，請稍後再試"
+}

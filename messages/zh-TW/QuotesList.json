@@ -1,0 +1,20 @@
+{
+  "title": "報價單列表",
+  "createQuote": "建立報價單",
+  "backToDashboard": "返回儀表板",
+  "emptyState": "尚無報價單，請建立您的第一張報價單！",
+  "unknownCustomer": "未知客戶",
+  "table": {
+    "quoteNumber": "報價單號",
+    "customer": "客戶名稱",
+    "salesperson": "銷售人員",
+    "date": "開立日期",
+    "validUntil": "有效期限",
+    "totalAmount": "總金額",
+    "action": "操作"
+  },
+  "status": {
+    "expired": "已過期",
+    "active": "有效"
+  }
+}

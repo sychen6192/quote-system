@@ -1,0 +1,59 @@
+{
+  "header": {
+    "createTitle": "New Quotation",
+    "createDesc": "Fill in the details to generate a new quote.",
+    "editTitle": "Edit Quote #{id}",
+    "editDesc": "Update the quotation details below."
+  },
+  "sections": {
+    "customerDetails": "Customer Details",
+    "items": "Quote Items"
+  },
+  "fields": {
+    "companyName": "Company Name",
+    "contactPerson": "Contact Person",
+    "email": "Email",
+    "phone": "Phone",
+    "vatNumber": "VAT Number",
+    "salesperson": "Salesperson",
+    "address": "Billing Address",
+    "issuedDate": "Issued Date",
+    "validUntil": "Valid Until"
+  },
+  "table": {
+    "product": "Product / Service",
+    "qty": "Qty",
+    "price": "Unit Price",
+    "taxable": "Taxable",
+    "amount": "Amount"
+  },
+  "placeholders": {
+    "itemName": "Item name"
+  },
+  "vatLookup": {
+    "button": "Look up",
+    "filled": "Company details filled from VAT number",
+    "invalid": "Enter an 8-digit VAT number",
+    "notFound": "No company found for this VAT number",
+    "error": "Lookup failed — try again or enter manually"
+  },
+  "summary": {
+    "subtotal": "Subtotal",
+    "taxRate": "Tax Rate",
+    "taxAmount": "Tax Amount",
+    "total": "Total"
+  },
+  "actions": {
+    "save": "Save Quote",
+    "update": "Update Quote",
+    "saving": "Saving...",
+    "cancel": "Cancel",
+    "addItem": "Add Item"
+  },
+  "messages": {
+    "created": "Quote created successfully!",
+    "updated": "Quote updated successfully!",
+    "error": "Something went wrong",
+    "confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"
+  }
+}

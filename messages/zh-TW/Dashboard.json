@@ -1,0 +1,16 @@
+{
+  "title": "儀表板",
+  "subtitle": "您的業務概況總覽",
+  "totalRevenue": "總營收",
+  "totalQuotes": "報價單總數",
+  "customers": "客戶總數",
+  "recentQuotes": "最近報價單",
+  "createQuote": "建立報價單",
+  "viewAll": "查看全部",
+  "status": {
+    "draft": "草稿",
+    "sent": "已發送",
+    "accepted": "已成交",
+    "rejected": "已拒絕"
+  }
+}

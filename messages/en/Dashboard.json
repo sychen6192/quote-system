@@ -1,0 +1,16 @@
+{
+  "title": "Dashboard",
+  "subtitle": "Overview of your business performance",
+  "totalRevenue": "Total Revenue",
+  "totalQuotes": "Total Quotes",
+  "customers": "Customers",
+  "recentQuotes": "Recent Quotations",
+  "createQuote": "Create Quote",
+  "viewAll": "View All",
+  "status": {
+    "draft": "Draft",
+    "sent": "Sent",
+    "accepted": "Accepted",
+    "rejected": "Rejected"
+  }
+}

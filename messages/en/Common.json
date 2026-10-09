@@ -1,0 +1,14 @@
+{
+  "backToDashboard": "Back to Dashboard",
+  "toggleTheme": "Toggle theme",
+  "number": "Number",
+  "customer": "Customer",
+  "status": "Status",
+  "date": "Date",
+  "amount": "Amount",
+  "pagination": {
+    "previous": "Previous",
+    "next": "Next",
+    "pageInfo": "Page {current} of {total}"
+  }
+}

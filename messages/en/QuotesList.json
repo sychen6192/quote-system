@@ -1,0 +1,20 @@
+{
+  "title": "Quotations",
+  "createQuote": "Create Quote",
+  "backToDashboard": "Back to Dashboard",
+  "emptyState": "No quotations found. Create your first one!",
+  "unknownCustomer": "Unknown",
+  "table": {
+    "quoteNumber": "Quote #",
+    "customer": "Customer",
+    "salesperson": "Salesperson",
+    "date": "Date",
+    "validUntil": "Valid Until",
+    "totalAmount": "Total Amount",
+    "action": "Action"
+  },
+  "status": {
+    "expired": "Expired",
+    "active": "Active"
+  }
+}
