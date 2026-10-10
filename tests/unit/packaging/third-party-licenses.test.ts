@@ -20,6 +20,8 @@ function run(root: string, args: string[] = []) {
   return execFileSync(process.execPath, [SCRIPT, "--root", root, ...args], {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
+    // NEXT_DIST_DIR (parallel local builds) would point the script elsewhere.
+    env: { ...process.env, NEXT_DIST_DIR: "" },
   });
 }
 
@@ -27,7 +29,9 @@ describe("scripts/third-party-licenses.mjs", () => {
   let root: string;
 
   beforeEach(() => {
-    root = fs.mkdtempSync(path.join(os.tmpdir(), "licenses-"));
+    // Under a directory named "cache", like ~/.cache checkouts: only the
+    // build's own cache/ is skipped.
+    root = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "licenses-")), "cache", "app");
     write(root, {
       "package.json": pkg("app", "1.0.0"),
       "package-lock.json": JSON.stringify({
@@ -41,6 +45,7 @@ describe("scripts/third-party-licenses.mjs", () => {
           "node_modules/traced": { version: "1.0.0", dev: true },
           "node_modules/inner": { version: "1.0.0", dev: true },
           "node_modules/tailwindcss": { version: "3.4.0", dev: true },
+          "node_modules/test-runner": { version: "1.0.0", devOptional: true },
           "node_modules/linked": { link: true, resolved: "../linked" },
         },
       }),
@@ -50,6 +55,7 @@ describe("scripts/third-party-licenses.mjs", () => {
       "node_modules/prod-dep/LICENSE": "Copyright (c) Prod Dep authors\n",
       "node_modules/prod-dep/lib/license.js": "module.exports = 'code, not a license';\n",
       "node_modules/prod-dep/dist/compiled/bundled/LICENSE.md": "Bundled dependency license\n",
+      "node_modules/prod-dep/THIRD-PARTY-NOTICES.md": "Bundled notices\n",
       "node_modules/prod-dep/node_modules/nested/package.json": pkg("nested", "2.0.0"),
       "node_modules/prod-dep/node_modules/nested/LICENCE.txt": "Nested license\n",
       "node_modules/build-only/package.json": pkg("build-only", "1.0.0"),
@@ -61,15 +67,17 @@ describe("scripts/third-party-licenses.mjs", () => {
       "node_modules/inner/package.json": pkg("inner", "1.0.0"),
       "node_modules/tailwindcss/package.json": pkg("tailwindcss", "3.4.0"),
       "node_modules/tailwindcss/LICENSE": "Tailwind license\n",
+      "node_modules/test-runner/package.json": pkg("test-runner", "1.0.0"),
+      "node_modules/test-runner/LICENSE": "Test runner license\n",
       // Build output: a traced package, and server source maps naming a
-      // scoped dev package (URL-encoded, as Turbopack writes it) and a package
-      // whose own source map points into its build tree.
+      // scoped dev package (relative and URL-encoded, as Turbopack writes it)
+      // and a package whose own source map points into its build tree.
       ".next/standalone/node_modules/traced/package.json": pkg("traced", "1.0.0"),
       ".next/standalone/node_modules/traced/index.js": "",
       ".next/server/chunks/ssr/a.js.map": JSON.stringify({
         version: 3,
         sources: [
-          "turbopack:///[project]/node_modules/%40scope/icons/dist/esm/icons/plus.js",
+          "../../../node_modules/%40scope/icons/dist/esm/icons/plus.js",
           "turbopack:///[project]/node_modules/.aspect_rules_js/inner@1.0.0/node_modules/inner/lib/x.js",
           "turbopack:///[project]/components/ui/button.tsx",
         ],
@@ -78,7 +86,7 @@ describe("scripts/third-party-licenses.mjs", () => {
     });
   });
 
-  afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
+  afterEach(() => fs.rmSync(path.dirname(path.dirname(root)), { recursive: true, force: true }));
 
   const entries = (text: string) => text.match(/^\S+ \d+\.\d+\.\d+$/gm) ?? [];
 
@@ -94,6 +102,7 @@ describe("scripts/third-party-licenses.mjs", () => {
     ]);
     expect(text).toContain("\n6 packages\n");
     expect(text).not.toContain("build-only");
+    expect(text).not.toContain("test-runner");
     expect(text).not.toMatch(/^app 1\.0\.0$/m);
   });
 
@@ -107,6 +116,8 @@ describe("scripts/third-party-licenses.mjs", () => {
     expect(prod).toContain("Copyright (c) Prod Dep authors");
     expect(prod).toContain("--- dist/compiled/bundled/LICENSE.md");
     expect(prod).toContain("Bundled dependency license");
+    expect(prod).toContain("--- THIRD-PARTY-NOTICES.md");
+    expect(prod).toContain("Bundled notices");
     expect(prod).not.toContain("code, not a license");
     expect(prod).not.toContain("Nested license");
 
@@ -125,11 +136,7 @@ describe("scripts/third-party-licenses.mjs", () => {
 
   it("falls back to the production dependencies when there is no build", () => {
     fs.rmSync(path.join(root, ".next"), { recursive: true });
-    const result = execFileSync(process.execPath, [SCRIPT, "--root", root], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    expect(entries(result)).toEqual(["nested 2.0.0", "prod-dep 1.0.0", "tailwindcss 3.4.0"]);
+    expect(entries(run(root))).toEqual(["nested 2.0.0", "prod-dep 1.0.0", "tailwindcss 3.4.0"]);
   });
 
   it("rejects unknown arguments", () => {

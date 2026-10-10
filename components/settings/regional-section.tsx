@@ -189,8 +189,11 @@ function SelectOrOther({
 }) {
   const { control } = useFormContext<RegionalForm>();
   const otherRef = useRef<HTMLInputElement | null>(null);
-  // Set when "Other…" is picked: the Select hands focus back to its trigger
-  // as it closes, and typing there would type-ahead-select a listed value.
+  // Whether the list's close moves focus to the "Other…" field instead of the
+  // trigger, where typing would type-ahead-select a listed value. Each open
+  // arms it in Other mode (picking "Other…" again fires no onValueChange);
+  // picking "Other…" arms it; a listed pick, Escape or a click outside
+  // disarms it.
   const focusOtherOnClose = useRef(false);
   // Selected, so typing replaces the value carried over from the list
   // (a currency is capped at 3 letters, so typing after it did nothing).
@@ -224,6 +227,9 @@ function SelectOrOther({
           <div className="flex flex-col gap-2 sm:flex-row">
             <Select
               value={isOther ? OTHER : field.value}
+              onOpenChange={(open) => {
+                if (open) focusOtherOnClose.current = isOther;
+              }}
               onValueChange={(next) => {
                 if (next === OTHER) {
                   setOtherMode(true);
@@ -232,6 +238,7 @@ function SelectOrOther({
                   requestAnimationFrame(focusOther);
                   return;
                 }
+                focusOtherOnClose.current = false;
                 setOtherMode(false);
                 field.onChange(next);
               }}
@@ -243,6 +250,12 @@ function SelectOrOther({
               </FormControl>
               <SelectContent
                 className="max-h-80"
+                onEscapeKeyDown={() => {
+                  focusOtherOnClose.current = false;
+                }}
+                onPointerDownOutside={() => {
+                  focusOtherOnClose.current = false;
+                }}
                 onCloseAutoFocus={(event) => {
                   if (!focusOtherOnClose.current) return;
                   focusOtherOnClose.current = false;

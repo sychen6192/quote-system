@@ -6,7 +6,9 @@
 //   node scripts/third-party-licenses.mjs [--out FILE] [--root DIR] [--dist DIR]
 //
 // A package is listed when any of these hold:
-// - it is in the production dependency tree (package-lock.json, not dev);
+// - it is in the production dependency tree: a package-lock.json entry that
+//   is installed and neither dev nor devOptional (a dev dependency that a
+//   production package only lists as optional, like @playwright/test for next);
 // - Next traced it into <dist>/standalone/node_modules;
 // - a server source map in <dist> names a file in it (code compiled into the
 //   app's chunks, including client components rendered on the server);
@@ -16,7 +18,10 @@ import fs from "node:fs";
 import path from "node:path";
 
 const CSS_PACKAGES = ["tailwindcss", "tailwindcss-animate", "@tailwindcss/container-queries"];
-const LICENSE_FILE = /^(licen[sc]e|copying|copyright|notice)([-_.].*)?$/i;
+// LICENSE, LICENCE.txt, COPYING, NOTICE, CopyrightNotice.txt, and the
+// THIRD-PARTY-NOTICES.md / ThirdPartyNotices.txt of packages that bundle
+// other code (prettier).
+const LICENSE_FILE = /^(?:third[-_]?party[-_]?)?(?:licen[sc]es?|copying|copyright(?:notice)?|notices?)(?:[-_.].*)?$/i;
 const CODE_FILE = /\.(?:[cm]?[jt]sx?|json|map|html?|css)$/i; // e.g. lib/license.js
 // node_modules/<name> or node_modules/@scope/<name>, possibly nested.
 const PACKAGE_PATH = /(?:^|\/)((?:node_modules\/(?:@[^/]+\/)?[^/]+\/)*node_modules\/(?:@[^/]+\/)?[^/]+)\//;
@@ -67,7 +72,7 @@ function collectPackagePaths(root, dist) {
   const lockFile = path.join(root, "package-lock.json");
   if (fs.existsSync(lockFile)) {
     for (const [key, entry] of Object.entries(readJson(lockFile).packages ?? {})) {
-      if (key.startsWith("node_modules/") && !entry.dev && !entry.link) paths.add(key);
+      if (key.startsWith("node_modules/") && !entry.dev && !entry.devOptional && !entry.link) paths.add(key);
     }
   }
 
@@ -81,7 +86,8 @@ function collectPackagePaths(root, dist) {
   }
 
   for (const file of walk(distDir, (name) => name.endsWith(".map"), { intoNodeModules: false })) {
-    if (file.startsWith(standalone + path.sep) || file.includes(`${path.sep}cache${path.sep}`)) continue;
+    const top = path.relative(distDir, file).split(path.sep)[0];
+    if (top === "standalone" || top === "cache") continue;
     let sources;
     try {
       sources = readJson(file).sources ?? [];
@@ -100,10 +106,10 @@ function collectPackagePaths(root, dist) {
 
 /**
  * The installed package a source-map entry belongs to. Turbopack writes
- * "[project]/node_modules/%40scope/name/…"; packages that ship their own
- * source maps can point into their build tree instead (e.g.
- * "node_modules/.aspect_rules_js/…/node_modules/@formatjs/…"), so fall back
- * to the innermost package name installed at the top level.
+ * paths relative to the map ("../../../node_modules/%40scope/name/…");
+ * packages that ship their own source maps can point into their build tree
+ * instead (e.g. "node_modules/.aspect_rules_js/…/node_modules/@formatjs/…"),
+ * so fall back to the innermost package name installed at the top level.
  */
 function packageOfSource(root, source) {
   let text = source.replace(/\\/g, "/");

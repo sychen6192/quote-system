@@ -2,7 +2,7 @@
 
 Quote System is released under the [MIT License](LICENSE). It includes or adapts the third-party material listed below.
 
-The npm packages the app is built from are listed with their license texts in `THIRD_PARTY_LICENSES.txt`. The Docker image carries it at `/app/THIRD_PARTY_LICENSES.txt`, next to this file (in an install made from `deploy/`, `docker compose exec app cat /app/THIRD_PARTY_LICENSES.txt` prints it). To write it from a checkout, run `npm run build` and then `npm run licenses`.
+The npm packages the app is built from are listed in `THIRD_PARTY_LICENSES.txt`, with their declared licenses and the license and notice files they publish. The Docker image carries it at `/app/THIRD_PARTY_LICENSES.txt`, next to this file (in an install made from `deploy/`, `docker compose exec app cat /app/THIRD_PARTY_LICENSES.txt` prints it). To write it from a checkout, run `npm run build` and then `npm run licenses`.
 
 ## Invoify
 
@@ -167,7 +167,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
 ## Major runtime dependencies
 
-These npm packages run in production. Their full license texts ship with each package.
+These npm packages run in production. `THIRD_PARTY_LICENSES.txt` (see above) names each one's declared license with the license and notice files it publishes. A few publish no license file (drizzle-orm, postgres, @react-pdf/renderer and fontkit among them); for those, the license is the one named in the table.
 
 | Package | License |
 |---|---|
