@@ -1,20 +1,22 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 
 import "./globals.css";
-import { Toaster } from "sonner";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { notFound } from "next/navigation";
-import { routing } from "@/navigation";
 import NextTopLoader from "nextjs-toploader";
-import { getAppConfig, toPublicConfig } from "@/lib/config";
-import { pickCompanyName } from "@/lib/company-name";
+import { routing } from "@/navigation";
+import { getPublicConfig } from "@/services/settings";
+import { brandColorCss, brandHex } from "@/lib/brand-color";
 import { AppConfigProvider } from "@/components/providers/app-config-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
-import { TopNav } from "@/components/app-shell/top-nav";
+import { AppToaster } from "@/components/providers/app-toaster";
+import { AppShell } from "@/components/app-shell/app-shell";
+import { appDisplayName, brandDisplayName, shortAppName } from "@/components/app-shell/brand-name";
+import { PwaRoot } from "@/components/pwa/pwa-root";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
 
 // Only the configured locales exist: anything else in the first segment
 // (/foo, /sw.js, /manifest.webmanifest) is a 404, never the dashboard.
@@ -24,75 +26,78 @@ export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ locale: string }>;
-}): Promise<Metadata> {
+type Params = Promise<{ locale: string }>;
+
+export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { locale } = await params;
   if (!hasLocale(routing.locales, locale)) notFound();
 
   const t = await getTranslations({ locale, namespace: "Metadata" });
-  const config = getAppConfig();
-  const displayName = pickCompanyName(
-    config.company.name,
-    config.company.nameLocal,
-    locale
-  );
-  const title = config.company.isDefault
-    ? t("title")
-    : `${displayName} | ${t("title")}`;
+  const config = await getPublicConfig();
+  const appName = appDisplayName(config, t("title"));
+  const brand = brandDisplayName(config, locale, t("title"));
+  const v = encodeURIComponent(config.version);
 
   return {
-    title,
+    title: { default: brand, template: `%s | ${appName}` },
     description: t("description"),
-    icons: { icon: "/api/branding-icon" },
+    applicationName: appName,
+    robots: { index: false, follow: false },
+    icons: {
+      icon: [
+        { url: `/icons/favicon-32.png?v=${v}`, sizes: "32x32", type: "image/png" },
+        { url: `/icons/any-192.png?v=${v}`, sizes: "192x192", type: "image/png" },
+      ],
+      apple: `/icons/apple-180.png?v=${v}`,
+    },
+    appleWebApp: { capable: true, title: shortAppName(appName), statusBarStyle: "default" },
+    formatDetection: { telephone: false },
   };
 }
 
-export default async function RootLayout({
+// Matches the app's surfaces (PwaRoot keeps it in sync with the chosen theme),
+// so the Android status bar doesn't flash the brand colour on load.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#090e1a" },
+  ],
+};
+
+export default async function LocaleLayout({
   children,
   params,
 }: Readonly<{
   children: React.ReactNode;
-  params: Promise<{ locale: string }>;
+  params: Params;
 }>) {
   const { locale } = await params;
   if (!hasLocale(routing.locales, locale)) notFound();
   setRequestLocale(locale);
 
-  const messages = await getMessages();
-  const publicConfig = toPublicConfig(getAppConfig());
+  const [messages, config] = await Promise.all([getMessages(), getPublicConfig()]);
+  const brandCss = brandColorCss(config.brandColor);
+  const brand = brandHex(config.brandColor);
 
   return (
-    <html lang={locale} suppressHydrationWarning>
-      <body className={inter.className}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem={false}
-          disableTransitionOnChange
-        >
-          <NextTopLoader
-            color="#1D4ED8"
-            initialPosition={0.08}
-            crawlSpeed={200}
-            height={3}
-            crawl={true}
-            showSpinner={false}
-            easing="ease"
-            speed={200}
-            shadow="0 0 10px #1D4ED8,0 0 5px #1D4ED8"
-          />
-          <AppConfigProvider value={publicConfig}>
-            <NextIntlClientProvider messages={messages}>
-              <TopNav />
-              <main className="min-h-[calc(100vh-3.5rem)] bg-muted/30">
-                {children}
-              </main>
-            </NextIntlClientProvider>
-          </AppConfigProvider>
-          <Toaster />
+    <html lang={locale} className={inter.variable} suppressHydrationWarning>
+      <head>
+        {/* Numbers only (lib/brand-color.ts), so inlining is safe. */}
+        {brandCss ? <style id="brand-color" dangerouslySetInnerHTML={{ __html: brandCss }} /> : null}
+      </head>
+      <body className="min-h-dvh bg-background font-sans antialiased">
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <NextTopLoader color={brand} height={3} showSpinner={false} shadow={false} zIndex={1600} />
+          <NextIntlClientProvider messages={messages}>
+            <AppConfigProvider value={config}>
+              <AppShell>{children}</AppShell>
+              <AppToaster />
+              <PwaRoot />
+            </AppConfigProvider>
+          </NextIntlClientProvider>
         </ThemeProvider>
       </body>
     </html>

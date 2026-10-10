@@ -1,0 +1,56 @@
+{
+  "meta": {
+    "title": "Quotation {number}"
+  },
+  "back": "Quotes",
+  "backLabel": "Back to quotes",
+  "total": "Total",
+  "issued": "Issued {date}",
+  "validUntil": "Valid until {date}",
+  "daysLeft": "{days, plural, =0 {expires today} one {# day left} other {# days left}}",
+  "expiredAgo": "{days, plural, one {expired yesterday} other {expired # days ago}}",
+  "itemCount": "{count, plural, one {# item} other {# items}}",
+  "expiredBanner": {
+    "title": "This quote expired on {date}",
+    "description": "Prices or availability may have changed. Duplicate it to send an updated quote, or edit it and extend the validity.",
+    "duplicate": "Duplicate as new quote"
+  },
+  "viewer": {
+    "label": "Quotation document",
+    "zoom": "Zoom",
+    "fit": "Fit",
+    "actual": "100%"
+  },
+  "customer": {
+    "title": "Customer",
+    "contact": "Contact",
+    "email": "Email",
+    "phone": "Phone",
+    "address": "Address",
+    "vatNumber": "Tax ID",
+    "viewQuotes": "All quotes for this customer",
+    "noContact": "No contact details on this quote."
+  },
+  "details": {
+    "title": "Details",
+    "salesperson": "Salesperson",
+    "paymentTerms": "Payment terms",
+    "delivery": "Delivery",
+    "deliveryDate": "Delivery date",
+    "items": "Items",
+    "createdAt": "Created",
+    "updatedAt": "Last edited"
+  },
+  "activity": {
+    "title": "Activity",
+    "created": "Quote created",
+    "updated": "Quote edited",
+    "statusChanged": "Status changed",
+    "emailed": "Emailed to {to}",
+    "emailedCc": "CC {cc}",
+    "duplicated": "Duplicated",
+    "unknown": "Updated",
+    "empty": "No activity yet.",
+    "justNow": "just now"
+  }
+}

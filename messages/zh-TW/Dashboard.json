@@ -1,16 +1,32 @@
 {
   "title": "儀表板",
-  "subtitle": "您的業務概況總覽",
-  "totalRevenue": "總營收",
-  "totalQuotes": "報價單總數",
-  "customers": "客戶總數",
-  "recentQuotes": "最近報價單",
-  "createQuote": "建立報價單",
-  "viewAll": "查看全部",
-  "status": {
-    "draft": "草稿",
-    "sent": "已發送",
-    "accepted": "已成交",
-    "rejected": "已拒絕"
+  "subtitle": "報價概況一覽・{date}",
+  "newQuote": "新增報價單",
+  "kpi": {
+    "label": "關鍵指標",
+    "openPipeline": "洽談中金額",
+    "openPipelineHint": "{count, plural, =0 {目前沒有等待回覆的報價單} other {# 張報價單等待客戶回覆}}",
+    "acceptedThisMonth": "本月成交",
+    "acceptedThisMonthHint": "{count, plural, =0 {本月尚未成交} other {本月已成交 # 張}}",
+    "acceptanceRate": "成交率",
+    "acceptanceRateHint": "近 90 天",
+    "acceptanceRateEmpty": "近 90 天尚無成交或拒絕紀錄",
+    "drafts": "草稿",
+    "draftsHint": "{count, plural, =0 {沒有待送出的草稿} other {尚未送出}}",
+    "expiredHint": "{count, plural, other {# 張報價單已過期}}",
+    "viewList": "在報價單列表中查看"
+  },
+  "expiring": {
+    "title": "7 天內到期",
+    "description": "趁報價失效前，記得跟客戶聯繫。",
+    "empty": "未來 7 天內沒有即將到期的報價單。",
+    "daysLeft": "{days, plural, =0 {今天} =1 {明天} other {# 天}}",
+    "daysLeftLabel": "{days, plural, =0 {今天到期} =1 {明天到期} other {# 天後到期}}"
+  },
+  "recent": {
+    "title": "最近的報價單",
+    "viewAll": "查看全部",
+    "issued": "開立日期",
+    "total": "總金額"
   }
 }

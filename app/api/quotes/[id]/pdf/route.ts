@@ -5,7 +5,7 @@ import { jsonError } from "@/lib/auth/http";
 import { isAppLocale } from "@/lib/auth/paths";
 import { todayInTimeZone } from "@/lib/dates";
 import { getCachedPdf, pdfCacheKey, setCachedPdf } from "@/lib/pdf/cache";
-import { contentDisposition, quotePdfFilename } from "@/lib/pdf/filename";
+import { localizedPdfDisposition } from "@/lib/pdf/labels";
 import { loadQuoteForPdf, renderQuotePdf } from "@/lib/pdf/quote-pdf";
 import { getDocumentBranding, getSettings } from "@/services/settings";
 
@@ -51,24 +51,17 @@ export async function GET(
     if (!quote) return jsonError("NOT_FOUND", 404);
 
     const settings = await getSettings();
+    const today = todayInTimeZone(settings.region.timezone);
     // Legacy rows may lack updated_at; without it an edit could not bust the entry.
     const key = quote.updatedAt
-      ? pdfCacheKey({
-          id,
-          updatedAt: quote.updatedAt,
-          lang,
-          version: settings.version,
-          today: todayInTimeZone(settings.region.timezone),
-        })
+      ? pdfCacheKey({ id, updatedAt: quote.updatedAt, lang, version: settings.version, today })
       : null;
 
     let pdf = key ? getCachedPdf(key) : null;
     const hit = pdf !== null;
     if (!pdf) {
       const branding = await getDocumentBranding("pdf");
-      pdf = await renderQuotePdf(quote, branding, {
-        defaultTaxRate: settings.quote.defaultTaxRate,
-      });
+      pdf = await renderQuotePdf(quote, branding, { lang, today });
       if (key) setCachedPdf(key, pdf);
     }
 
@@ -76,9 +69,10 @@ export async function GET(
       headers: {
         "Content-Type": "application/pdf",
         "Content-Length": String(pdf.byteLength),
-        "Content-Disposition": contentDisposition(
+        "Content-Disposition": localizedPdfDisposition(
           download ? "attachment" : "inline",
-          quotePdfFilename(quote.quotationNumber)
+          quote.quotationNumber,
+          lang
         ),
         // Customer PII: never in shared caches or the service worker.
         "Cache-Control": "private, no-store",

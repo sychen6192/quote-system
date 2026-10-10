@@ -163,13 +163,15 @@ describe("sendQuoteEmail", () => {
     expect(message.cc).toEqual(["boss@acme.test", "pm@acme.test"]);
     expect(message.replyTo).toBe("office@acme.test");
     // default language follows the money locale (zh-TW) and uses the local name
-    expect(message.subject).toBe("艾克米有限公司 報價單 QT-20261009-001");
+    expect(message.subject).toBe("報價單 QT-20261009-001 — 艾克米有限公司");
     expect(message.attachments).toEqual([
-      { filename: "Quote-QT-20261009-001.pdf", content: Buffer.from("%PDF-1.7") },
+      { filename: "報價單-QT-20261009-001.pdf", content: Buffer.from("%PDF-1.7") },
     ]);
-    expect(message.html).toMatch(
-      /<body style="margin:0"><div[^>]*>Hi &lt;b&gt;there&lt;\/b&gt;\nSee attached &amp; thanks<\/div><p>Quote<\/p>/
-    );
+    // The personal note goes to the template as a prop (React escapes it);
+    // it is never spliced into the rendered HTML.
+    const element = (render as jest.Mock).mock.calls[0][0];
+    expect(element.props.message).toBe("Hi <b>there</b>\nSee attached & thanks");
+    expect(message.html).not.toContain("<b>there</b>");
     expect(message.text).toBe("Quote");
     expect(registerPdfFonts).toHaveBeenCalled();
   });

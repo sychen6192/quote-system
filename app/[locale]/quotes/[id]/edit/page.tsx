@@ -1,36 +1,55 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import QuoteForm from "@/components/quote-form";
+import { getTranslations, setRequestLocale } from "next-intl/server";
+import { quoteDraftKey, quoteDraftPrefix } from "@/components/quote-form/form-model";
+import { QuoteForm } from "@/components/quote-form/quote-form";
+import { todayInTimeZone } from "@/lib/dates";
 import { formValuesFromRecord } from "@/lib/quote-view";
-import type { QuoteFormData } from "@/lib/schemas/quote";
-import { getCustomerOptions } from "@/services/customers";
-import { getQuoteById } from "@/services/quotes";
+import { parseQuoteId } from "@/lib/schemas/quote";
+import { normalizeStatus } from "@/lib/status";
+import { getDocumentBranding, getSettings } from "@/services/settings";
+import { loadQuote } from "./load-quote";
 
-// 1. 定義 params 為 Promise
-interface EditQuotePageProps {
-  params: Promise<{ id: string }>;
+export const dynamic = "force-dynamic";
+
+type Params = Promise<{ locale: string; id: string }>;
+
+export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
+  const { locale, id } = await params;
+  const quoteId = parseQuoteId(id);
+  const quote = quoteId === null ? null : await loadQuote(quoteId);
+  if (!quote) return {};
+  const t = await getTranslations({ locale, namespace: "QuoteForm.meta" });
+  return { title: t("editTitle", { number: quote.quotationNumber }) };
 }
 
-export default async function EditQuotePage({ params }: EditQuotePageProps) {
-  // 2. 必須先 await 解開 params
-  const { id } = await params;
+export default async function EditQuotePage({ params }: { params: Params }) {
+  const { locale, id } = await params;
+  setRequestLocale(locale);
 
-  const quote = await getQuoteById(id);
-  if (!quote) {
-    notFound();
-  }
+  const quoteId = parseQuoteId(id);
+  if (quoteId === null) notFound();
 
-  const companyOptions = await getCustomerOptions();
-
-  // Every saved field goes into the form state (even ones the form has no
-  // input for yet), so saving never drops title, discount, terms, etc.
-  const initialData = {
-    id: quote.id,
-    ...(formValuesFromRecord(quote) as Partial<QuoteFormData>),
-  };
+  const [quote, settings, branding] = await Promise.all([
+    loadQuote(quoteId),
+    getSettings(),
+    getDocumentBranding("html"),
+  ]);
+  if (!quote) notFound();
 
   return (
-    <div className="container mx-auto">
-      <QuoteForm initialData={initialData} companyOptions={companyOptions} />
-    </div>
+    <QuoteForm
+      mode="edit"
+      quoteId={quote.id}
+      quotationNumber={quote.quotationNumber}
+      status={normalizeStatus(quote.status)}
+      // Every saved field goes into the form state, so saving never drops
+      // anything the form shows only conditionally (discount, fees…).
+      initialValues={formValuesFromRecord(quote)}
+      draftKey={quoteDraftKey({ id: quote.id, updatedAt: quote.updatedAt })}
+      draftPrunePrefix={quoteDraftPrefix(quote.id)}
+      today={todayInTimeZone(settings.region.timezone)}
+      branding={branding}
+    />
   );
 }

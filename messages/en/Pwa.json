@@ -1,0 +1,59 @@
+{
+  "manifest": {
+    "description": "Create, send and track quotations.",
+    "shortcuts": {
+      "newQuote": "New quote",
+      "newQuoteDescription": "Start a new quotation",
+      "quotes": "Quotes",
+      "quotesDescription": "Browse and search your quotations",
+      "customers": "Customers",
+      "customersDescription": "Your customer directory"
+    }
+  },
+  "update": {
+    "title": "A new version is ready",
+    "description": "Reload to start using it.",
+    "reload": "Reload"
+  },
+  "network": {
+    "offlineTitle": "You're offline",
+    "offlineDescription": "Saving, sending and PDFs will work again once you reconnect.",
+    "backOnline": "Back online"
+  },
+  "install": {
+    "button": "Install app",
+    "rowTitle": "Install on this device",
+    "rowPrompt": "No app store needed. It opens in its own window.",
+    "rowIos": "Add it to your Home Screen from the Share menu.",
+    "rowMac": "Add it to the Dock from Safari's File menu.",
+    "install": "Install",
+    "showSteps": "Show me how",
+    "installedTitle": "App installed",
+    "installedDescription": "Open {name} from your home screen or app list.",
+    "gotIt": "Got it",
+    "ios": {
+      "title": "Install on iPhone or iPad",
+      "intro": "Add {name} to your Home Screen to open it like an app.",
+      "step1": "Tap <share></share> <b>Share</b> in the browser toolbar. Don't see it? Tap <more></more> first.",
+      "step2": "Scroll down and choose <add></add> <b>Add to Home Screen</b>.",
+      "step3": "Tap <b>Add</b>. {name} now opens from your Home Screen."
+    },
+    "mac": {
+      "title": "Add to Dock",
+      "intro": "Open {name} from the Dock, in its own window.",
+      "step1": "In Safari's menu bar, choose <b>File</b> → <b>Add to Dock…</b>",
+      "step2": "Click <b>Add</b>."
+    }
+  },
+  "offlinePage": {
+    "title": "You're offline",
+    "description": "We can't reach the server right now. Check your Wi-Fi or mobile data, then try again.",
+    "retry": "Try again",
+    "checking": "Checking…",
+    "stillOffline": "Still no connection. Try again in a moment.",
+    "autoReload": "This page reloads by itself once you're back online.",
+    "whileOffline": "While you're offline",
+    "tipDrafts": "Quotes you were editing are kept as drafts on this device. Pick up where you left off when you're back.",
+    "tipConnection": "Saving, emailing and downloading PDFs need a connection."
+  }
+}

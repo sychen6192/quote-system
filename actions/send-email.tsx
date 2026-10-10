@@ -3,17 +3,20 @@
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
-import { renderToBuffer } from "@react-pdf/renderer";
 import { render, toPlainText } from "@react-email/render";
 import { Resend } from "resend";
 import { z } from "zod";
 import { db } from "@/db";
 import { quotations } from "@/db/schema";
+import { quoteEmailSubject } from "@/components/emails/labels";
+import { quoteEmailProps } from "@/components/emails/quote-email-props";
 import { QuoteEmail } from "@/components/emails/quote-template";
-import { QuotePDFDocument } from "@/components/pdf/QuotePDFDocument";
 import { DEFAULT_LOCALE, LOCALES, type AppLocale } from "@/i18n/locales";
-import type { QuoteBranding } from "@/lib/config";
-import { registerPdfFonts } from "@/lib/pdf/fonts";
+import { pickCompanyName } from "@/lib/company-name";
+import { todayInTimeZone } from "@/lib/dates";
+import { localizedPdfFilename } from "@/lib/pdf/labels";
+import { renderQuotePdf } from "@/lib/pdf/quote-pdf";
+import { quoteViewFromRecord } from "@/lib/quote-view";
 import { quoteIdSchema, toFieldErrors } from "@/lib/schemas/quote";
 import { createRateLimiter, getClientIp } from "@/lib/server/rate-limit";
 import { normalizeStatus } from "@/lib/status";
@@ -70,39 +73,6 @@ function defaultLocale(currencyLocale: string): AppLocale {
   return currencyLocale.toLowerCase().startsWith("zh") ? "zh-TW" : DEFAULT_LOCALE;
 }
 
-// TODO(wave B): move to an "Email" messages namespace with the redesigned template.
-function subjectFor(locale: AppLocale, quotationNumber: string, company: string): string {
-  return locale === "zh-TW"
-    ? `${company} 報價單 ${quotationNumber}`
-    : `Quotation ${quotationNumber} from ${company}`;
-}
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-// QuoteEmail has no slot for a personal note yet (wave B adds one), so the
-// note is placed at the top of the rendered body.
-function withPersonalMessage(html: string, message: string): string {
-  if (!message.trim()) return html;
-  const block =
-    `<div style="max-width:500px;margin:24px auto 0;padding:0 16px;font-family:sans-serif;` +
-    `font-size:15px;line-height:1.6;color:#0f172a;white-space:pre-wrap">` +
-    `${escapeHtml(message.trim())}</div>`;
-  return /<body[^>]*>/i.test(html)
-    ? html.replace(/<body[^>]*>/i, (tag) => tag + block)
-    : block + html;
-}
-
-function pdfFilename(quotationNumber: string): string {
-  return `Quote-${quotationNumber.replace(/[\\/:*?"<>|\r\n]/g, "_")}.pdf`;
-}
-
 function uniqueEmails(emails: string[], exclude: string): string[] {
   const seen = new Set([exclude.toLowerCase()]);
   return emails.filter((e) => {
@@ -145,28 +115,23 @@ export async function sendQuoteEmail(input: unknown): Promise<SendEmailResult> {
     const ccList = uniqueEmails([...settings.mail.ccEmails, ...cc], recipient);
     const lang = locale ?? defaultLocale(settings.money.currencyLocale);
 
-    const doc = await getDocumentBranding("pdf");
-    const branding: QuoteBranding = {
-      company: doc.company,
-      logoDataUri: doc.logoSrc,
-      stampDataUri: doc.stampSrc,
-      payment: doc.payment,
-      money: {
-        currency: doc.currency,
-        currencyLocale: doc.currencyLocale,
-        defaultTaxRate: settings.quote.defaultTaxRate,
-      },
-    };
-
-    registerPdfFonts();
-    const pdf = await renderToBuffer(<QuotePDFDocument quote={quote} branding={branding} />);
-    const html = withPersonalMessage(
-      await render(<QuoteEmail quote={quote} branding={branding} />),
-      message
+    const branding = await getDocumentBranding("pdf");
+    const today = todayInTimeZone(settings.region.timezone);
+    const filename = localizedPdfFilename(quote.quotationNumber, lang);
+    const pdf = await renderQuotePdf(quote, branding, { lang, today });
+    const html = await render(
+      <QuoteEmail
+        {...quoteEmailProps({
+          view: quoteViewFromRecord(quote, { today }),
+          branding,
+          lang,
+          message,
+          attachmentName: filename,
+        })}
+      />
     );
 
-    const companyName =
-      (lang === "zh-TW" && settings.company.nameLocal) || settings.company.name;
+    const companyName = pickCompanyName(settings.company.name, settings.company.nameLocal, lang);
     const replyTo = settings.mail.replyTo || settings.company.email;
 
     const resend = new Resend(settings.mail.apiKey);
@@ -175,10 +140,10 @@ export async function sendQuoteEmail(input: unknown): Promise<SendEmailResult> {
       to: [recipient],
       cc: ccList.length ? ccList : undefined,
       replyTo: replyTo || undefined,
-      subject: subjectFor(lang, quote.quotationNumber, companyName),
+      subject: quoteEmailSubject(lang, quote.quotationNumber, companyName),
       html,
       text: toPlainText(html),
-      attachments: [{ filename: pdfFilename(quote.quotationNumber), content: pdf }],
+      attachments: [{ filename, content: Buffer.from(pdf.buffer, pdf.byteOffset, pdf.byteLength) }],
     });
     if (error) {
       console.error("sendQuoteEmail: Resend rejected the message:", error);

@@ -1,0 +1,139 @@
+# Quote System: self-hosting bundle. Pulls a prebuilt image; nothing is built here.
+#
+#   Install:  sh install.sh            (or: cp .env.example .env, set POSTGRES_PASSWORD, docker compose up -d)
+#   Open:     http://<server-ip>:3000  (APP_PORT)
+#   HTTPS:    docker compose --profile https up -d    (Caddy on 80/443, see SITE_ADDRESS in .env)
+#   Backups:  docker compose --profile backup up -d   (daily pg_dump into ./backups)
+#   Upgrade:  docker compose pull && docker compose up -d   (database migrations run on start)
+#
+# Tip: put COMPOSE_PROFILES=https,backup in .env to make the plain commands
+# include those services. Keep local changes in docker-compose.override.yml:
+# install.sh replaces this file on upgrade.
+name: quote-system
+
+x-logging: &logging
+  driver: local
+  options:
+    max-size: 10m
+    max-file: "3"
+
+services:
+  app:
+    image: ${QUOTE_IMAGE:-ghcr.io/sychen6192/quote-system}:${QUOTE_VERSION:-latest}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # The password ends up in a URL: keep it to letters and digits (install.sh does).
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-quote-system}
+      # The container always listens on 3000; change APP_PORT to move the host port.
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+    ports:
+      # With the https profile, set APP_BIND=127.0.0.1 so only Caddy is reachable.
+      - "${APP_BIND:-0.0.0.0}:${APP_PORT:-3000}:3000"
+    volumes:
+      # Optional legacy branding files (logo.png, stamp.png, icon.png). Uploading
+      # them on the Settings page is simpler and is stored in the database.
+      - ./branding:/app/branding:ro
+    depends_on:
+      db:
+        condition: service_healthy
+        restart: true
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/api/health"]
+      # No start_interval: it needs Docker Engine 25+, and NAS packages ship older engines.
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    logging: *logging
+
+  db:
+    # Keep the major version: moving to a new one needs a dump and restore
+    # (docs/deploy/backup.md).
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-quote-system}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # No published port: the database is only reachable from the app (and the
+    # backup job) on this project's private network.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    logging: *logging
+
+  caddy:
+    # HTTPS reverse proxy (required to install the app on phones):
+    #   docker compose --profile https up -d
+    image: caddy:2-alpine
+    profiles: [https]
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+      - "${HTTPS_PORT:-443}:443/udp"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-localhost}
+      CADDY_TLS: ${CADDY_TLS:-}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certificates and Caddy's local CA (root.crt); must survive upgrades.
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+    logging: *logging
+
+  backup:
+    # Scheduled database dumps into ./backups:
+    #   docker compose --profile backup up -d
+    image: postgres:16-alpine
+    profiles: [backup]
+    restart: unless-stopped
+    environment:
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER:-postgres}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      PGDATABASE: ${POSTGRES_DB:-quote-system}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
+    volumes:
+      - ./backups:/backups
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "backup: every $${BACKUP_INTERVAL_SECONDS}s into /backups, keeping $${BACKUP_KEEP_DAYS} days"
+        while true; do
+          f=/backups/quote-$$(date +%Y%m%d-%H%M%S).dump
+          if pg_dump -Fc -f "$$f.tmp"; then
+            mv "$$f.tmp" "$$f" && echo "backup ok: $$f"
+          else
+            rm -f "$$f.tmp"; echo "backup FAILED" >&2
+          fi
+          find /backups -name 'quote-*.dump' -mtime +"$$BACKUP_KEEP_DAYS" -delete
+          sleep "$$BACKUP_INTERVAL_SECONDS"
+        done
+    depends_on:
+      db:
+        condition: service_healthy
+    logging: *logging
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
+
+# Manual backup and restore (docs/deploy/backup.md has the full guide):
+#   docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > quote-$(date +%F).dump
+#   docker compose stop app
+#   docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists --no-owner' < quote-YYYY-MM-DD.dump
+#   docker compose start app
+# Also keep a copy of .env: the database volume only accepts its original POSTGRES_PASSWORD.

@@ -1,8 +1,8 @@
 "use client";
 
-import { createContext, useContext, type ReactNode } from "react";
-import type { PublicAppConfig } from "@/lib/config";
-import { formatCurrency } from "@/lib/utils";
+import { createContext, useCallback, useContext, type ReactNode } from "react";
+import type { PublicAppConfig } from "@/lib/settings/types";
+import { formatMoney } from "@/lib/money";
 
 const AppConfigContext = createContext<PublicAppConfig | null>(null);
 
@@ -28,7 +28,11 @@ export function useAppConfig(): PublicAppConfig {
   return config;
 }
 
+/** cents → "NT$1,234" in the configured currency (never the UI locale). */
 export function useFormatCurrency(): (cents: number) => string {
-  const { currency, currencyLocale } = useAppConfig();
-  return (cents: number) => formatCurrency(cents, { currency, currencyLocale });
+  const { currency, currencyLocale, fractionDigits } = useAppConfig();
+  return useCallback(
+    (cents: number) => formatMoney(cents, { currency, currencyLocale, fractionDigits }),
+    [currency, currencyLocale, fractionDigits]
+  );
 }

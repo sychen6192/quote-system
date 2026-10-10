@@ -1,14 +1,22 @@
 {
   "name": "quote-system",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
+  "description": "Self-hosted quotation management for small businesses: quotes, PDF, email, installable app.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sychen6192/quote-system.git"
+  },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint && node scripts/check-messages.mjs",
-    "typecheck": "tsc --noEmit",
-    "db:push": "drizzle-kit push",
+    "typecheck": "next typegen && tsc --noEmit",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "db:generate": "drizzle-kit generate",
@@ -16,7 +24,8 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:unit": "jest tests/unit",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:server": "node tests/e2e/start-server.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

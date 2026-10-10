@@ -1,20 +1,59 @@
 {
-  "title": "報價單列表",
-  "createQuote": "建立報價單",
-  "backToDashboard": "返回儀表板",
-  "emptyState": "尚無報價單，請建立您的第一張報價單！",
-  "unknownCustomer": "未知客戶",
-  "table": {
-    "quoteNumber": "報價單號",
-    "customer": "客戶名稱",
-    "salesperson": "銷售人員",
-    "date": "開立日期",
-    "validUntil": "有效期限",
-    "totalAmount": "總金額",
-    "action": "操作"
+  "title": "報價單",
+  "count": "{count, plural, =0 {尚無報價單} other {共 # 張}}",
+  "newQuote": "新增報價單",
+  "exportCsv": "匯出 CSV",
+  "exportCsvHint": "將符合目前篩選條件的報價單匯出為試算表（CSV）",
+  "search": {
+    "label": "搜尋報價單",
+    "placeholder": "搜尋單號、客戶或主旨"
   },
-  "status": {
-    "expired": "已過期",
-    "active": "有效"
-  }
+  "statusFilter": "依狀態篩選",
+  "all": "全部",
+  "sort": {
+    "label": "排序方式",
+    "newest": "最新建立",
+    "oldest": "最早建立",
+    "amount_desc": "金額由高到低",
+    "amount_asc": "金額由低到高",
+    "valid_until": "最快到期"
+  },
+  "table": {
+    "caption": "報價單",
+    "number": "報價單號",
+    "quote": "主旨／客戶",
+    "salesperson": "業務人員",
+    "issued": "開立日期",
+    "validUntil": "有效期限",
+    "status": "狀態",
+    "total": "總金額",
+    "actions": "操作"
+  },
+  "unknownCustomer": "未填客戶",
+  "validUntil": "有效至 {date}",
+  "daysLeft": "{days, plural, =0 {今天到期} other {剩 # 天}}",
+  "openQuote": "開啟報價單 {number}",
+  "actionsFor": "報價單 {number} 的操作",
+  "empty": {
+    "title": "還沒有報價單",
+    "description": "建立第一張報價單吧！客戶、品項與金額都在同一頁完成。",
+    "cta": "建立第一張報價單"
+  },
+  "noResults": {
+    "title": "找不到符合的報價單",
+    "description": "請換個關鍵字或狀態試試。",
+    "withQuery": "找不到符合「{query}」的報價單，請換個關鍵字或狀態試試。",
+    "clear": "清除篩選"
+  },
+  "delete": {
+    "trigger": "刪除",
+    "title": "確定要刪除報價單 {number} 嗎？",
+    "description": "報價單、品項明細與異動紀錄都會永久刪除，且無法復原。",
+    "confirm": "刪除報價單",
+    "deleting": "刪除中…",
+    "deleted": "已刪除報價單 {number}",
+    "notFound": "這張報價單先前已被刪除。",
+    "error": "無法刪除報價單，請再試一次。"
+  },
+  "results": "{count, plural, =0 {沒有符合條件的報價單} other {符合條件的報價單共 # 張}}"
 }

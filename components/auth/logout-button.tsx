@@ -1,19 +1,9 @@
 "use client";
 
-import type { FormEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { LogOut } from "lucide-react";
 import { Button, type ButtonProps } from "@/components/ui/button";
-
-async function clearServiceWorkerCaches(): Promise<void> {
-  try {
-    if (!("caches" in window)) return;
-    const keys = await caches.keys();
-    await Promise.all(keys.map((key) => caches.delete(key)));
-  } catch {
-    // Best effort: signing out must never be blocked by cache cleanup.
-  }
-}
+import { PWA_LOGOUT_EVENT } from "@/lib/pwa/platform";
 
 export type LogoutButtonProps = {
   className?: string;
@@ -36,12 +26,10 @@ export function LogoutButton({
   const t = useTranslations("Auth");
   const locale = useLocale();
 
-  // Shared devices: drop anything the service worker cached before leaving.
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    await clearServiceWorkerCaches();
-    form.submit();
+  // Shared devices: PwaRoot drops the service worker's caches (keeping the
+  // offline page) when it hears this event.
+  function onSubmit() {
+    window.dispatchEvent(new Event(PWA_LOGOUT_EVENT));
   }
 
   return (

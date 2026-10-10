@@ -1,0 +1,12 @@
+# HTTPS in front of Quote System (docker compose --profile https up -d).
+# Both values come from .env:
+#   SITE_ADDRESS  quote.example.com -> free public certificate (ports 80/443 must be reachable)
+#                 localhost, an IP, *.local, *.internal, *.home.arpa -> Caddy's own local CA
+#   CADDY_TLS     "tls internal" forces the local CA for any other private name (quote.office)
+# With the local CA, every device must trust its root certificate once:
+# see docs/deploy/https.md.
+{$SITE_ADDRESS} {
+	{$CADDY_TLS}
+	encode zstd gzip
+	reverse_proxy app:3000
+}

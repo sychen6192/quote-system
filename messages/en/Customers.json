@@ -1,0 +1,44 @@
+{
+  "title": "Customers",
+  "count": "{count, plural, =0 {No customers} one {# customer} other {# customers}}",
+  "search": {
+    "label": "Search customers",
+    "placeholder": "Company, contact or tax ID"
+  },
+  "table": {
+    "caption": "Customers",
+    "company": "Company",
+    "contact": "Contact",
+    "quotes": "Quotes",
+    "accepted": "Accepted",
+    "lastQuote": "Last quote",
+    "actions": "Actions"
+  },
+  "vat": "Tax ID {vat}",
+  "quoteCount": "{count, plural, one {# quote} other {# quotes}}",
+  "acceptedTotal": "Accepted",
+  "lastQuote": "Last quote",
+  "noContact": "No contact details",
+  "newQuote": "New quote",
+  "newQuoteFor": "New quote for {name}",
+  "viewQuotes": "View quotes",
+  "openLastQuote": "Open last quote",
+  "copyEmail": "Copy email",
+  "copyPhone": "Copy phone number",
+  "emailCopied": "Email address copied",
+  "phoneCopied": "Phone number copied",
+  "actionsFor": "More actions for {name}",
+  "emailTo": "Email {email}",
+  "callTo": "Call {phone}",
+  "empty": {
+    "title": "No customers yet",
+    "description": "Customers are added automatically when you create a quote for them.",
+    "cta": "Create a quote"
+  },
+  "noResults": {
+    "title": "No matching customers",
+    "description": "Nothing matches “{query}”. Try a company name, contact, tax ID or email.",
+    "clear": "Clear search"
+  },
+  "results": "{count, plural, =0 {No matching customers} one {# matching customer} other {# matching customers}}"
+}

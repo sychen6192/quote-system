@@ -100,21 +100,22 @@ describe("GET /api/quotes/[id]/pdf", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toBe("application/pdf");
     expect(res.headers.get("content-length")).toBe(String(PDF.byteLength));
-    expect(res.headers.get("content-disposition")).toBe('inline; filename="Quote-QT-20261009-001.pdf"');
+    expect(res.headers.get("content-disposition")).toBe('inline; filename="Quotation-QT-20261009-001.pdf"');
     expect(res.headers.get("cache-control")).toBe("private, no-store");
     expect(res.headers.get("x-pdf-cache")).toBe("miss");
     expect(Buffer.from(await res.arrayBuffer()).subarray(0, 5).toString()).toBe("%PDF-");
     expect(mockLoad).toHaveBeenCalledWith(12);
     expect(mockBranding).toHaveBeenCalledWith("pdf");
     expect(mockRender).toHaveBeenCalledWith(expect.objectContaining({ id: 12 }), BRANDING, {
-      defaultTaxRate: 5,
+      lang: "en",
+      today: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
     });
   });
 
   it("sends an attachment with ?download=1", async () => {
     const res = await get("12", "?download=1");
     expect(res.headers.get("content-disposition")).toBe(
-      'attachment; filename="Quote-QT-20261009-001.pdf"'
+      'attachment; filename="Quotation-QT-20261009-001.pdf"'
     );
   });
 
@@ -122,7 +123,7 @@ describe("GET /api/quotes/[id]/pdf", () => {
     mockLoad.mockResolvedValueOnce(quote({ quotationNumber: "報價-001" }));
     const res = await get("12", "?download=1");
     expect(res.headers.get("content-disposition")).toBe(
-      "attachment; filename=\"Quote-__-001.pdf\"; filename*=UTF-8''Quote-%E5%A0%B1%E5%83%B9-001.pdf"
+      "attachment; filename=\"Quotation-__-001.pdf\"; filename*=UTF-8''Quotation-%E5%A0%B1%E5%83%B9-001.pdf"
     );
   });
 

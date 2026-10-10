@@ -1,16 +1,73 @@
 {
-  "backToList": "Back to List",
-  "export": "Export",
   "downloadPdf": "Download PDF",
-  "print": "Print (Web)",
-  "sendEmail": "Send Email",
-  "emailNotConfigured": "Email not configured",
-  "sending": "Sending...",
-  "confirmSend": "Confirm Send",
-  "cancel": "Cancel",
-  "dialogTitle": "Send Quotation?",
-  "dialogDesc": "Are you sure you want to send this quotation to:",
-  "success": "Email sent successfully!",
-  "error": "Failed to send email",
-  "genericError": "Something went wrong"
+  "pdf": "PDF",
+  "send": "Send",
+  "sendEmail": "Send email",
+  "edit": "Edit",
+  "duplicate": "Duplicate",
+  "print": "Print",
+  "share": "Share",
+  "delete": "Delete",
+  "more": "More actions",
+  "moreTitle": "Quote {number}",
+  "status": {
+    "label": "Status",
+    "change": "Change status",
+    "markAs": {
+      "draft": "Mark as draft",
+      "sent": "Mark as sent",
+      "accepted": "Mark as accepted",
+      "rejected": "Mark as rejected"
+    },
+    "current": "Current status",
+    "changed": "Marked as {status}",
+    "undo": "Undo",
+    "failed": "Couldn't change the status. Please try again.",
+    "notFound": "This quote no longer exists."
+  },
+  "shareSheet": {
+    "title": "Quotation {number}",
+    "text": "Quotation {number} from {company}",
+    "preparing": "Preparing the PDF…",
+    "copied": "Link copied",
+    "copiedHint": "People signed in to this app can open it.",
+    "failed": "Couldn't share this quote. Download the PDF instead.",
+    "retry": "Try again"
+  },
+  "email": {
+    "title": "Send quotation",
+    "description": "{number} is attached as a PDF.",
+    "to": "To",
+    "toPlaceholder": "name@company.com",
+    "cc": "CC",
+    "ccHint": "Separate addresses with commas (up to 5).",
+    "message": "Message",
+    "optional": "Optional",
+    "messagePlaceholder": "Add a personal note for your customer…",
+    "messageCount": "{count} / {max}",
+    "language": "Email & PDF language",
+    "languages": {
+      "en": "English",
+      "zh-TW": "繁體中文"
+    },
+    "submit": "Send quotation",
+    "sending": "Sending…",
+    "cancel": "Cancel",
+    "success": "Quotation sent to {email}",
+    "successDraft": "Its status is now Sent.",
+    "retry": "Retry",
+    "errors": {
+      "rateLimited": "Too many emails in a short time. Try again in {minutes, plural, one {# minute} other {# minutes}}.",
+      "sendFailed": "The email couldn't be sent. Check the email settings, then try again.",
+      "noRecipient": "Add the recipient's email address.",
+      "mailDisabled": "Email sending isn't set up.",
+      "notFound": "This quote no longer exists.",
+      "invalid": "Check the highlighted fields."
+    },
+    "disabled": {
+      "title": "Email isn't set up yet",
+      "description": "To email quotes from here, the server needs a Resend API key (RESEND_API_KEY). Until then, download the PDF and attach it to your own email.",
+      "settings": "Email settings"
+    }
+  }
 }

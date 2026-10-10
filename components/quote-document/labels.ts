@@ -1,11 +1,11 @@
-// PLACEHOLDER — replaced in Wave B (B3). Builds QuoteDocumentLabels from the
-// "QuoteDoc" messages namespace so server pages, the client preview and the
-// PDF all share one set of translations.
-import type { QuoteDocumentLabels } from "./quote-document";
+// Server half of the document labels: server pages and route handlers build
+// QuoteDocumentLabels from the "QuoteDoc" namespace (the client twin is
+// useQuoteDocumentLabels). Raw messages keep their {placeholders} for
+// fillLabel.
+import { getTranslations } from "next-intl/server";
+import { buildQuoteDocumentLabels, type QuoteDocumentLabels } from "./label-keys";
 
-/** Server: e.g. in a page or route handler. */
-export async function getQuoteDocumentLabels(
-  _locale: string
-): Promise<QuoteDocumentLabels> {
-  return {};
+export async function getQuoteDocumentLabels(locale: string): Promise<QuoteDocumentLabels> {
+  const t = await getTranslations({ locale, namespace: "QuoteDoc" });
+  return buildQuoteDocumentLabels((key) => t.raw(key));
 }

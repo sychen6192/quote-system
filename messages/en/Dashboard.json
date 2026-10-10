@@ -1,16 +1,32 @@
 {
   "title": "Dashboard",
-  "subtitle": "Overview of your business performance",
-  "totalRevenue": "Total Revenue",
-  "totalQuotes": "Total Quotes",
-  "customers": "Customers",
-  "recentQuotes": "Recent Quotations",
-  "createQuote": "Create Quote",
-  "viewAll": "View All",
-  "status": {
-    "draft": "Draft",
-    "sent": "Sent",
-    "accepted": "Accepted",
-    "rejected": "Rejected"
+  "subtitle": "Your quotes at a glance · {date}",
+  "newQuote": "New quote",
+  "kpi": {
+    "label": "Key figures",
+    "openPipeline": "Open pipeline",
+    "openPipelineHint": "{count, plural, =0 {No quotes awaiting a reply} one {# quote awaiting a reply} other {# quotes awaiting a reply}}",
+    "acceptedThisMonth": "Accepted this month",
+    "acceptedThisMonthHint": "{count, plural, =0 {None accepted yet} one {# quote accepted} other {# quotes accepted}}",
+    "acceptanceRate": "Acceptance rate",
+    "acceptanceRateHint": "Last 90 days",
+    "acceptanceRateEmpty": "No decisions in the last 90 days",
+    "drafts": "Drafts",
+    "draftsHint": "{count, plural, =0 {Nothing waiting to be sent} other {Not sent yet}}",
+    "expiredHint": "{count, plural, one {# quote has expired} other {# quotes have expired}}",
+    "viewList": "View in the quotes list"
+  },
+  "expiring": {
+    "title": "Expiring in 7 days",
+    "description": "Follow up before these quotes lapse.",
+    "empty": "Nothing expires in the next 7 days.",
+    "daysLeft": "{days, plural, =0 {Today} =1 {Tomorrow} other {# days}}",
+    "daysLeftLabel": "Expires {days, plural, =0 {today} =1 {tomorrow} other {in # days}}"
+  },
+  "recent": {
+    "title": "Recent quotes",
+    "viewAll": "View all",
+    "issued": "Issued",
+    "total": "Total"
   }
 }

@@ -1,0 +1,44 @@
+{
+  "title": "客戶",
+  "count": "{count, plural, =0 {尚無客戶} other {共 # 位客戶}}",
+  "search": {
+    "label": "搜尋客戶",
+    "placeholder": "搜尋公司、聯絡人或統編"
+  },
+  "table": {
+    "caption": "客戶",
+    "company": "公司",
+    "contact": "聯絡資訊",
+    "quotes": "報價單",
+    "accepted": "成交金額",
+    "lastQuote": "最近報價",
+    "actions": "操作"
+  },
+  "vat": "統編 {vat}",
+  "quoteCount": "{count, plural, other {# 張報價單}}",
+  "acceptedTotal": "成交金額",
+  "lastQuote": "最近報價",
+  "noContact": "未提供聯絡資訊",
+  "newQuote": "新增報價單",
+  "newQuoteFor": "為 {name} 新增報價單",
+  "viewQuotes": "查看報價單",
+  "openLastQuote": "開啟最近的報價單",
+  "copyEmail": "複製 Email",
+  "copyPhone": "複製電話",
+  "emailCopied": "已複製 Email",
+  "phoneCopied": "已複製電話號碼",
+  "actionsFor": "{name} 的更多操作",
+  "emailTo": "寄信給 {email}",
+  "callTo": "撥打 {phone}",
+  "empty": {
+    "title": "還沒有客戶",
+    "description": "建立報價單時填寫的客戶，會自動加入這裡。",
+    "cta": "建立報價單"
+  },
+  "noResults": {
+    "title": "找不到符合的客戶",
+    "description": "找不到符合「{query}」的客戶，請試試公司名稱、聯絡人、統編或 Email。",
+    "clear": "清除搜尋"
+  },
+  "results": "{count, plural, =0 {沒有符合條件的客戶} other {符合條件的客戶共 # 位}}"
+}

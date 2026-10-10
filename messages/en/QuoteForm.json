@@ -1,59 +1,209 @@
 {
+  "meta": {
+    "newTitle": "New quote",
+    "editTitle": "Edit {number}"
+  },
+  "loading": "Loading the quote editor…",
   "header": {
-    "createTitle": "New Quotation",
-    "createDesc": "Fill in the details to generate a new quote.",
-    "editTitle": "Edit Quote #{id}",
-    "editDesc": "Update the quotation details below."
+    "back": "Quotes",
+    "backTo": "Back to {target}",
+    "createTitle": "New quote",
+    "createDesc": "Fill in the customer, items and terms. The preview updates as you type.",
+    "editTitle": "Edit {number}",
+    "editDesc": "Make your changes, then save to update this quote."
+  },
+  "banners": {
+    "draftTitle": "Restore your unsaved draft?",
+    "draftBody": "You have changes from {when} that were never saved.",
+    "restore": "Restore draft",
+    "discard": "Discard",
+    "restored": "Draft restored",
+    "discarded": "Draft discarded",
+    "duplicated": "Duplicated from <strong>{number}</strong>. The customer, items and terms were copied; the dates start from today.",
+    "viewOriginal": "View original",
+    "customerPrefilled": "Customer details filled in from the latest quote for <strong>{company}</strong>."
   },
   "sections": {
-    "customerDetails": "Customer Details",
-    "items": "Quote Items"
+    "nav": "Form sections",
+    "customer": "Customer",
+    "customerDesc": "Who this quote is for",
+    "details": "Quote details",
+    "detailsDesc": "Subject, salesperson and validity",
+    "items": "Items",
+    "itemsDesc": "Products and services with quantities and prices",
+    "totals": "Totals",
+    "totalsDesc": "Tax, discount and other fees",
+    "terms": "Terms & notes",
+    "termsDesc": "Payment terms, delivery and anything else the customer should know",
+    "summaryEmpty": "Not filled in yet",
+    "state": {
+      "complete": "Complete",
+      "error": "Needs attention",
+      "incomplete": "Incomplete",
+      "optional": "Optional"
+    }
   },
   "fields": {
-    "companyName": "Company Name",
-    "contactPerson": "Contact Person",
+    "companyName": "Company name",
+    "contactPerson": "Contact person",
     "email": "Email",
     "phone": "Phone",
-    "vatNumber": "VAT Number",
+    "vatNumber": "VAT number",
+    "address": "Address",
+    "title": "Subject",
     "salesperson": "Salesperson",
-    "address": "Billing Address",
-    "issuedDate": "Issued Date",
-    "validUntil": "Valid Until"
-  },
-  "table": {
-    "product": "Product / Service",
-    "qty": "Qty",
-    "price": "Unit Price",
+    "issuedDate": "Issue date",
+    "validUntil": "Valid until",
+    "productName": "Product / service",
+    "description": "Description",
+    "unit": "Unit",
+    "quantity": "Qty",
+    "unitPrice": "Unit price",
     "taxable": "Taxable",
-    "amount": "Amount"
+    "amount": "Amount",
+    "taxRate": "Tax rate",
+    "discount": "Discount",
+    "otherFees": "Other fees",
+    "paymentMethod": "Payment terms",
+    "shippingMethod": "Delivery method",
+    "shippingDate": "Delivery date",
+    "notes": "Notes",
+    "terms": "Terms & conditions"
   },
   "placeholders": {
-    "itemName": "Item name"
+    "companyName": "Search or type a company name",
+    "contactPerson": "e.g. Jane Chen",
+    "email": "name@company.com",
+    "phone": "e.g. +886 2 2345 6789",
+    "vatNumber": "8 digits",
+    "address": "Street, city, postcode",
+    "title": "e.g. 2027 website maintenance",
+    "salesperson": "Your name",
+    "productName": "Search or type an item",
+    "description": "Specs, scope, or anything that helps the customer decide",
+    "unit": "pc",
+    "paymentMethod": "e.g. Net 30",
+    "shippingMethod": "e.g. Courier, on-site installation",
+    "notes": "Shown on the quote, e.g. a thank-you note",
+    "terms": "Warranty, cancellation, what is not included…"
+  },
+  "hints": {
+    "items": "Tip: press Enter in the last unit price to add another line.",
+    "otherFees": "Not taxed; added after tax, e.g. shipping."
+  },
+  "combobox": {
+    "customers": "Saved customers",
+    "products": "Past items",
+    "searching": "Searching…",
+    "noCustomers": "No saved customer matches. Keep typing to use a new name.",
+    "noProducts": "No past item matches. Keep typing to add a new one.",
+    "results": "{count, plural, =0 {No suggestions} one {# suggestion} other {# suggestions}}. Use the up and down arrow keys to choose.",
+    "error": "Suggestions aren't available right now.",
+    "offline": "You're offline, so suggestions aren't available."
+  },
+  "customer": {
+    "filled": "Filled in the details saved for {company}."
   },
   "vatLookup": {
     "button": "Look up",
-    "filled": "Company details filled from VAT number",
+    "label": "Look up company by VAT number",
+    "filled": "Company details filled in from the VAT number",
     "invalid": "Enter an 8-digit VAT number",
     "notFound": "No company found for this VAT number",
-    "error": "Lookup failed — try again or enter manually"
+    "disabled": "VAT number lookup is turned off in Settings",
+    "rateLimited": "Too many lookups. Try again in a minute.",
+    "error": "Lookup failed. Try again or enter the details manually."
   },
-  "summary": {
+  "validity": {
+    "presets": "Set validity from the issue date",
+    "preset": "+{days} days",
+    "presetLabel": "Valid for {days} days from the issue date",
+    "expiresIn": "{days, plural, =0 {Expires today} one {Expires tomorrow} other {Expires in # days}}",
+    "expired": "{days, plural, one {Expired yesterday} other {Expired # days ago}}"
+  },
+  "items": {
+    "item": "Item {n}",
+    "labelSuffix": " (item {n})",
+    "add": "Add item",
+    "addDescription": "Add description",
+    "removeDescription": "Remove",
+    "menu": "Actions for item {n}",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "duplicate": "Duplicate",
+    "remove": "Remove",
+    "removed": "Item removed",
+    "undo": "Undo",
+    "count": "{count, plural, =0 {No items} one {# item} other {# items}}",
+    "units": "lot,pc,set,unit,item,kit,hour,day,month,time,year"
+  },
+  "totals": {
     "subtotal": "Subtotal",
-    "taxRate": "Tax Rate",
-    "taxAmount": "Tax Amount",
-    "total": "Total"
+    "addDiscount": "Add discount",
+    "removeDiscount": "Remove discount",
+    "discountType": "Discount type",
+    "discountAmount": "Fixed amount",
+    "discountPercent": "Percentage",
+    "addFees": "Add other fees",
+    "removeFees": "Remove other fees",
+    "tax": "Tax ({rate}%)",
+    "taxBase": "Tax is charged on {amount} (tax-exempt items excluded).",
+    "total": "Total",
+    "amountInWords": "Amount in words"
+  },
+  "terms": {
+    "presets": "Common payment terms",
+    "paymentPresets": {
+      "net30": "Net 30",
+      "net60": "Net 60",
+      "cod": "Cash on delivery",
+      "deposit": "50% deposit, balance on delivery",
+      "transfer": "Bank transfer"
+    }
+  },
+  "preview": {
+    "title": "Preview",
+    "live": "Live preview",
+    "clickToEdit": "Click any part of the quote to edit it",
+    "zoom": "Zoom",
+    "fit": "Fit",
+    "actualSize": "100%",
+    "hide": "Hide preview",
+    "show": "Show preview",
+    "loading": "Loading preview…"
+  },
+  "autosave": {
+    "saving": "Saving draft…",
+    "saved": "Draft saved · {when}",
+    "justNow": "just now",
+    "failed": "Couldn't save a draft on this device",
+    "offline": "Offline"
   },
   "actions": {
-    "save": "Save Quote",
-    "update": "Update Quote",
-    "saving": "Saving...",
+    "save": "Save quote",
+    "saveShort": "Save",
+    "update": "Save changes",
+    "saving": "Saving…",
     "cancel": "Cancel",
-    "addItem": "Add Item"
+    "total": "Total",
+    "preview": "Preview"
+  },
+  "cancelDialog": {
+    "title": "Discard your changes?",
+    "description": "Your unsaved changes to this quote will be lost.",
+    "keep": "Keep editing",
+    "discard": "Discard changes"
   },
   "messages": {
-    "created": "Quote created successfully!",
-    "updated": "Quote updated successfully!",
-    "error": "Something went wrong",
-    "confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"
+    "created": "Quote created",
+    "updated": "Changes saved",
+    "invalid": "{count, plural, one {# field needs} other {# fields need}} your attention",
+    "invalidHint": "Fix the highlighted fields, then save again.",
+    "error": "Couldn't save the quote. Please try again.",
+    "retry": "Try again",
+    "notFound": "This quote no longer exists. It may have been deleted.",
+    "rateLimited": "Too many requests. Wait a moment and try again.",
+    "sessionExpired": "Your session has expired. Reloading so you can sign in again…",
+    "offline": "You're offline. Your draft is kept on this device; save again once you're back online."
   }
 }

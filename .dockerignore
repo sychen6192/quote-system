@@ -4,7 +4,9 @@
 .env
 .env.*
 !.env.example
+.npmrc
 *.pem
+*.key
 
 # VCS, CI, editor and OS clutter
 .git
@@ -12,8 +14,10 @@
 .gitignore
 .vscode
 .idea
-.DS_Store
+**/.DS_Store
+Thumbs.db
 *.log
+.eslintcache
 
 # Host dependencies and build output (the image builds its own)
 node_modules
@@ -23,11 +27,13 @@ out
 build
 *.tsbuildinfo
 next-env.d.ts
+.vercel
 
 # Runtime data that must stay on the host
 branding
 postgres_data
 backups
+*.dump
 
 # Tests, docs and local tooling (not needed to build the app)
 tests

@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { AlertTriangle, ArrowLeft, RotateCw } from "lucide-react";
 import { Link } from "@/navigation";
 import { Button } from "@/components/ui/button";
+import { IconIllustration } from "@/components/app-shell/empty-state";
 
 export default function ErrorPage({
   error,
@@ -30,34 +31,33 @@ export default function ErrorPage({
   return (
     <section
       aria-labelledby="error-title"
-      className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center gap-4 px-4 py-16 text-center"
+      className="mx-auto flex min-h-[70dvh] max-w-md flex-col items-center justify-center gap-5 px-4 py-16 text-center"
     >
-      <div
-        className="flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10"
-        aria-hidden="true"
-      >
-        <AlertTriangle className="h-7 w-7 text-destructive" />
+      <IconIllustration icon={AlertTriangle} tone="destructive" />
+      <div className="space-y-2">
+        <h1
+          id="error-title"
+          ref={headingRef}
+          tabIndex={-1}
+          className="text-2xl font-semibold tracking-tight outline-none sm:text-3xl"
+        >
+          {t("error.title")}
+        </h1>
+        <p className="leading-relaxed text-muted-foreground">{t("error.description")}</p>
+        {error.digest ? (
+          <p className="pt-1">
+            <code className="rounded-md bg-muted px-2 py-1 font-mono text-xs text-muted-foreground">
+              {t("error.reference", { digest: error.digest })}
+            </code>
+          </p>
+        ) : null}
       </div>
-      <h1
-        id="error-title"
-        ref={headingRef}
-        tabIndex={-1}
-        className="text-2xl font-bold tracking-tight outline-none"
-      >
-        {t("error.title")}
-      </h1>
-      <p className="text-muted-foreground">{t("error.description")}</p>
-      {error.digest ? (
-        <p className="font-mono text-xs text-muted-foreground">
-          {t("error.reference", { digest: error.digest })}
-        </p>
-      ) : null}
-      <div className="mt-2 flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-        <Button type="button" onClick={() => tryAgain()}>
+      <div className="mt-1 flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+        <Button type="button" onClick={() => tryAgain()} className="h-11 rounded-lg sm:h-10">
           <RotateCw aria-hidden="true" />
           {t("error.retry")}
         </Button>
-        <Button asChild variant="outline">
+        <Button asChild variant="outline" className="h-11 rounded-lg bg-card sm:h-10">
           <Link href="/">
             <ArrowLeft aria-hidden="true" />
             {t("backToDashboard")}

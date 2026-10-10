@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { AlertCircle, Eye, EyeOff, Loader2, LogIn } from "lucide-react";
+import { AlertCircle, ArrowBigUpDash, Eye, EyeOff, Loader2, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -18,6 +18,7 @@ export type LoginFormProps = {
 };
 
 const ERROR_ID = "login-error";
+const CAPS_ID = "login-caps-lock";
 
 /**
  * A plain HTML form POST to /api/auth/login: it works before (or without)
@@ -27,6 +28,7 @@ export function LoginForm({ locale, next, error, retryMinutes }: LoginFormProps)
   const t = useTranslations("Auth");
   const [visible, setVisible] = useState(false);
   const [pending, setPending] = useState(false);
+  const [capsLock, setCapsLock] = useState(false);
 
   // Coming back via the back button restores this page from the bfcache with
   // the spinner still showing.
@@ -67,7 +69,10 @@ export function LoginForm({ locale, next, error, retryMinutes }: LoginFormProps)
             autoFocus
             maxLength={1024}
             aria-invalid={message ? true : undefined}
-            aria-describedby={message ? ERROR_ID : undefined}
+            aria-describedby={[message ? ERROR_ID : null, capsLock ? CAPS_ID : null].filter(Boolean).join(" ") || undefined}
+            onKeyDown={(event) => setCapsLock(event.getModifierState("CapsLock"))}
+            onKeyUp={(event) => setCapsLock(event.getModifierState("CapsLock"))}
+            onBlur={() => setCapsLock(false)}
             className="h-11 pr-11 text-base"
           />
           <button
@@ -76,7 +81,7 @@ export function LoginForm({ locale, next, error, retryMinutes }: LoginFormProps)
             aria-label={t("showPassword")}
             aria-pressed={visible}
             aria-controls="password"
-            className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-md text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
           >
             {visible ? (
               <EyeOff className="h-4 w-4" aria-hidden="true" />
@@ -85,6 +90,12 @@ export function LoginForm({ locale, next, error, retryMinutes }: LoginFormProps)
             )}
           </button>
         </div>
+        {capsLock ? (
+          <p id={CAPS_ID} className="flex items-center gap-1.5 text-xs font-medium text-warning">
+            <ArrowBigUpDash className="h-4 w-4 shrink-0" aria-hidden="true" />
+            {t("capsLock")}
+          </p>
+        ) : null}
         {message ? (
           <p
             id={ERROR_ID}
@@ -97,7 +108,7 @@ export function LoginForm({ locale, next, error, retryMinutes }: LoginFormProps)
         ) : null}
       </div>
 
-      <Button type="submit" className="h-11 w-full text-base" disabled={pending}>
+      <Button type="submit" className="h-11 w-full text-base shadow-card" disabled={pending}>
         {pending ? (
           <Loader2 className="animate-spin" aria-hidden="true" />
         ) : (
