@@ -11,6 +11,8 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Fixed
 
 - **Date fields no longer stick out of their card on iPhone.** Safari gave the issue date, valid-until and delivery date fields its own native frame and a minimum width, so on phones they ran past the right edge of the form card, came out taller than the other fields and centred the date. They now size and align like every other input; tapping still opens the iOS date picker.
+- **Typing a currency or number format after picking "Other…" goes into its field.** In Settings → Regional, focus went back to the drop-down as it closed, so the first letters typed picked a listed value instead (typing "uah" selected USD) and the field disappeared again. The field also starts with the previous value selected, so typing replaces it; a currency code used to stay stuck at the old three letters.
+- **The Docker image now carries the license texts of the npm packages it ships**, in `/app/THIRD_PARTY_LICENSES.txt`. `THIRD_PARTY_NOTICES.md` said they were in the image, but the standalone build copies no license files. `npm run licenses` writes the same file from a checkout after `npm run build`.
 
 ## [1.0.1] - 2026-10-10
 

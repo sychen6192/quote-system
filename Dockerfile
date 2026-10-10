@@ -28,6 +28,8 @@ COPY . .
 # - drizzle/, assets/ and branding-defaults/ are traced into the standalone
 #   output too; drop those copies so the explicit COPYs below are the only
 #   ones (otherwise the 14 MB of fonts would be stored twice).
+# - The license texts of the npm packages the app ships are collected from
+#   the full install and the build output (scripts/third-party-licenses.mjs).
 # - Empty directories become the only paths the runtime user may write to.
 RUN npm run build \
  && if find .next/standalone -name '*.node' | grep -q .; then \
@@ -36,6 +38,7 @@ RUN npm run build \
       exit 1; \
     fi \
  && rm -rf .next/standalone/drizzle .next/standalone/assets .next/standalone/branding-defaults \
+ && node scripts/third-party-licenses.mjs --out THIRD_PARTY_LICENSES.txt \
  && mkdir -p /writable/cache /writable/branding
 
 # ---- runtime ---------------------------------------------------------------
@@ -67,7 +70,7 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/branding-defaults ./branding-defaults
 COPY --from=builder /app/drizzle ./drizzle
 COPY --from=builder /app/assets ./assets
-COPY --from=builder /app/LICENSE /app/THIRD_PARTY_NOTICES.md ./
+COPY --from=builder /app/LICENSE /app/THIRD_PARTY_NOTICES.md /app/THIRD_PARTY_LICENSES.txt ./
 COPY --from=builder --chown=node:node /writable/cache ./.next/cache
 COPY --from=builder --chown=node:node /writable/branding ./branding
 

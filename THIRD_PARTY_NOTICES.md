@@ -1,6 +1,8 @@
 # Third-party notices
 
-Quote System is released under the [MIT License](LICENSE). It includes or adapts the third-party material listed below. The npm packages it depends on keep their own license files inside `node_modules` (and inside the Docker image).
+Quote System is released under the [MIT License](LICENSE). It includes or adapts the third-party material listed below.
+
+The npm packages the app is built from are listed with their license texts in `THIRD_PARTY_LICENSES.txt`. The Docker image carries it at `/app/THIRD_PARTY_LICENSES.txt`, next to this file (in an install made from `deploy/`, `docker compose exec app cat /app/THIRD_PARTY_LICENSES.txt` prints it). To write it from a checkout, run `npm run build` and then `npm run licenses`.
 
 ## Invoify
 

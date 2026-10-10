@@ -176,6 +176,26 @@ test.describe("quotes list", () => {
   });
 });
 
+test.describe("settings", () => {
+  // The Select handed focus back to its trigger as it closed, so a code typed
+  // after picking "Other…" type-ahead-selected a listed currency instead.
+  test("typing after picking Other… goes into the custom currency field", async ({ page }) => {
+    await page.goto("/en/settings#regional");
+    const trigger = page.getByRole("combobox", { name: "Currency", exact: true }).filter({ visible: true }).first();
+    await trigger.click();
+    await page.getByRole("option", { name: "Other…" }).click();
+    await expect(page.getByRole("listbox")).toBeHidden();
+
+    // The field starts with the listed value; it is selected, so typing replaces it.
+    const other = page.getByLabel("Currency — Other…", { exact: true });
+    await expect(other).toBeFocused();
+    await expect(other).not.toHaveValue("");
+    await page.keyboard.type("uah");
+    await expect(other).toHaveValue("UAH");
+    await expect(trigger).toHaveText("Other…");
+  });
+});
+
 test.describe("contrast", () => {
   for (const colorScheme of ["light", "dark"] as const) {
     test(`default theme text reaches 4.5:1 (${colorScheme})`, async ({ browser, baseURL, storageState }) => {

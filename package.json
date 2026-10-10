@@ -25,7 +25,8 @@
     "test:coverage": "jest --coverage",
     "test:unit": "jest tests/unit",
     "test:e2e": "playwright test",
-    "test:e2e:server": "node tests/e2e/start-server.mjs"
+    "test:e2e:server": "node tests/e2e/start-server.mjs",
+    "licenses": "node scripts/third-party-licenses.mjs --out THIRD_PARTY_LICENSES.txt"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",

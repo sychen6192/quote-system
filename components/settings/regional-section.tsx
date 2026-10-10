@@ -189,6 +189,15 @@ function SelectOrOther({
 }) {
   const { control } = useFormContext<RegionalForm>();
   const otherRef = useRef<HTMLInputElement | null>(null);
+  // Set when "Other…" is picked: the Select hands focus back to its trigger
+  // as it closes, and typing there would type-ahead-select a listed value.
+  const focusOtherOnClose = useRef(false);
+  // Selected, so typing replaces the value carried over from the list
+  // (a currency is capped at 3 letters, so typing after it did nothing).
+  const focusOther = () => {
+    otherRef.current?.focus();
+    otherRef.current?.select();
+  };
   const otherId = useId();
   const value = useWatch({ control, name }) ?? "";
   const [otherMode, setOtherMode] = useState(() => !options.includes(value));
@@ -218,7 +227,9 @@ function SelectOrOther({
               onValueChange={(next) => {
                 if (next === OTHER) {
                   setOtherMode(true);
-                  requestAnimationFrame(() => otherRef.current?.focus());
+                  focusOtherOnClose.current = true;
+                  // Right away too, so keys typed during the close animation land.
+                  requestAnimationFrame(focusOther);
                   return;
                 }
                 setOtherMode(false);
@@ -230,7 +241,16 @@ function SelectOrOther({
                   <SelectValue />
                 </SelectTrigger>
               </FormControl>
-              <SelectContent className="max-h-80">
+              <SelectContent
+                className="max-h-80"
+                onCloseAutoFocus={(event) => {
+                  if (!focusOtherOnClose.current) return;
+                  focusOtherOnClose.current = false;
+                  event.preventDefault();
+                  // Already there from the rAF in onValueChange, maybe typed into: leave it.
+                  if (document.activeElement !== otherRef.current) focusOther();
+                }}
+              >
                 {options.map((option) => (
                   <SelectItem key={option} value={option} className="py-2">
                     <span className="font-medium tabular-nums">{option}</span>
