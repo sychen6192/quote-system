@@ -4,8 +4,6 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
-## [Unreleased]
-
 ### Fixed
 
 - **Date fields no longer stick out of their card on iPhone.** Safari gave the issue date, valid-until and delivery date fields its own native frame and a minimum width, so on phones they ran past the right edge of the form card, came out taller than the other fields and centred the date. They now size and align like every other input; tapping still opens the iOS date picker.
