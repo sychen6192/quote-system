@@ -89,6 +89,34 @@ test.describe("quote editor", () => {
 
   // Enter in the last price adds a row (the hint says so); an untouched row
   // must not block saving with "required" errors on fields that looked like 0.
+  // iOS Safari gave date inputs native chrome and an intrinsic min-width, so
+  // the issue/valid-until fields stuck out of their card on phones. Chromium
+  // never showed it; assert the reset that prevents it is applied and that the
+  // fields stay inside their card and as tall as the other inputs.
+  test("date fields size like the other inputs and stay inside their card", async ({ page }) => {
+    await page.goto("/en/quotes/new");
+    const salespersonInput = page.locator('[name="salesperson"]');
+    await expect(salespersonInput).toBeVisible();
+    for (const name of ["issuedDate", "validUntil"]) {
+      const input = page.locator(`[name="${name}"]`);
+      await expect(input).toBeVisible();
+      const style = await input.evaluate((el) => {
+        const cs = getComputedStyle(el);
+        return { appearance: cs.appearance, minWidth: cs.minWidth };
+      });
+      expect(style).toEqual({ appearance: "none", minWidth: "0px" });
+
+      const box = await input.boundingBox();
+      const card = await input.evaluate((el) => {
+        const r = (el.closest("section, [data-slot=card], .rounded-xl") ?? el.parentElement!).getBoundingClientRect();
+        return { right: r.right };
+      });
+      const salesperson = await salespersonInput.boundingBox();
+      expect(box!.x + box!.width).toBeLessThanOrEqual(card.right + 0.5);
+      expect(Math.abs(box!.height - salesperson!.height)).toBeLessThanOrEqual(1);
+    }
+  });
+
   test("Save drops a blank row added with Enter", async ({ page }) => {
     await page.goto("/en/quotes/new");
     await fillQuote(page, `E2E blank row ${Date.now()}`, "Free installation", "0");

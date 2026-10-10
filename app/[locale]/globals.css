@@ -114,6 +114,22 @@
     outline: 2px solid hsl(var(--ring));
     outline-offset: 2px;
   }
+
+  /* iOS Safari draws date/time inputs with native chrome and an intrinsic
+     min-width: they overflow narrow cards, come out taller than the other
+     fields and centre their value. Make them size and align like any input
+     (tapping still opens the native picker). */
+  input:is([type="date"], [type="time"], [type="datetime-local"], [type="month"]) {
+    -webkit-appearance: none;
+    appearance: none;
+    min-width: 0;
+    max-width: 100%;
+  }
+  input:is([type="date"], [type="time"], [type="datetime-local"], [type="month"])::-webkit-date-and-time-value {
+    margin: 0;
+    min-height: 1.5em; /* an empty value would otherwise collapse the field */
+    text-align: left;
+  }
 }
 
 @layer utilities {
