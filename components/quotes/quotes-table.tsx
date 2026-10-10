@@ -1,192 +1,98 @@
+import { useTranslations } from "next-intl";
+import { Link } from "@/navigation";
 import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Eye, Pencil, FileText, Plus } from "lucide-react";
-import { Link } from "@/navigation";
-import { getTranslations, getFormatter } from "next-intl/server";
-import { formatCurrency } from "@/lib/utils";
-import { getAppConfig } from "@/lib/config";
-import { type QuoteListItem } from "@/services/quotes";
 import { StatusBadge } from "./quote-status-badge";
-import { DeleteQuoteButton } from "@/components/delete-quote-button";
-import { QuoteCards, type QuoteCardItem } from "./quote-cards";
+import { QuoteRowActions } from "./quote-row-actions";
+import { ValidUntil } from "./valid-until";
+import type { QuoteRowView } from "./quote-row";
 
-export async function QuotesTable({ data }: { data: QuoteListItem[] }) {
-  const t = await getTranslations("QuotesList");
-  const format = await getFormatter();
-  const { money } = getAppConfig();
-
-  const cardItems: QuoteCardItem[] = data.map((quote) => ({
-    id: quote.id,
-    quotationNumber: quote.quotationNumber,
-    customerName: quote.customer?.companyName || t("unknownCustomer"),
-    dateLabel: quote.issuedDate
-      ? format.dateTime(new Date(quote.issuedDate), { dateStyle: "medium" })
-      : "-",
-    amountLabel: formatCurrency(quote.totalAmount, money),
-    status: quote.status,
-    validUntil: quote.validUntil,
-  }));
-
-  if (data.length === 0) {
-    return (
-      <div className="rounded-xl border bg-card p-10 shadow-sm">
-        <div className="flex flex-col items-center justify-center gap-3 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent text-primary">
-            <FileText className="h-6 w-6" />
-          </div>
-          <p className="text-muted-foreground">{t("emptyState")}</p>
-          <Link href="/quotes/new">
-            <Button size="sm">
-              <Plus className="mr-2 h-4 w-4" /> {t("createQuote")}
-            </Button>
-          </Link>
-        </div>
-      </div>
-    );
-  }
+/** Desktop (md+) quotes table; each row opens its quote, ⋯ holds the actions. */
+export function QuotesTable({ rows }: { rows: QuoteRowView[] }) {
+  const t = useTranslations("QuotesList");
 
   return (
-    <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
-      {(
-        <QuoteCards
-          items={cardItems}
-          renderActions={(item) => (
-            <>
-              <Link href={`/quotes/${item.id}/edit`}>
-                <Button variant="ghost" size="icon" title="Edit">
-                  <Pencil className="h-4 w-4 text-muted-foreground" />
-                </Button>
-              </Link>
-              <DeleteQuoteButton
-                id={item.id}
-                quotationNumber={item.quotationNumber}
-              />
-            </>
-          )}
-        />
-      )}
-      <div className="hidden overflow-x-auto md:block">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground hover:bg-muted/40">
-              <TableHead className="w-[120px]">
-                {t("table.quoteNumber")}
-              </TableHead>
-              <TableHead className="min-w-[150px]">
-                {t("table.customer")}
-              </TableHead>
-              <TableHead className="hidden md:table-cell">
-                {t("table.salesperson")}
-              </TableHead>
-              <TableHead className="hidden lg:table-cell">
-                {t("table.date")}
-              </TableHead>
-              <TableHead className="hidden lg:table-cell">
-                {t("table.validUntil")}
-              </TableHead>
-              <TableHead className="text-right">
-                {t("table.totalAmount")}
-              </TableHead>
-              <TableHead className="text-right w-[100px]">
-                {t("table.action")}
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.map((quote) => (
-                <TableRow
-                  key={quote.id}
-                  className="group hover:bg-muted/50 transition-colors"
-                >
-                  <TableCell className="font-medium">
-                    <Link
-                      href={`/quotes/${quote.id}`}
-                      className="block min-w-max font-semibold text-primary hover:underline"
-                    >
-                      {quote.quotationNumber}
-                    </Link>
-                  </TableCell>
-
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent text-xs font-bold text-primary">
-                        {(
-                          quote.customer?.companyName || t("unknownCustomer")
-                        ).slice(0, 1)}
-                      </span>
-                      <div className="min-w-0">
-                        <div className="truncate max-w-[150px] font-medium md:max-w-none">
-                          {quote.customer?.companyName || t("unknownCustomer")}
-                        </div>
-                        <div className="mt-0.5 block text-xs text-muted-foreground md:hidden">
-                          {quote.issuedDate
-                            ? format.dateTime(new Date(quote.issuedDate), {
-                                dateStyle: "short",
-                              })
-                            : "-"}
-                        </div>
-                        <div className="hidden text-xs text-muted-foreground md:block">
-                          {quote.customer?.contactPerson}
-                        </div>
-                      </div>
+    <div className="hidden overflow-hidden rounded-xl border bg-card shadow-card md:block">
+      <Table>
+        <TableCaption className="sr-only">{t("table.caption")}</TableCaption>
+        <TableHeader>
+          <TableRow className="bg-muted/50 hover:bg-muted/50">
+            <TableHead className="h-11 pl-5 text-xs font-medium">{t("table.number")}</TableHead>
+            <TableHead className="h-11 text-xs font-medium">{t("table.quote")}</TableHead>
+            <TableHead className="hidden h-11 text-xs font-medium xl:table-cell">
+              {t("table.salesperson")}
+            </TableHead>
+            <TableHead className="hidden h-11 text-xs font-medium lg:table-cell">
+              {t("table.issued")}
+            </TableHead>
+            <TableHead className="h-11 text-xs font-medium">{t("table.validUntil")}</TableHead>
+            <TableHead className="h-11 text-xs font-medium">{t("table.status")}</TableHead>
+            <TableHead className="h-11 text-right text-xs font-medium">{t("table.total")}</TableHead>
+            <TableHead className="h-11 w-12 pr-3 text-right text-xs font-medium">
+              <span className="sr-only">{t("table.actions")}</span>
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((row) => {
+            const primary = row.title ?? row.customerName ?? t("unknownCustomer");
+            const secondary = row.title ? row.customerName : row.contactPerson;
+            return (
+              <TableRow key={row.id} className="group relative hover:bg-muted/40 has-[a:focus-visible]:bg-muted/60">
+                <TableCell className="py-3 pl-5">
+                  {/* The ::after overlay makes the whole row open the quote. */}
+                  <Link
+                    href={`/quotes/${row.id}`}
+                    aria-label={t("openQuote", { number: row.number })}
+                    title={row.number}
+                    className="inline-block max-w-[9rem] truncate align-middle font-medium tabular-nums xl:max-w-[12rem] text-foreground after:absolute after:inset-0 after:content-[''] group-hover:text-primary"
+                  >
+                    {row.number}
+                  </Link>
+                </TableCell>
+                {/* w-full + max-w-0: this column takes the space the others leave and truncates. */}
+                <TableCell className="w-full max-w-0 py-3">
+                  <div title={primary} className="truncate font-medium text-foreground">
+                    {primary}
+                  </div>
+                  {secondary ? (
+                    <div title={secondary} className="truncate text-xs text-muted-foreground">
+                      {secondary}
                     </div>
-                  </TableCell>
-
-                  <TableCell className="hidden md:table-cell">
-                    {quote.salesperson}
-                  </TableCell>
-
-                  <TableCell className="hidden lg:table-cell">
-                    {quote.issuedDate
-                      ? format.dateTime(new Date(quote.issuedDate), {
-                          dateStyle: "medium",
-                        })
-                      : "-"}
-                  </TableCell>
-
-                  <TableCell className="hidden lg:table-cell">
-                    <StatusBadge
-                      status={quote.status}
-                      validUntil={
-                        quote.validUntil ? new Date(quote.validUntil) : null
-                      }
-                    />
-                  </TableCell>
-
-                  <TableCell className="text-right font-semibold tabular-nums">
-                    {formatCurrency(quote.totalAmount, money)}
-                  </TableCell>
-
-                  <TableCell className="text-right">
-                    <div className="flex justify-end items-center gap-1">
-                      <Link href={`/quotes/${quote.id}/edit`}>
-                        <Button variant="ghost" size="icon" title="Edit">
-                          <Pencil className="h-4 w-4 text-muted-foreground hover:text-blue-600 transition-colors" />
-                        </Button>
-                      </Link>
-                      <Link href={`/quotes/${quote.id}`}>
-                        <Button variant="ghost" size="icon" title="View">
-                          <Eye className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
-                        </Button>
-                      </Link>
-                      <DeleteQuoteButton
-                        id={quote.id}
-                        quotationNumber={quote.quotationNumber}
-                      />
-                    </div>
-                  </TableCell>
-                </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+                  ) : null}
+                </TableCell>
+                <TableCell className="hidden py-3 text-muted-foreground xl:table-cell">
+                  <div title={row.salesperson} className="max-w-[10rem] truncate">
+                    {row.salesperson}
+                  </div>
+                </TableCell>
+                <TableCell className="hidden whitespace-nowrap py-3 tabular-nums text-muted-foreground lg:table-cell">
+                  {row.issuedLabel}
+                </TableCell>
+                <TableCell className="py-3">
+                  <ValidUntil row={row} />
+                </TableCell>
+                <TableCell className="py-3">
+                  <StatusBadge status={row.status} />
+                </TableCell>
+                <TableCell className="money whitespace-nowrap py-3 text-right font-semibold text-foreground">
+                  {row.total}
+                </TableCell>
+                <TableCell className="relative z-10 py-2 pr-3 text-right">
+                  <QuoteRowActions id={row.id} quotationNumber={row.number} />
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
     </div>
   );
 }

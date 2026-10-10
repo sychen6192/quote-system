@@ -1,17 +1,9 @@
-import { NextResponse } from "next/server";
-import { getBrandingFile } from "@/lib/config";
+import { brandingResponse } from "@/lib/settings/branding-response";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  const icon = getBrandingFile("icon");
-  if (!icon) {
-    return new NextResponse(null, { status: 404 });
-  }
-  return new NextResponse(new Uint8Array(icon), {
-    headers: {
-      "Content-Type": "image/png",
-      "Cache-Control": "public, max-age=3600",
-    },
-  });
+/** Kept for existing links/bookmarks: same as /api/branding/icon. */
+export async function GET(req: Request) {
+  return brandingResponse(req, "icon");
 }

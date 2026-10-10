@@ -1,39 +1,245 @@
 import { z } from "zod";
+import { isIsoDate } from "@/lib/dates";
+import { calculateQuoteFinancials, lineAmount, toBasisPoints, toCents } from "@/lib/money";
 
-export const quoteFormSchema = z.object({
-    companyName: z.string().min(1, "Company name is required"),
-    contactPerson: z.string().optional(),
-    phone: z.string().optional(),
+// Shared by the form (zodResolver) and the server actions. Every message is
+// a KEY of the "Validation" i18n namespace; render with
+// t(`Validation.${message}`).
+//
+// Money inputs are MAJOR units here (10.5 = NT$10.50); the actions convert
+// them to cents / basis points with lib/money.
 
-    // ✅ 修正：使用簡單的 optional + refine，避免複雜的 Union 型別讓 TS 混亂
-    email: z.string().email("Invalid email address").optional().or(z.literal("")),
+export const MAX_DB_ID = 2_147_483_647;
+export const MAX_ITEMS = 200;
+export const MAX_QUANTITY = 1e9;
+export const MAX_UNIT_PRICE = 1e12;
+const MAX_TOTAL_CENTS = Number.MAX_SAFE_INTEGER;
 
-    address: z.string().optional(),
-    vatNumber: z.string().optional(),
-    salesperson: z.string().min(1, "Salesperson is required"),
+export const DISCOUNT_TYPE_VALUES = ["amount", "percent"] as const;
 
-    issuedDate: z.string(),
-    validUntil: z.string(),
-    shippingDate: z.string().optional(),
-    paymentMethod: z.string().optional(),
-    shippingMethod: z.string().optional(),
+// Compares against the shortest decimal rendering instead of scaling: past
+// ~5e11, value × 100 is off by more than any fixed tolerance in binary, so
+// a price typed with two decimals would be rejected. The tolerance branch
+// keeps accepting tiny float noise such as 0.1 + 0.2.
+function hasAtMostDecimals(value: number, decimals: number): boolean {
+  if (Number(value.toFixed(decimals)) === value) return true;
+  const scaled = value * 10 ** decimals;
+  return Math.abs(scaled - Math.round(scaled)) < 1e-6;
+}
 
-    // ✅ 確保數字轉換
-    taxRate: z.coerce.number().min(0).max(20, "Tax rate must be between 0% and 20%").default(5),
-    notes: z.string().optional(),
+// Accepts what forms produce: numbers (valueAsNumber gives NaN when empty)
+// or strings from text inputs with inputMode="decimal".
+const numberInput = z
+  .custom<number | string | null | undefined>(
+    (v) => v == null || typeof v === "number" || typeof v === "string",
+    { error: "invalidNumber" }
+  )
+  .transform((v): number | undefined => {
+    if (v == null) return undefined;
+    if (typeof v === "number") return Number.isNaN(v) ? undefined : v;
+    const text = v.trim();
+    return text === "" ? undefined : Number(text);
+  });
 
-    items: z.array(
-        z.object({
-            productName: z.string().min(1, "Product name is required"),
-            // ✅ 確保數字轉換，避免 HTML Input 傳回字串導致錯誤
-            quantity: z.coerce.number().min(1, "Qty must be > 0"),
-            unitPrice: z.coerce.number().min(0, "Price must be >= 0"),
-            isTaxable: z.boolean().default(false),
-        })
-    ).default([]),
-}).refine(
-    (data) => new Date(data.validUntil) >= new Date(data.issuedDate),
-    { message: "Valid until date must be on or after issued date", path: ["validUntil"] },
-);
+const requiredNumber = () =>
+  numberInput.pipe(
+    z.number({
+      error: (issue) => (issue.input === undefined ? "required" : "invalidNumber"),
+    })
+  );
 
-export type QuoteFormData = z.infer<typeof quoteFormSchema>;
+const optionalNumber = () =>
+  numberInput.pipe(z.number({ error: "invalidNumber" }).default(0));
+
+const requiredText = (max: number) =>
+  z.string({ error: "required" }).trim().min(1, "required").max(max, "tooLong");
+
+const optionalText = (max: number) =>
+  z.string({ error: "invalidText" }).trim().max(max, "tooLong").optional();
+
+const isoDate = () =>
+  z
+    .string({ error: "required" })
+    .trim()
+    .min(1, "required")
+    .pipe(z.iso.date({ error: "invalidDate" }));
+
+export const quoteItemSchema = z.object({
+  productName: requiredText(200),
+  description: optionalText(2000),
+  unit: optionalText(20),
+  quantity: requiredNumber()
+    .refine((v) => v > 0, "quantityPositive")
+    .refine((v) => v <= MAX_QUANTITY, "tooLarge")
+    .refine((v) => hasAtMostDecimals(v, 3), "tooManyDecimals"),
+  unitPrice: requiredNumber()
+    .refine((v) => v >= 0, "priceNonNegative")
+    .refine((v) => v <= MAX_UNIT_PRICE, "tooLarge")
+    .refine((v) => hasAtMostDecimals(v, 2), "tooManyDecimals"),
+  isTaxable: z.boolean({ error: "invalidValue" }).default(true),
+}, { error: "invalidValue" });
+
+const quoteBaseSchema = z.object({
+  // Customer (bill-to snapshot)
+  companyName: requiredText(200),
+  contactPerson: optionalText(100),
+  email: z
+    .string({ error: "invalidEmail" })
+    .trim()
+    .pipe(
+      z.union([
+        z.literal(""),
+        z.email({ error: "invalidEmail" }).max(254, "tooLong"),
+      ])
+    )
+    .optional(),
+  phone: optionalText(50),
+  address: optionalText(500),
+  vatNumber: optionalText(20),
+
+  // Quote info
+  title: optionalText(200),
+  salesperson: requiredText(100),
+  issuedDate: isoDate(),
+  validUntil: isoDate(),
+  paymentMethod: optionalText(200),
+  shippingMethod: optionalText(200),
+  shippingDate: z
+    .union([z.literal(""), z.iso.date({ error: "invalidDate" })], {
+      error: "invalidDate",
+    })
+    .optional(),
+
+  // Totals
+  taxRate: requiredNumber()
+    .refine((v) => v >= 0 && v <= 100, "taxRateRange")
+    .refine((v) => hasAtMostDecimals(v, 2), "tooManyDecimals"),
+  discountType: z
+    .enum(DISCOUNT_TYPE_VALUES, { error: "invalidValue" })
+    .default("amount"),
+  discountValue: optionalNumber()
+    .refine((v) => v >= 0, "nonNegative")
+    .refine((v) => v <= MAX_UNIT_PRICE, "tooLarge")
+    .refine((v) => hasAtMostDecimals(v, 2), "tooManyDecimals"),
+  otherFees: optionalNumber()
+    .refine((v) => v >= 0, "nonNegative")
+    .refine((v) => v <= MAX_UNIT_PRICE, "tooLarge")
+    .refine((v) => hasAtMostDecimals(v, 2), "tooManyDecimals"),
+
+  items: z
+    .array(quoteItemSchema, { error: "itemsRequired" })
+    .min(1, "itemsRequired")
+    .max(MAX_ITEMS, "tooManyItems"),
+
+  // Terms
+  notes: optionalText(5000),
+  terms: optionalText(5000),
+}, { error: "invalidValue" });
+
+type PartialQuote = Partial<Record<keyof z.output<typeof quoteBaseSchema>, unknown>>;
+
+const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+
+/** Cents subtotal of already-parsed items, or null if any item is unusable. */
+function parsedSubtotal(items: unknown): number | null {
+  if (!Array.isArray(items)) return null;
+  let subtotal = 0;
+  for (const item of items as { quantity?: unknown; unitPrice?: unknown }[]) {
+    if (!finite(item?.quantity) || !finite(item?.unitPrice)) return null;
+    subtotal += lineAmount(item.quantity, toCents(item.unitPrice));
+  }
+  return subtotal;
+}
+
+// Run the cross-field checks even when another field is already invalid, so
+// the form shows every problem at once; each check guards its own inputs.
+// Only skip them when the input is not an object at all.
+const always = {
+  when: (payload: { value: unknown }) =>
+    typeof payload.value === "object" && payload.value !== null,
+} as const;
+
+export const quoteFormSchema = quoteBaseSchema
+  .refine(
+    (data) => {
+      const { issuedDate, validUntil } = data as PartialQuote;
+      return !(isIsoDate(issuedDate) && isIsoDate(validUntil)) || validUntil >= issuedDate;
+    },
+    { message: "validUntilBeforeIssued", path: ["validUntil"], ...always }
+  )
+  .refine(
+    (data) => {
+      const { discountType, discountValue, items } = data as PartialQuote;
+      if (!finite(discountValue) || discountValue <= 0) return true;
+      if (discountType === "percent") return discountValue <= 100;
+      const subtotal = parsedSubtotal(items);
+      return subtotal === null || toCents(discountValue) <= subtotal;
+    },
+    { message: "discountTooLarge", path: ["discountValue"], ...always }
+  )
+  .refine(
+    (data) => {
+      const { items, taxRate, discountType, discountValue, otherFees } =
+        data as PartialQuote;
+      if (parsedSubtotal(items) === null) return true;
+      const totals = calculateQuoteFinancials(
+        (items as { quantity: number; unitPrice: number; isTaxable?: boolean }[]).map(
+          (item) => ({ ...item, unitPrice: toCents(item.unitPrice) })
+        ),
+        {
+          taxRateBp: finite(taxRate) ? toBasisPoints(taxRate) : 0,
+          discount: {
+            type: discountType === "percent" ? "percent" : "amount",
+            value: finite(discountValue)
+              ? discountType === "percent"
+                ? toBasisPoints(discountValue)
+                : toCents(discountValue)
+              : 0,
+          },
+          otherFees: finite(otherFees) ? toCents(otherFees) : 0,
+        }
+      );
+      return (
+        Math.abs(totals.subtotal) <= MAX_TOTAL_CENTS &&
+        Math.abs(totals.total) <= MAX_TOTAL_CENTS
+      );
+    },
+    { message: "totalTooLarge", path: ["items"], ...always }
+  );
+
+/** What the form holds (inputs may still be strings / NaN). */
+export type QuoteFormValues = z.input<typeof quoteFormSchema>;
+/** What a successful parse returns (numbers, defaults applied). */
+export type QuoteFormData = z.output<typeof quoteFormSchema>;
+export type QuoteItemFormValues = z.input<typeof quoteItemSchema>;
+export type QuoteItemFormData = z.output<typeof quoteItemSchema>;
+
+/** Database ids: positive int4. */
+export const quoteIdSchema = z
+  .number({ error: "invalidId" })
+  .int("invalidId")
+  .positive("invalidId")
+  .max(MAX_DB_ID, "invalidId");
+
+/** Accepts a number or an all-digits string (route params); null otherwise. */
+export function parseQuoteId(value: unknown): number | null {
+  const n =
+    typeof value === "string" && /^[1-9]\d{0,9}$/.test(value.trim())
+      ? Number(value.trim())
+      : value;
+  const parsed = quoteIdSchema.safeParse(n);
+  return parsed.success ? parsed.data : null;
+}
+
+/**
+ * Zod issues → { "items.0.quantity": ["quantityPositive"], ... } so the form
+ * can map server errors back with setError(path).
+ */
+export function toFieldErrors(error: z.ZodError): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const issue of error.issues) {
+    const key = issue.path.map(String).join(".") || "_form";
+    (out[key] ??= []).push(issue.message);
+  }
+  return out;
+}

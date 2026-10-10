@@ -1,0 +1,14 @@
+{
+  "notFound": {
+    "title": "找不到這個頁面",
+    "description": "連結可能有誤，或頁面已被移動、刪除。"
+  },
+  "error": {
+    "title": "頁面發生錯誤",
+    "description": "發生非預期的錯誤，導致頁面無法載入。請再試一次；若問題持續發生，請聯絡系統管理員。",
+    "retry": "重新載入",
+    "reference": "錯誤代碼：{digest}"
+  },
+  "backToDashboard": "返回儀表板",
+  "goToQuotes": "前往報價單列表"
+}

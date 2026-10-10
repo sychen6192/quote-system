@@ -1,0 +1,14 @@
+{
+  "notFound": {
+    "title": "We couldn't find that page",
+    "description": "The link may be broken, or the page may have been moved or deleted."
+  },
+  "error": {
+    "title": "Something went wrong",
+    "description": "An unexpected error stopped this page from loading. Please try again — if it keeps happening, contact your administrator.",
+    "retry": "Try again",
+    "reference": "Error reference: {digest}"
+  },
+  "backToDashboard": "Back to dashboard",
+  "goToQuotes": "Go to quotes"
+}

@@ -1,0 +1,60 @@
+{
+  "title": "Quotes",
+  "count": "{count, plural, =0 {No quotes} one {# quote} other {# quotes}}",
+  "newQuote": "New quote",
+  "exportCsv": "Export CSV",
+  "exportCsvHint": "Download the quotes that match these filters as a spreadsheet (CSV)",
+  "search": {
+    "label": "Search quotes",
+    "placeholder": "Search quotes"
+  },
+  "statusFilter": "Filter by status",
+  "all": "All",
+  "sort": {
+    "label": "Sort by",
+    "newest": "Newest first",
+    "oldest": "Oldest first",
+    "amount_desc": "Highest amount",
+    "amount_asc": "Lowest amount",
+    "valid_until": "Expiring soonest"
+  },
+  "table": {
+    "caption": "Quotes",
+    "number": "Quote #",
+    "quote": "Title / customer",
+    "salesperson": "Salesperson",
+    "issued": "Issued",
+    "validUntil": "Valid until",
+    "status": "Status",
+    "total": "Total",
+    "actions": "Actions"
+  },
+  "unknownCustomer": "No customer",
+  "validUntil": "Valid until {date}",
+  "daysLeft": "{days, plural, =0 {expires today} =1 {1 day left} other {# days left}}",
+  "openQuote": "Open quote {number}",
+  "actionsFor": "Actions for quote {number}",
+  "empty": {
+    "title": "No quotes yet",
+    "description": "Create your first quote — customers, items and totals are all on one page.",
+    "cta": "Create your first quote"
+  },
+  "noResults": {
+    "title": "No matching quotes",
+    "description": "Try another search term or status.",
+    "withQuery": "Nothing matches “{query}”. Try another search term or status.",
+    "clear": "Clear filters"
+  },
+  "delete": {
+    "trigger": "Delete",
+    "title": "Delete quote {number}?",
+    "description": "The quote, its items and its activity history are deleted permanently. This can't be undone.",
+    "confirm": "Delete quote",
+    "deleting": "Deleting…",
+    "deleted": "Quote {number} deleted",
+    "notFound": "This quote had already been deleted.",
+    "error": "Couldn't delete the quote. Please try again."
+  },
+  "results": "{count, plural, =0 {No matching quotes} one {# matching quote} other {# matching quotes}}",
+  "statusChip": "{label} ({count})"
+}

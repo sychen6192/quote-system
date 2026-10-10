@@ -1,0 +1,21 @@
+{
+  "subject": "Quotation {number} from {company}",
+  "preview": "Quotation {number} · Total {total} · Valid until {date}",
+  "greeting": "Dear {name},",
+  "greetingFallback": "Hello,",
+  "intro": "Thank you for your enquiry. Please find our quotation {number} attached as a PDF.",
+  "introWithTitle": "Thank you for your enquiry. Please find our quotation {number} for “{title}” attached as a PDF.",
+  "summary": "Quotation summary",
+  "number": "Quotation no.",
+  "title": "Subject",
+  "validUntil": "Valid until",
+  "total": "Total",
+  "paymentDetails": "Payment details",
+  "bankName": "Bank",
+  "bankCode": "Bank code",
+  "accountName": "Account name",
+  "accountNumber": "Account no.",
+  "closing": "If you have any questions or would like us to adjust anything, simply reply to this email.",
+  "signOff": "Best regards,",
+  "attachment": "Attachment: {filename}"
+}

@@ -1,64 +1,55 @@
-import { db } from "@/db";
-import { quotations } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import QuoteForm from "@/components/quote-form";
-import { getCustomerOptions } from "@/services/customers";
+import { getTranslations, setRequestLocale } from "next-intl/server";
+import { quoteDraftKey, quoteDraftPrefix } from "@/components/quote-form/form-model";
+import { QuoteForm } from "@/components/quote-form/quote-form";
+import { todayInTimeZone } from "@/lib/dates";
+import { formValuesFromRecord } from "@/lib/quote-view";
+import { parseQuoteId } from "@/lib/schemas/quote";
+import { normalizeStatus } from "@/lib/status";
+import { getDocumentBranding, getSettings } from "@/services/settings";
+import { loadQuote } from "./load-quote";
 
-// 1. 定義 params 為 Promise
-interface EditQuotePageProps {
-  params: Promise<{ id: string }>;
+export const dynamic = "force-dynamic";
+
+type Params = Promise<{ locale: string; id: string }>;
+
+export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
+  const { locale, id } = await params;
+  const quoteId = parseQuoteId(id);
+  const quote = quoteId === null ? null : await loadQuote(quoteId);
+  if (!quote) return {};
+  const t = await getTranslations({ locale, namespace: "QuoteForm.meta" });
+  return { title: t("editTitle", { number: quote.quotationNumber }) };
 }
 
-export default async function EditQuotePage({ params }: EditQuotePageProps) {
-  // 2. 必須先 await 解開 params
-  const { id } = await params;
+export default async function EditQuotePage({ params }: { params: Params }) {
+  const { locale, id } = await params;
+  setRequestLocale(locale);
 
-  const quoteId = Number(id);
+  const quoteId = parseQuoteId(id);
+  if (quoteId === null) notFound();
 
-  if (isNaN(quoteId)) {
-    notFound();
-  }
-
-  const quote = await db.query.quotations.findFirst({
-    where: eq(quotations.id, quoteId),
-    with: {
-      customer: true,
-      items: true,
-    },
-  });
-
-  if (!quote) {
-    notFound();
-  }
-
-  const companyOptions = await getCustomerOptions();
-
-  const initialData = {
-    id: quote.id,
-    companyName: quote.customer?.companyName || "",
-    contactPerson: quote.customer?.contactPerson || "",
-    email: quote.customer?.email || "",
-    phone: quote.customer?.phone || "",
-    vatNumber: quote.customer?.vatNumber || "",
-    address: quote.customer?.address || "",
-    salesperson: quote.salesperson || "",
-    issuedDate: quote.issuedDate
-      ? new Date(quote.issuedDate).toISOString().split("T")[0]
-      : new Date().toISOString().split("T")[0],
-    validUntil: new Date(quote.validUntil).toISOString().split("T")[0],
-    taxRate: (Number(quote.taxRate) || 0) / 100,
-    items: quote.items.map((item) => ({
-      productName: item.productName || "",
-      quantity: item.quantity,
-      unitPrice: item.unitPrice / 100,
-      isTaxable: item.isTaxable ?? true,
-    })),
-  };
+  const [quote, settings, branding] = await Promise.all([
+    loadQuote(quoteId),
+    getSettings(),
+    getDocumentBranding("html"),
+  ]);
+  if (!quote) notFound();
 
   return (
-    <div className="container mx-auto">
-      <QuoteForm initialData={initialData} companyOptions={companyOptions} />
-    </div>
+    <QuoteForm
+      mode="edit"
+      quoteId={quote.id}
+      quotationNumber={quote.quotationNumber}
+      status={normalizeStatus(quote.status)}
+      // Every saved field goes into the form state, so saving never drops
+      // anything the form shows only conditionally (discount, fees…).
+      initialValues={formValuesFromRecord(quote)}
+      draftKey={quoteDraftKey({ id: quote.id, updatedAt: quote.updatedAt })}
+      draftPrunePrefix={quoteDraftPrefix(quote.id)}
+      today={todayInTimeZone(settings.region.timezone)}
+      branding={branding}
+    />
   );
 }

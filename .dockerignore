@@ -1,0 +1,55 @@
+# Never send secrets or host build output into the build context.
+# (Next's standalone build copies a present .env into .next/standalone, and
+# `COPY . .` would bake it into the image.)
+.env
+.env.*
+!.env.example
+.npmrc
+*.pem
+*.key
+
+# VCS, CI, editor and OS clutter
+.git
+.github
+.gitignore
+.vscode
+.idea
+**/.DS_Store
+Thumbs.db
+*.log
+.eslintcache
+
+# Host dependencies and build output (the image builds its own)
+node_modules
+.next
+.next-*
+out
+build
+*.tsbuildinfo
+next-env.d.ts
+.vercel
+
+# Runtime data that must stay on the host
+branding
+postgres_data
+backups
+*.dump
+
+# Tests, docs and local tooling (not needed to build the app)
+tests
+e2e
+coverage
+test-results
+playwright-report
+playwright.config.*
+docs
+deploy
+*.md
+!THIRD_PARTY_NOTICES.md
+Dockerfile*
+docker-compose*.y*ml
+.dockerignore
+.worktrees
+.superpowers
+.playwright-mcp
+.claude

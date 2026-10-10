@@ -1,0 +1,26 @@
+{
+  "dashboard": "Dashboard",
+  "quotes": "Quotes",
+  "customers": "Customers",
+  "settings": "Settings",
+  "newQuote": "New quote",
+  "short": {
+    "dashboard": "Home",
+    "quotes": "Quotes",
+    "new": "New",
+    "customers": "Customers",
+    "settings": "Settings"
+  },
+  "mainNavigation": "Main navigation",
+  "home": "{name} home",
+  "skipToContent": "Skip to content",
+  "language": {
+    "switchTo": "Switch language to {language}"
+  },
+  "theme": {
+    "label": "Change theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  }
+}

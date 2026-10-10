@@ -1,36 +1,59 @@
-version: '3.8'
+# Build-from-source stack for contributors. To run Quote System in production,
+# use the prebuilt image instead: deploy/docker-compose.yml (README, "Install").
+#
+#   docker compose up -d postgres    database only, for `npm run dev` (127.0.0.1:5432)
+#   docker compose up -d --build     app + database                   (http://localhost:3000)
+#
+# Reads .env when present (same file as `npm run dev`); DATABASE_URL is
+# overridden below to reach the database over the compose network.
 
 services:
   app:
-    container_name: quote-system-web
     build:
       context: .
       dockerfile: Dockerfile
-    restart: always
-    ports:
-      - "3000:3000"
+    image: quote-system:dev
+    restart: unless-stopped
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
-      # 覆蓋 .env 的 DATABASE_URL,讓容器連 compose 網路內的 postgres
-      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/quote-system
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/quote-system
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+    ports:
+      - "${APP_PORT:-3000}:3000"
     volumes:
-      - ./branding:/app/branding
+      - ./branding:/app/branding:ro
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+        restart: true
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
 
   postgres:
     image: postgres:16-alpine
-    container_name: quote-system-db
-    restart: always
-    ports:
-      - "5432:5432"
+    restart: unless-stopped
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=quote-system
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: quote-system
+    ports:
+      # Loopback only: published ports bypass host firewalls such as ufw.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d quote-system"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
 volumes:
   postgres_data:

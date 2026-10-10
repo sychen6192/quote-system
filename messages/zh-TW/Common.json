@@ -1,0 +1,31 @@
+{
+  "backToDashboard": "返回儀表板",
+  "toggleTheme": "切換主題",
+  "number": "報價單號",
+  "customer": "客戶",
+  "status": "狀態",
+  "date": "日期",
+  "amount": "金額",
+  "actions": "操作",
+  "view": "檢視",
+  "edit": "編輯",
+  "duplicate": "複製為新報價單",
+  "downloadPdf": "下載 PDF",
+  "delete": "刪除",
+  "cancel": "取消",
+  "copied": "已複製到剪貼簿",
+  "copyFailed": "無法複製，請手動選取文字後複製。",
+  "clearSearch": "清除搜尋",
+  "loading": "載入中…",
+  "notSet": "未填寫",
+  "sessionExpired": "登入已逾時，正在前往登入頁面…",
+  "genericError": "發生錯誤，請再試一次。",
+  "pagination": {
+    "label": "分頁",
+    "previous": "上一頁",
+    "next": "下一頁",
+    "pageInfo": "第 {current} 頁，共 {total} 頁",
+    "range": "第 {from}–{to} 筆，共 {total} 筆"
+  },
+  "notifications": "通知"
+}

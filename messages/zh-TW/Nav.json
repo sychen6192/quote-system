@@ -1,0 +1,26 @@
+{
+  "dashboard": "儀表板",
+  "quotes": "報價單",
+  "customers": "客戶",
+  "settings": "設定",
+  "newQuote": "新增報價單",
+  "short": {
+    "dashboard": "首頁",
+    "quotes": "報價單",
+    "new": "新增",
+    "customers": "客戶",
+    "settings": "設定"
+  },
+  "mainNavigation": "主選單",
+  "home": "{name} 首頁",
+  "skipToContent": "跳至主要內容",
+  "language": {
+    "switchTo": "將語言切換為{language}"
+  },
+  "theme": {
+    "label": "切換外觀",
+    "light": "淺色",
+    "dark": "深色",
+    "system": "跟隨系統"
+  }
+}

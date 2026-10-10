@@ -1,0 +1,31 @@
+{
+  "backToDashboard": "Back to dashboard",
+  "toggleTheme": "Toggle theme",
+  "number": "Number",
+  "customer": "Customer",
+  "status": "Status",
+  "date": "Date",
+  "amount": "Amount",
+  "actions": "Actions",
+  "view": "View",
+  "edit": "Edit",
+  "duplicate": "Duplicate",
+  "downloadPdf": "Download PDF",
+  "delete": "Delete",
+  "cancel": "Cancel",
+  "copied": "Copied to clipboard",
+  "copyFailed": "Couldn't copy. Select the text and copy it instead.",
+  "clearSearch": "Clear search",
+  "loading": "Loading…",
+  "notSet": "Not set",
+  "sessionExpired": "Your session has expired. Taking you to the sign-in page…",
+  "genericError": "Something went wrong. Please try again.",
+  "pagination": {
+    "label": "Pagination",
+    "previous": "Previous",
+    "next": "Next",
+    "pageInfo": "Page {current} of {total}",
+    "range": "{from}–{to} of {total}"
+  },
+  "notifications": "Notifications"
+}

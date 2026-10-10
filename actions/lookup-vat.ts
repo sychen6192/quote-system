@@ -1,22 +1,41 @@
 "use server";
 
-import { getAppConfig } from "@/lib/config";
+import { headers } from "next/headers";
 import { gcisUrl, parseGcisResponse, type VatCompany } from "@/lib/gcis";
+import { createRateLimiter, getClientIp } from "@/lib/server/rate-limit";
+import { getSettings } from "@/services/settings";
+import { requireAuth } from "./types";
 
 export type VatLookupResult =
-  | { ok: true; company: VatCompany }
-  | { ok: false; reason: "DISABLED" | "INVALID" | "NOT_FOUND" | "ERROR" };
+  | { success: true; company: VatCompany }
+  | {
+      success: false;
+      code: "DISABLED" | "INVALID" | "NOT_FOUND" | "ERROR" | "UNAUTHORIZED" | "RATE_LIMITED";
+    };
 
-export async function lookupVatNumber(vat: string): Promise<VatLookupResult> {
+// The government API is shared and unauthenticated; don't let one client
+// hammer it through us.
+const limiter = createRateLimiter({ windowMs: 60_000, max: 30 });
+
+export async function lookupVatNumber(vat: unknown): Promise<VatLookupResult> {
+  if (await requireAuth()) return { success: false, code: "UNAUTHORIZED" };
+
   // Defence in depth: the button is hidden when the flag is off, but never
   // trust the client.
-  if (!getAppConfig().features.twVatLookup) {
-    return { ok: false, reason: "DISABLED" };
+  let enabled: boolean;
+  try {
+    enabled = (await getSettings()).features.twVatLookup;
+  } catch (err) {
+    console.error("lookupVatNumber: could not load settings:", err);
+    return { success: false, code: "ERROR" };
   }
+  if (!enabled) return { success: false, code: "DISABLED" };
 
-  const trimmed = (vat ?? "").trim();
-  if (!/^\d{8}$/.test(trimmed)) {
-    return { ok: false, reason: "INVALID" };
+  const trimmed = typeof vat === "string" ? vat.trim() : "";
+  if (!/^\d{8}$/.test(trimmed)) return { success: false, code: "INVALID" };
+
+  if (!limiter.check(getClientIp(await headers())).ok) {
+    return { success: false, code: "RATE_LIMITED" };
   }
 
   try {
@@ -24,14 +43,14 @@ export async function lookupVatNumber(vat: string): Promise<VatLookupResult> {
       signal: AbortSignal.timeout(8000),
       headers: { Accept: "application/json" },
     });
-    if (!res.ok) return { ok: false, reason: "ERROR" };
+    if (!res.ok) return { success: false, code: "ERROR" };
 
     const company = parseGcisResponse(await res.json());
-    if (!company) return { ok: false, reason: "NOT_FOUND" };
+    if (!company) return { success: false, code: "NOT_FOUND" };
 
-    return { ok: true, company };
+    return { success: true, company };
   } catch (err) {
     console.error("lookupVatNumber failed:", err);
-    return { ok: false, reason: "ERROR" };
+    return { success: false, code: "ERROR" };
   }
 }

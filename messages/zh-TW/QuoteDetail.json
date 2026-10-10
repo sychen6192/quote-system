@@ -1,0 +1,56 @@
+{
+  "meta": {
+    "title": "報價單 {number}"
+  },
+  "back": "報價單",
+  "backLabel": "返回報價單列表",
+  "total": "總計",
+  "issued": "報價日期 {date}",
+  "validUntil": "有效期限 {date}",
+  "daysLeft": "{days, plural, =0 {今天到期} other {剩 # 天}}",
+  "expiredAgo": "{days, plural, other {已過期 # 天}}",
+  "itemCount": "{count, plural, other {共 # 項}}",
+  "expiredBanner": {
+    "title": "此報價單已於 {date} 過期",
+    "description": "價格或供貨狀況可能已有變動。可複製為新報價單後重新寄送，或編輯並延長有效期限。",
+    "duplicate": "複製為新報價單"
+  },
+  "viewer": {
+    "label": "報價單內容",
+    "zoom": "縮放",
+    "fit": "符合寬度",
+    "actual": "100%"
+  },
+  "customer": {
+    "title": "客戶",
+    "contact": "聯絡人",
+    "email": "Email",
+    "phone": "電話",
+    "address": "地址",
+    "vatNumber": "統一編號",
+    "viewQuotes": "查看此客戶的所有報價單",
+    "noContact": "此報價單沒有客戶聯絡資料。"
+  },
+  "details": {
+    "title": "報價資訊",
+    "salesperson": "業務人員",
+    "paymentTerms": "付款條件",
+    "delivery": "交貨方式",
+    "deliveryDate": "交貨日期",
+    "items": "品項",
+    "createdAt": "建立時間",
+    "updatedAt": "最後編輯"
+  },
+  "activity": {
+    "title": "活動紀錄",
+    "created": "建立報價單",
+    "updated": "編輯報價單",
+    "statusChanged": "變更狀態",
+    "emailed": "已寄送至 {to}",
+    "emailedCc": "副本：{cc}",
+    "duplicated": "複製報價單",
+    "unknown": "更新",
+    "empty": "目前還沒有活動紀錄。",
+    "justNow": "剛剛"
+  }
+}

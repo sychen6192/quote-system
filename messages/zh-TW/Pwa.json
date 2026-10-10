@@ -1,0 +1,67 @@
+{
+  "manifest": {
+    "description": "建立、寄送與追蹤報價單。",
+    "shortcuts": {
+      "newQuote": "新增報價單",
+      "newQuoteDescription": "建立一張新的報價單",
+      "quotes": "報價單",
+      "quotesDescription": "瀏覽與搜尋報價單",
+      "customers": "客戶",
+      "customersDescription": "客戶名錄"
+    }
+  },
+  "update": {
+    "title": "新版本已就緒",
+    "description": "重新載入即可使用最新版本。",
+    "reload": "重新載入"
+  },
+  "network": {
+    "offlineTitle": "目前沒有網路連線",
+    "offlineDescription": "恢復連線後即可儲存、寄送及下載 PDF。",
+    "backOnline": "已恢復連線",
+    "offlineBadge": "離線中",
+    "offlineAnnouncement": "目前沒有網路連線。恢復連線後即可儲存、寄送及下載 PDF。",
+    "hide": "隱藏"
+  },
+  "install": {
+    "button": "安裝 App",
+    "rowTitle": "安裝到這台裝置",
+    "rowPrompt": "不需透過商店下載，安裝後以獨立視窗開啟。",
+    "rowIos": "透過「分享」選單加入主畫面。",
+    "rowMac": "透過 Safari 的「檔案」選單加入 Dock。",
+    "install": "安裝",
+    "showSteps": "查看步驟",
+    "installedTitle": "App 已安裝",
+    "installedDescription": "之後可直接從主畫面或應用程式清單開啟。",
+    "gotIt": "我知道了",
+    "ios": {
+      "title": "安裝到 iPhone 或 iPad",
+      "intro": "將「{name}」加入主畫面，就能像 App 一樣直接開啟。",
+      "step1": "點選瀏覽器工具列中的 <share></share>「<b>分享</b>」按鈕；若找不到，請先點 <more></more>。",
+      "step2": "向下捲動，選擇 <add></add>「<b>加入主畫面</b>」。",
+      "step3": "點選「<b>新增</b>」即可完成，之後就能從主畫面開啟。"
+    },
+    "mac": {
+      "title": "加入 Dock",
+      "intro": "加入 Dock 後，就能在獨立視窗中直接開啟。",
+      "step1": "在 Safari 選單列選擇「<b>檔案</b>」→「<b>加入 Dock…</b>」。",
+      "step2": "點選「<b>加入</b>」。"
+    }
+  },
+  "offlinePage": {
+    "title": "目前沒有網路連線",
+    "description": "暫時無法連線到伺服器，請檢查 Wi-Fi 或行動數據後再試一次。",
+    "retry": "再試一次",
+    "checking": "正在檢查連線…",
+    "stillOffline": "仍然沒有網路連線，請稍後再試。",
+    "autoReload": "恢復連線後，此頁面會自動重新載入。",
+    "whileOffline": "離線期間",
+    "tipDrafts": "正在編輯的報價單會以草稿形式保存在這台裝置上，恢復連線後即可接續編輯。",
+    "tipConnection": "儲存、寄送 Email 及下載 PDF 都需要網路連線。",
+    "serverTitle": "無法連線到伺服器",
+    "serverDescription": "裝置已連上網路，但伺服器沒有回應，可能正在更新後重新啟動。",
+    "serverStill": "伺服器仍未回應，請稍後再試。",
+    "serverAutoRetry": "系統會持續檢查，伺服器恢復後就會自動重新載入。",
+    "serverWhile": "等待期間"
+  }
+}

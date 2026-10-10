@@ -1,0 +1,215 @@
+{
+  "meta": {
+    "newTitle": "新增報價單",
+    "editTitle": "編輯 {number}"
+  },
+  "loading": "正在載入報價單編輯器…",
+  "header": {
+    "back": "報價單",
+    "backTo": "返回{target}",
+    "createTitle": "新增報價單",
+    "createDesc": "填寫客戶、報價項目與條款，預覽會隨輸入即時更新。",
+    "editTitle": "編輯報價單 {number}",
+    "editDesc": "修改內容後按「儲存變更」即可更新這份報價單。"
+  },
+  "banners": {
+    "draftTitle": "要還原尚未儲存的草稿嗎？",
+    "draftBody": "您在 {when} 有一份尚未儲存的編輯內容。",
+    "restore": "還原草稿",
+    "discard": "捨棄",
+    "restored": "已還原草稿",
+    "discarded": "已捨棄草稿",
+    "duplicated": "已從 <strong>{number}</strong> 複製。客戶、報價項目與條款皆已帶入，日期則從今天重新起算。",
+    "viewOriginal": "查看原報價單",
+    "customerPrefilled": "已帶入「<strong>{company}</strong>」最近一次報價的客戶資料。",
+    "statusSent": "這份報價單已寄給客戶。儲存後單號不變，記得將更新後的版本再寄給客戶。",
+    "statusAccepted": "客戶已接受這份報價單。若要提出不同條件，建議複製成新報價單，而不是修改客戶已同意的內容。",
+    "statusExpired": "這份報價單已於 {date} 過期。再次寄出前，請先設定新的有效期限。",
+    "duplicateInstead": "改為複製",
+    "setValidity": "設定新期限"
+  },
+  "sections": {
+    "nav": "表單區段",
+    "customer": "客戶資料",
+    "customerDesc": "這份報價單的對象",
+    "details": "報價資訊",
+    "detailsDesc": "報價主旨、業務人員與有效期限",
+    "items": "報價項目",
+    "itemsDesc": "產品與服務的數量和單價",
+    "totals": "金額",
+    "totalsDesc": "稅率、折扣與其他費用",
+    "terms": "條款與備註",
+    "termsDesc": "付款條件、交貨方式，以及其他需告知客戶的事項",
+    "summaryEmpty": "尚未填寫",
+    "state": {
+      "complete": "已完成",
+      "error": "需要修正",
+      "incomplete": "尚未完成",
+      "optional": "選填"
+    },
+    "stateSuffix": "（{state}）"
+  },
+  "fields": {
+    "companyName": "公司名稱",
+    "contactPerson": "聯絡人",
+    "email": "電子郵件",
+    "phone": "電話",
+    "vatNumber": "統一編號",
+    "address": "地址",
+    "title": "報價主旨",
+    "salesperson": "業務人員",
+    "issuedDate": "報價日期",
+    "validUntil": "有效期限",
+    "productName": "品名／服務",
+    "description": "說明",
+    "unit": "單位",
+    "quantity": "數量",
+    "unitPrice": "單價",
+    "taxable": "應稅",
+    "amount": "金額",
+    "taxRate": "稅率",
+    "discount": "折扣",
+    "otherFees": "其他費用",
+    "paymentMethod": "付款條件",
+    "shippingMethod": "交貨方式",
+    "shippingDate": "交貨日期",
+    "notes": "備註",
+    "terms": "報價條款"
+  },
+  "placeholders": {
+    "companyName": "搜尋既有客戶，或輸入新公司名稱",
+    "contactPerson": "例如：王小明",
+    "email": "name@company.com",
+    "phone": "例如：02-2345-6789",
+    "vatNumber": "8 位數字",
+    "address": "縣市、區、路名與門牌號碼",
+    "title": "例如：2027 年度網站維護專案",
+    "salesperson": "您的姓名",
+    "productName": "搜尋或輸入品名",
+    "description": "規格、施作範圍，或其他有助客戶判斷的說明",
+    "unit": "式",
+    "paymentMethod": "例如：月結30天",
+    "shippingMethod": "例如：宅配、到府安裝",
+    "notes": "會顯示在報價單上，例如感謝詞",
+    "terms": "保固、取消規定、不含項目等"
+  },
+  "hints": {
+    "items": "小技巧：在最後一列的單價欄按 Enter，即可再新增一列。",
+    "otherFees": "不計稅，於稅後加計，例如運費。"
+  },
+  "combobox": {
+    "customers": "既有客戶",
+    "products": "過往品項",
+    "searching": "搜尋中…",
+    "noCustomers": "找不到符合的客戶，繼續輸入即可使用新名稱。",
+    "noProducts": "找不到符合的過往品項，繼續輸入即可新增。",
+    "results": "{count, plural, =0 {沒有建議項目} other {共 # 筆建議}}，可用上下鍵選擇。",
+    "error": "目前無法取得建議。",
+    "offline": "目前離線，無法取得建議。"
+  },
+  "customer": {
+    "filled": "已帶入「{company}」的客戶資料。"
+  },
+  "vatLookup": {
+    "button": "查詢",
+    "label": "以統一編號查詢公司資料",
+    "filled": "已依統一編號帶入公司資料",
+    "invalid": "請輸入 8 位數的統一編號",
+    "notFound": "查無此統一編號的公司",
+    "disabled": "統一編號查詢功能已在設定中關閉",
+    "rateLimited": "查詢次數過多，請一分鐘後再試。",
+    "error": "查詢失敗，請稍後再試或改為手動輸入。"
+  },
+  "validity": {
+    "presets": "依報價日期快速設定有效期限",
+    "preset": "+{days} 天",
+    "presetLabel": "自報價日期起 {days} 天內有效",
+    "expiresIn": "{days, plural, =0 {今天到期} =1 {明天到期} other {# 天後到期}}",
+    "expired": "{days, plural, =1 {昨天已到期} other {已過期 # 天}}"
+  },
+  "items": {
+    "item": "第 {n} 項",
+    "labelSuffix": "（第 {n} 項）",
+    "add": "新增項目",
+    "addDescription": "新增說明",
+    "removeDescription": "移除",
+    "menu": "第 {n} 項的操作",
+    "moveUp": "上移",
+    "moveDown": "下移",
+    "duplicate": "複製",
+    "remove": "刪除",
+    "removed": "已刪除項目",
+    "undo": "復原",
+    "count": "{count, plural, =0 {尚無項目} other {共 # 項}}",
+    "units": "式,個,組,台,件,套,小時,天,月,次,年"
+  },
+  "totals": {
+    "subtotal": "小計",
+    "addDiscount": "新增折扣",
+    "removeDiscount": "移除折扣",
+    "discountType": "折扣方式",
+    "discountAmount": "固定金額",
+    "discountPercent": "百分比",
+    "addFees": "新增其他費用",
+    "removeFees": "移除其他費用",
+    "tax": "營業稅（{rate}%）",
+    "taxBase": "營業稅以 {amount} 計算（不含免稅項目）。",
+    "total": "總計",
+    "amountInWords": "大寫金額"
+  },
+  "terms": {
+    "presets": "常用付款條件",
+    "paymentPresets": {
+      "net30": "月結30天",
+      "net60": "月結60天",
+      "cod": "貨到付款",
+      "deposit": "訂金50%，交貨付清",
+      "transfer": "匯款"
+    }
+  },
+  "preview": {
+    "title": "預覽",
+    "live": "即時預覽",
+    "clickToEdit": "點選報價單上的任一處即可編輯",
+    "zoom": "縮放",
+    "fit": "符合寬度",
+    "actualSize": "100%",
+    "hide": "隱藏預覽",
+    "show": "顯示預覽",
+    "loading": "正在載入預覽…"
+  },
+  "autosave": {
+    "saving": "正在儲存草稿…",
+    "saved": "草稿已儲存 · {when}",
+    "justNow": "剛剛",
+    "failed": "無法在此裝置上儲存草稿",
+    "offline": "離線中"
+  },
+  "actions": {
+    "save": "儲存報價單",
+    "saveShort": "儲存",
+    "update": "儲存變更",
+    "saving": "儲存中…",
+    "cancel": "取消",
+    "total": "總計",
+    "preview": "預覽"
+  },
+  "cancelDialog": {
+    "title": "要捨棄變更嗎？",
+    "description": "這份報價單尚未儲存的修改將會遺失。",
+    "keep": "繼續編輯",
+    "discard": "捨棄變更"
+  },
+  "messages": {
+    "created": "報價單已建立",
+    "updated": "變更已儲存",
+    "invalid": "{count, plural, other {有 # 個欄位需要修正}}",
+    "invalidHint": "請修正標示的欄位後再儲存。",
+    "error": "無法儲存報價單，請再試一次。",
+    "retry": "重試",
+    "notFound": "這份報價單已不存在，可能已被刪除。",
+    "rateLimited": "請求過於頻繁，請稍候再試。",
+    "sessionExpired": "登入已逾時，正在重新整理以便重新登入…",
+    "offline": "目前離線。草稿已保存在此裝置上，恢復連線後再儲存即可。"
+  }
+}

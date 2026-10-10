@@ -14,6 +14,9 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Local-only directories:
     ".worktrees/**",
+    ".next-*/**",
+    "test-results/**",
+    "playwright-report/**",
     "branding/**",
     "postgres_data/**",
   ]),

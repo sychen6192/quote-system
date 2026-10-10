@@ -1,115 +1,92 @@
-'use server';
+"use server";
 
-import { db } from '@/db';
-import { quotations, quotationItems, customers } from '@/db/schema';
-import { quoteFormSchema } from '@/lib/schemas/quote';
-import { revalidatePath } from 'next/cache';
-import { like, desc } from 'drizzle-orm';
-import { toBasisPoints, calculateQuoteFinancials } from '@/lib/utils';
-import type { ActionResult } from './types';
+import { revalidatePath } from "next/cache";
+import { db } from "@/db";
+import { customers, quotationItems, quotations } from "@/db/schema";
+import {
+  DEFAULT_QUOTE_NUMBER_PATTERN,
+  allocateQuoteNumber,
+  validateQuoteNumberPattern,
+} from "@/lib/quote-number";
+import { quoteRecordValues } from "@/lib/quote-view";
+import { quoteFormSchema, toFieldErrors } from "@/lib/schemas/quote";
+import { recordQuoteEvent } from "@/services/events";
+import { getSettings } from "@/services/settings";
+import {
+  internalError,
+  pgConstraintName,
+  pgErrorCode,
+  requireAuth,
+  validationError,
+  type ActionResult,
+} from "./types";
 
-async function generateQuoteNumber(tx: any) {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    const prefix = `QT-${year}${month}${day}`;
+const MAX_ATTEMPTS = 3;
 
-    const lastQuotes = await tx.select({ quotationNumber: quotations.quotationNumber })
-        .from(quotations)
-        .where(like(quotations.quotationNumber, `${prefix}-%`))
-        .orderBy(desc(quotations.quotationNumber))
-        .limit(1);
-
-    let nextSeq = 1;
-    if (lastQuotes.length > 0) {
-        const lastId = lastQuotes[0].quotationNumber;
-        const lastSeqStr = lastId.split('-').pop();
-        if (lastSeqStr) {
-            nextSeq = parseInt(lastSeqStr) + 1;
-        }
-    }
-
-    return `${prefix}-${String(nextSeq).padStart(3, '0')}`;
+/** Another transaction took the same number between our check and insert. */
+function isNumberCollision(error: unknown): boolean {
+  if (pgErrorCode(error) !== "23505") return false;
+  const constraint = pgConstraintName(error);
+  return !constraint || constraint.includes("quotation_number");
 }
 
 export async function createQuote(data: unknown): Promise<ActionResult> {
-    const result = quoteFormSchema.safeParse(data);
-    if (!result.success) {
-        return {
-            success: false,
-            code: 'VALIDATION',
-            fieldErrors: result.error.flatten().fieldErrors,
-        };
-    }
+  const denied = await requireAuth();
+  if (denied) return denied;
 
-    const { items, taxRate, ...quoteData } = result.data;
+  const parsed = quoteFormSchema.safeParse(data);
+  if (!parsed.success) return validationError(toFieldErrors(parsed.error));
 
-    // 1. 統一轉換稅率
-    const taxRateBP = toBasisPoints(taxRate);
+  const values = quoteRecordValues(parsed.data);
 
-    // 2. 轉換金額與保留 Taxable 資訊
-    const itemsWithCents = items.map(item => ({
-        ...item,
-        unitPrice: Math.round(item.unitPrice * 100),
-        isTaxable: item.isTaxable // 關鍵：傳遞免稅設定
-    }));
+  let pattern = DEFAULT_QUOTE_NUMBER_PATTERN;
+  try {
+    const configured = (await getSettings()).quote.numberPattern;
+    if (validateQuoteNumberPattern(configured).ok) pattern = configured;
+    else console.warn(`createQuote: invalid number pattern "${configured}", using default`);
+  } catch (error) {
+    console.error("createQuote: could not load settings:", error);
+    return internalError("Failed to create quote");
+  }
 
-    // 3. 使用統一計算邏輯
-    const financials = calculateQuoteFinancials(itemsWithCents, taxRateBP);
-
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
-        await db.transaction(async (tx) => {
-            const [newCustomer] = await tx.insert(customers).values({
-                companyName: quoteData.companyName,
-                contactPerson: quoteData.contactPerson,
-                phone: quoteData.phone,
-                email: quoteData.email || null,
-                address: quoteData.address,
-                vatNumber: quoteData.vatNumber,
-            }).returning({ id: customers.id });
+      const id = await db.transaction(async (tx) => {
+        const [customer] = await tx
+          .insert(customers)
+          .values(values.customer)
+          .returning({ id: customers.id });
 
-            const newQuotationNumber = await generateQuoteNumber(tx);
-
-            const [newQuote] = await tx.insert(quotations).values({
-                quotationNumber: newQuotationNumber,
-                customerId: newCustomer.id,
-                salesperson: quoteData.salesperson,
-                issuedDate: quoteData.issuedDate,
-                validUntil: quoteData.validUntil,
-                shippingDate: quoteData.shippingDate || null,
-                paymentMethod: quoteData.paymentMethod,
-                shippingMethod: quoteData.shippingMethod,
-                notes: quoteData.notes,
-
-                // 寫入正確金額
-                subtotal: financials.subtotal,
-                taxRate: taxRateBP,
-                taxAmount: financials.taxAmount,
-                totalAmount: financials.totalAmount,
-            }).returning({ id: quotations.id });
-
-            if (itemsWithCents.length > 0) {
-                await tx.insert(quotationItems).values(
-                    itemsWithCents.map((item) => ({
-                        quotationId: newQuote.id,
-                        productName: item.productName,
-                        quantity: item.quantity,
-                        unitPrice: item.unitPrice,
-                        isTaxable: item.isTaxable, // 寫入 DB
-                    }))
-                );
-            }
+        const quotationNumber = await allocateQuoteNumber(tx, {
+          pattern,
+          issuedDate: values.quote.issuedDate,
         });
-    } catch (error) {
-        console.error('createQuote transaction failed:', error);
-        return {
-            success: false,
-            code: 'INTERNAL',
-            message: error instanceof Error ? error.message : 'Transaction failed',
-        };
-    }
 
-    revalidatePath('/');
-    return { success: true };
+        const [quote] = await tx
+          .insert(quotations)
+          .values({
+            ...values.quote,
+            quotationNumber,
+            customerId: customer.id,
+            status: "draft",
+          })
+          .returning({ id: quotations.id });
+
+        await tx
+          .insert(quotationItems)
+          .values(values.items.map((item) => ({ ...item, quotationId: quote.id })));
+
+        await recordQuoteEvent(tx, quote.id, "created", { quotationNumber });
+        return quote.id;
+      });
+
+      revalidatePath("/[locale]", "layout");
+      return { success: true, id };
+    } catch (error) {
+      if (isNumberCollision(error) && attempt < MAX_ATTEMPTS) continue;
+      console.error("createQuote transaction failed:", error);
+      return internalError("Failed to create quote");
+    }
+  }
+  return internalError("Failed to create quote");
 }

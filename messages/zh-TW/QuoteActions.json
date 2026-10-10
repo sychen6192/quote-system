@@ -1,0 +1,63 @@
+{
+  "downloadPdf": "下載 PDF",
+  "send": "寄送",
+  "sendEmail": "寄送報價單",
+  "edit": "編輯",
+  "duplicate": "複製為新報價單",
+  "print": "列印",
+  "share": "分享",
+  "delete": "刪除",
+  "more": "更多操作",
+  "moreTitle": "報價單 {number}",
+  "status": {
+    "change": "變更狀態",
+    "changed": "已標記為「{status}」",
+    "undo": "復原",
+    "failed": "無法變更狀態，請再試一次。",
+    "notFound": "此報價單已不存在。"
+  },
+  "shareSheet": {
+    "title": "報價單 {number}",
+    "text": "{company} 報價單 {number}",
+    "preparing": "正在準備 PDF…",
+    "copied": "已複製連結",
+    "copiedHint": "已登入本系統的人都能開啟。",
+    "copiedHintOpen": "能連線到本系統的人都能開啟。"
+  },
+  "email": {
+    "title": "寄送報價單",
+    "description": "報價單 {number} 會以 PDF 附件寄出。",
+    "to": "收件人",
+    "toPlaceholder": "name@company.com",
+    "cc": "副本",
+    "ccHint": "多個信箱請以逗號分隔，最多 5 個。",
+    "message": "附加訊息",
+    "optional": "選填",
+    "messagePlaceholder": "想對客戶說的話，會顯示在信件內文…",
+    "messageCount": "{count} / {max}",
+    "language": "信件與 PDF 語言",
+    "languages": {
+      "en": "English",
+      "zh-TW": "繁體中文"
+    },
+    "submit": "寄出報價單",
+    "sending": "寄送中…",
+    "cancel": "取消",
+    "success": "已將報價單寄送至 {email}",
+    "successDraft": "狀態已更新為「已發送」。",
+    "retry": "重試",
+    "errors": {
+      "rateLimited": "短時間內寄出太多封信，請於 {minutes} 分鐘後再試。",
+      "sendFailed": "信件寄送失敗，請確認寄信設定後再試一次。",
+      "noRecipient": "請輸入收件人的 Email。",
+      "mailDisabled": "尚未設定寄信功能。",
+      "notFound": "此報價單已不存在。",
+      "invalid": "請檢查標示的欄位。"
+    },
+    "disabled": {
+      "title": "尚未設定寄信功能",
+      "description": "要從這裡直接寄出報價單，伺服器需要設定 Resend API 金鑰（RESEND_API_KEY）。設定完成前，可先下載 PDF，再附加到您自己的信件寄出。",
+      "settings": "寄信設定"
+    }
+  }
+}

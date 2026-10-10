@@ -1,0 +1,5 @@
+# actionlint configuration (docker run --rm -v "$PWD":/repo -w /repo rhysd/actionlint:latest)
+self-hosted-runner:
+  # The homelab deploy runner (pipeline.yml, job "deploy").
+  labels:
+    - homelab

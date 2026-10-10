@@ -3,63 +3,294 @@ name: Pipeline
 on:
   push:
     branches: [main]
+    tags: ["v*.*.*"]
   pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+  NEXT_TELEMETRY_DISABLED: "1"
 
 jobs:
   ci:
+    name: Lint, test, build
     runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: quote-system
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      # The app's database: stays empty until the standalone smoke test boots on it.
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/quote-system
+      # Throwaway database for the integration tests, which truncate tables.
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/quote_test
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run lint
-      - run: npm test
+
+      - name: Schema changes have a committed migration
+        run: |
+          npx drizzle-kit generate --name=uncommitted
+          if [ -n "$(git status --porcelain -- drizzle)" ]; then
+            echo "::error::db/schema.ts changed without a migration. Run 'npm run db:generate' and commit drizzle/."
+            git status --porcelain -- drizzle
+            exit 1
+          fi
+
+      - name: Lint (ESLint + ICU message syntax)
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Migrate the test database
+        run: |
+          docker exec "${{ job.services.postgres.id }}" createdb -U postgres quote_test
+          DATABASE_URL="$TEST_DATABASE_URL" npm run db:migrate
+
+      - name: Unit and integration tests
+        run: npm test -- --ci
+
       - run: npm run build
 
-  build-and-push:
-    needs: ci
-    if: github.event_name == 'push' && github.repository_owner == 'sychen6192'
+      - name: Boot the standalone server twice (migrations apply, then are a no-op)
+        run: |
+          # Assemble the same layout as the Dockerfile's runtime stage.
+          rm -rf .next/standalone/.next/static
+          cp -r .next/static .next/standalone/.next/static
+          for dir in public branding-defaults drizzle assets; do
+            rm -rf ".next/standalone/$dir"
+            cp -r "$dir" ".next/standalone/$dir"
+          done
+          psql_count() {
+            docker exec "${{ job.services.postgres.id }}" psql -U postgres -d quote-system -tAc \
+              'select count(*) from drizzle.__drizzle_migrations' 2>/dev/null || echo 0
+          }
+          expected=$(node -p "require('./drizzle/meta/_journal.json').entries.length")
+          for run in 1 2; do
+            # HOSTNAME explicitly: Next binds to it, and some shells export the machine name.
+            PORT=3000 HOSTNAME=127.0.0.1 node .next/standalone/server.js > "server-$run.log" 2>&1 &
+            pid=$!
+            ok=
+            for _ in $(seq 1 60); do
+              if curl -fsS http://127.0.0.1:3000/api/health; then ok=1; break; fi
+              sleep 1
+            done
+            echo
+            if [ -n "$ok" ]; then
+              curl -fsS -o /dev/null -w "GET /en -> %{http_code}\n" http://127.0.0.1:3000/en || ok=
+            fi
+            kill "$pid"; wait "$pid" 2>/dev/null || true
+            cat "server-$run.log"
+            [ -n "$ok" ] || { echo "::error::standalone server (run $run) did not become healthy"; exit 1; }
+            applied=$(psql_count)
+            echo "run $run: $applied/$expected migrations recorded"
+            [ "$applied" = "$expected" ] || { echo "::error::expected $expected recorded migrations, found $applied"; exit 1; }
+          done
+
+  e2e:
+    name: End-to-end (Playwright)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: quote-e2e
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/quote-e2e
+      # Sign-in on, as install.sh sets it up: covers the session paths and the sign-in test.
+      APP_PASSWORD: e2e-password
+      AUTH_SECRET: e2e-secret-0123456789abcdef0123456789abcdef
+      E2E_APP_PASSWORD: e2e-password
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Playwright (builds and starts the production server)
+        run: npm run test:e2e
+      - name: Upload the Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+
+  image:
+    name: Docker image
+    needs: [ci, e2e]
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
     permissions:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+      - uses: actions/checkout@v5
+      # No QEMU: the Dockerfile builds on $BUILDPLATFORM and the per-arch final
+      # stage only copies files, so arm64 needs no emulation.
+      - uses: docker/setup-buildx-action@v4
+      - name: Log in to GHCR
+        if: github.event_name == 'push'
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+      - id: meta
+        uses: docker/metadata-action@v6
+        env:
+          # GHCR reads a multi-arch image's description from the index.
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
+        with:
+          images: ${{ env.IMAGE }}
+          # latest=auto (default): `latest` is the newest vX.Y.Z tag without a
+          # pre-release suffix, never a branch.
+          tags: |
+            type=sha,format=long
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
+          labels: |
+            org.opencontainers.image.title=Quote System
+            org.opencontainers.image.description=Self-hosted quotation management for small businesses (Next.js + PostgreSQL)
+            org.opencontainers.image.licenses=MIT
+          annotations: |
+            org.opencontainers.image.title=Quote System
+            org.opencontainers.image.description=Self-hosted quotation management for small businesses (Next.js + PostgreSQL)
+            org.opencontainers.image.licenses=MIT
+      - name: Build (and push on main and tags)
+        uses: docker/build-push-action@v7
         with:
           context: .
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository }}:latest
-            ghcr.io/${{ github.repository }}:sha-${{ github.sha }}
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name == 'push' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
+          build-args: |
+            VERSION=${{ steps.meta.outputs.version }}
+            REVISION=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          provenance: mode=max
+          sbom: true
+
+  release:
+    name: GitHub release
+    needs: image
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Build the deploy bundle
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          mkdir -p dist
+          sh -n deploy/install.sh
+          # New installs get exactly this release; upgrading is an explicit step.
+          sed -i "s/^QUOTE_VERSION=.*/QUOTE_VERSION=${version}/" deploy/.env.example
+          grep -qx "QUOTE_VERSION=${version}" deploy/.env.example
+          tar -C deploy -czf dist/quote-system-deploy.tar.gz docker-compose.yml Caddyfile .env.example README.md
+          cp deploy/install.sh deploy/docker-compose.yml deploy/Caddyfile dist/
+          (cd dist && sha256sum quote-system-deploy.tar.gz install.sh docker-compose.yml Caddyfile > SHA256SUMS)
+          cat dist/SHA256SUMS
+      - name: Release notes
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          prev=$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || true)
+          range="${prev:+$prev..}${GITHUB_REF_NAME}"
+          commits() { git log --no-merges --format='- %s (%h)' "$range" | grep -E "^- $1(\(|:|!)" || echo "- (none)"; }
+          {
+            # The CHANGELOG section for this version, when there is one.
+            awk -v v="$version" '
+              index($0, "## [" v "]") == 1 { on = 1; next }
+              on && /^## \[/ { exit }
+              on { print }
+            ' CHANGELOG.md
+            echo
+            echo "## Install"
+            echo '```sh'
+            echo "curl -fsSLO https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/install.sh"
+            # Pinned: on a pre-release, "latest" would install the previous stable release instead.
+            echo "QUOTE_VERSION=${version} sh install.sh"
+            echo '```'
+            echo
+            echo "## Upgrade"
+            echo 'In your install directory, run the installer again:'
+            echo '```sh'
+            echo "QUOTE_VERSION=${version} sh install.sh"
+            echo '```'
+            echo "or set \`QUOTE_VERSION=${version}\` in \`.env\`, then run \`docker compose pull && docker compose up -d\`."
+            echo "Image: \`${IMAGE}:${version}\` (linux/amd64, linux/arm64). Database migrations run automatically on start."
+            echo
+            echo "## Commits"
+            echo "### Features"; commits feat
+            echo "### Fixes"; commits fix
+            if [ -n "$prev" ]; then
+              echo
+              echo "**Full changelog**: https://github.com/${GITHUB_REPOSITORY}/compare/${prev}...${GITHUB_REF_NAME}"
+            fi
+          } > dist/NOTES.md
+          cat dist/NOTES.md
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prerelease=
+          case "$GITHUB_REF_NAME" in *-*) prerelease=--prerelease ;; esac
+          # shellcheck disable=SC2086 # $prerelease is empty or one flag
+          gh release create "$GITHUB_REF_NAME" --verify-tag $prerelease \
+            --title "$GITHUB_REF_NAME" --notes-file dist/NOTES.md \
+            dist/quote-system-deploy.tar.gz dist/install.sh dist/docker-compose.yml \
+            dist/Caddyfile dist/SHA256SUMS
 
   deploy:
-    # needs 的 job 被 skip 時本 job 會自動 skip(PR 與 fork 都不會部署)
-    needs: build-and-push
+    name: Deploy (homelab)
+    # Only main-branch pushes in the upstream repository (forks have no such runner).
+    needs: image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository_owner == 'sychen6192'
     runs-on: [self-hosted, homelab]
     concurrency:
       group: homelab-deploy
       cancel-in-progress: false
     steps:
-      # checkout 供 drizzle-kit push 使用(schema.ts + drizzle.config.ts + package.json)
-      - uses: actions/checkout@v4
-
       - name: Ensure shared docker network
         run: docker network create quote-net 2>/dev/null || true
 
@@ -82,23 +313,14 @@ jobs:
               postgres:16-alpine
           fi
           echo "waiting for postgres to accept connections..."
-          for i in $(seq 1 30); do
+          for _ in $(seq 1 30); do
             docker exec quote-db pg_isready -U postgres && break
             sleep 2
           done
 
-      - name: Apply DB schema (drizzle push; idempotent)
-        run: |
-          # 用乾淨的 node 容器跑 push;$GITHUB_WORKSPACE 在 runner 容器與 host 同路徑,
-          # 故 host daemon 掛得到這份 checkout。DATABASE_URL 指向 network 內的 quote-db。
-          docker run --rm --network quote-net \
-            -v "$GITHUB_WORKSPACE":/app -w /app \
-            -e DATABASE_URL="postgres://postgres:postgres@quote-db:5432/quote-system" \
-            node:22-alpine \
-            sh -c "npm ci --no-audit --no-fund --loglevel=error && npx drizzle-kit push --force"
-
+      # No schema step: the app applies its migrations on start (instrumentation.ts).
       - name: Pull exact CI-verified image
-        run: docker pull ghcr.io/${{ github.repository }}:sha-${{ github.sha }}
+        run: docker pull "${IMAGE}:sha-${GITHUB_SHA}"
 
       - name: Replace app container
         run: |
@@ -113,15 +335,14 @@ jobs:
             --restart unless-stopped \
             --env-file /opt/quote-system/.env \
             -e DATABASE_URL="postgres://postgres:postgres@quote-db:5432/quote-system" \
-            -v /opt/quote-system/branding:/app/branding \
-            ghcr.io/${{ github.repository }}:sha-${{ github.sha }}
+            -v /opt/quote-system/branding:/app/branding:ro \
+            "${IMAGE}:sha-${GITHUB_SHA}"
 
-      - name: Health check (exercises the database)
+      - name: Health check (migrations applied, database reachable)
         run: |
-          # 打 /zh-TW(儀表板要查 Postgres)——DB 若壞,部署就會失敗,不再誤報健康
-          for i in $(seq 1 20); do
-            if curl -fsS http://localhost:3000/zh-TW > /dev/null; then
-              echo "healthy after ${i} attempt(s)"
+          for i in $(seq 1 40); do
+            if curl -fsS http://localhost:3000/api/health; then
+              echo " healthy after ${i} attempt(s)"
               exit 0
             fi
             sleep 3

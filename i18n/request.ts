@@ -1,16 +1,16 @@
-import { getRequestConfig } from 'next-intl/server';
-
-const locales = ['en', 'zh-TW'];
+import { hasLocale } from "next-intl";
+import { getRequestConfig } from "next-intl/server";
+import { routing } from "@/navigation";
+import { loadMessages } from "./messages";
 
 export default getRequestConfig(async ({ requestLocale }) => {
-    let locale = await requestLocale;
+  const requested = await requestLocale;
+  const locale = hasLocale(routing.locales, requested)
+    ? requested
+    : routing.defaultLocale;
 
-    if (!locale || !locales.includes(locale as string)) {
-        locale = 'zh-TW';
-    }
-
-    return {
-        locale,
-        messages: (await import(`../messages/${locale}.json`)).default
-    };
+  return {
+    locale,
+    messages: await loadMessages(locale),
+  };
 });

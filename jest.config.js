@@ -12,6 +12,8 @@ module.exports = {
     '^.+\\.(ts|tsx)$': 'ts-jest',
   },
   moduleNameMapper: {
+    // Next resolves `server-only` via the react-server condition; in Jest it is a no-op.
+    '^server-only$': '<rootDir>/tests/mocks/empty.js',
     '^@/(.*)$': '<rootDir>/$1',
     '^@/tests/(.*)$': '<rootDir>/tests/$1',
   },

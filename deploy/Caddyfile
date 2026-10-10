@@ -1,0 +1,23 @@
+# HTTPS in front of Quote System (docker compose --profile https up -d).
+# The values come from .env:
+#   SITE_ADDRESS  quote.example.com -> free public certificate (ports 80/443 must be reachable)
+#                 localhost, an IP, *.local, *.internal, *.home.arpa -> Caddy's own local CA
+#   CADDY_TLS     "tls internal" forces the local CA for any other private name (quote.office)
+#   HTTPS_PORT    host port for HTTPS (default 443)
+# With the local CA, every device must trust its root certificate once:
+# see docs/deploy/https.md.
+{
+	# Browsers send no server name when the address is an IP
+	# (https://192.168.1.20), and inside the container the connection's own IP
+	# is the container's. Without a default, Caddy finds no certificate and
+	# drops the connection.
+	default_sni {$SITE_ADDRESS}
+}
+
+# The explicit port (docker-compose.yml publishes it 1:1) makes the automatic
+# http:// -> https:// redirect include it when it is not 443.
+{$SITE_ADDRESS}:{$HTTPS_PORT:443} {
+	{$CADDY_TLS}
+	encode zstd gzip
+	reverse_proxy app:3000
+}
