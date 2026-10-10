@@ -1,6 +1,5 @@
 {
   "downloadPdf": "下載 PDF",
-  "pdf": "PDF",
   "send": "寄送",
   "sendEmail": "寄送報價單",
   "edit": "編輯",
@@ -11,15 +10,7 @@
   "more": "更多操作",
   "moreTitle": "報價單 {number}",
   "status": {
-    "label": "狀態",
     "change": "變更狀態",
-    "markAs": {
-      "draft": "改回草稿",
-      "sent": "標記為已發送",
-      "accepted": "標記為已成交",
-      "rejected": "標記為已拒絕"
-    },
-    "current": "目前狀態",
     "changed": "已標記為「{status}」",
     "undo": "復原",
     "failed": "無法變更狀態，請再試一次。",
@@ -31,8 +22,7 @@
     "preparing": "正在準備 PDF…",
     "copied": "已複製連結",
     "copiedHint": "已登入本系統的人都能開啟。",
-    "failed": "無法分享此報價單，請改為下載 PDF。",
-    "retry": "再試一次"
+    "copiedHintOpen": "能連線到本系統的人都能開啟。"
   },
   "email": {
     "title": "寄送報價單",

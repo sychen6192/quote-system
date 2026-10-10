@@ -67,8 +67,9 @@ export function DeleteQuoteDialog({
   const leave = () => {
     const onOwnPage = new RegExp(`^/quotes/${id}(/edit)?/?$`).test(pathname);
     const target = redirectTo ?? (onOwnPage ? "/quotes" : null);
+    // Refreshing as well would re-render the deleted quote's page (a 404) first.
     if (target) router.push(target);
-    router.refresh();
+    else router.refresh();
   };
 
   const confirm = async () => {

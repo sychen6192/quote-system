@@ -71,12 +71,15 @@ export default async function CustomersPage({
         title={t("title")}
         description={q ? t("results", { count: metadata.total }) : t("count", { count: metadata.total })}
         actions={
-          <Button asChild className="hidden h-9 rounded-lg shadow-card sm:inline-flex">
-            <Link href="/quotes/new">
-              <Plus aria-hidden="true" />
-              {t("newQuote")}
-            </Link>
-          </Button>
+          // The empty state brings its own big "create" button.
+          noCustomersAtAll ? null : (
+            <Button asChild className="hidden h-9 rounded-lg shadow-card sm:inline-flex">
+              <Link href="/quotes/new">
+                <Plus aria-hidden="true" />
+                {t("newQuote")}
+              </Link>
+            </Button>
+          )
         }
       />
 

@@ -41,6 +41,11 @@ export async function GET() {
         whileOffline: t("whileOffline"),
         tipDrafts: t("tipDrafts"),
         tipConnection: t("tipConnection"),
+        serverTitle: t("serverTitle"),
+        serverDescription: t("serverDescription"),
+        serverStill: t("serverStill"),
+        serverAutoRetry: t("serverAutoRetry"),
+        serverWhile: t("serverWhile"),
       };
       return { locale, name, text };
     })
@@ -57,7 +62,9 @@ export async function GET() {
   const html = renderOfflinePage({
     text: Object.fromEntries(entries.map((e) => [e.locale, e.text])) as Record<AppLocale, OfflinePageText>,
     names: Object.fromEntries(entries.map((e) => [e.locale, e.name])) as Record<AppLocale, string>,
-    iconDataUri: await iconDataUri("any-192.png"),
+    // The page is precached when the worker installs: a broken branding image
+    // must cost the icon, not the whole offline fallback.
+    iconDataUri: await iconDataUri("any-192.png").catch(() => null),
     primary: {
       light: { background: hsl(primary.light.background), foreground: hsl(primary.light.foreground) },
       dark: { background: hsl(primary.dark.background), foreground: hsl(primary.dark.foreground) },

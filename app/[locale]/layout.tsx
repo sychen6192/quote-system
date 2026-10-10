@@ -15,6 +15,7 @@ import { AppToaster } from "@/components/providers/app-toaster";
 import { AppShell } from "@/components/app-shell/app-shell";
 import { appDisplayName, brandDisplayName, shortAppName } from "@/components/app-shell/brand-name";
 import { PwaRoot } from "@/components/pwa/pwa-root";
+import { THEME_COLORS } from "@/lib/pwa/platform";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
 
@@ -55,15 +56,17 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   };
 }
 
-// Matches the app's surfaces (PwaRoot keeps it in sync with the chosen theme),
-// so the Android status bar doesn't flash the brand colour on load.
+// The top bar's colours, not the brand colour: PwaRoot keeps theme-color in
+// sync with the theme actually shown, so starting from the brand colour would
+// flash it in the status bar on every load. (The manifest keeps the brand
+// colour for the splash screen.)
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#090e1a" },
+    { media: "(prefers-color-scheme: light)", color: THEME_COLORS.light },
+    { media: "(prefers-color-scheme: dark)", color: THEME_COLORS.dark },
   ],
 };
 

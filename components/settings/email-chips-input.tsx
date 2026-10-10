@@ -2,6 +2,7 @@
 
 import {
   forwardRef,
+  useEffect,
   useRef,
   useState,
   type ClipboardEvent,
@@ -20,6 +21,8 @@ type Props = {
   name?: string;
   id?: string;
   placeholder?: string;
+  /** Whether there is typed text that is not a chip yet. */
+  onPendingChange?: (pending: boolean) => void;
   "aria-describedby"?: string;
   "aria-invalid"?: boolean | "true" | "false";
 };
@@ -30,11 +33,15 @@ type Props = {
  * empty input removes the last chip.
  */
 export const EmailChipsInput = forwardRef<HTMLInputElement, Props>(function EmailChipsInput(
-  { value, onChange, onBlur, name, id, placeholder, ...aria },
+  { value, onChange, onBlur, name, id, placeholder, onPendingChange, ...aria },
   ref
 ) {
   const t = useTranslations("Settings.email");
   const [draft, setDraft] = useState("");
+  const pending = draft.trim() !== "";
+  useEffect(() => {
+    onPendingChange?.(pending);
+  }, [onPendingChange, pending]);
   const [problem, setProblem] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const list = Array.isArray(value) ? value : [];

@@ -15,6 +15,8 @@ import {
   Smartphone,
 } from "lucide-react";
 import { InstallAppButton } from "@/components/pwa/install-app-button";
+import { useInstallPlatform, useInstallPrompt, useStandalone } from "@/components/pwa/use-pwa";
+import { installUi } from "@/lib/pwa/platform";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -97,6 +99,12 @@ export function AboutSection() {
   const { data } = useSettingsPage();
   const docs = DOCS[locale === "zh-TW" ? "zh-TW" : "en"];
   const install = useSyncExternalStore<InstallState | null>(noSubscribe, readInstallState, () => null);
+  // What <InstallAppButton> offers here (the browser's prompt, or its own
+  // iOS / Safari steps); the generic instructions are only for the rest.
+  const standalone = useStandalone();
+  const { prompt } = useInstallPrompt();
+  const platform = useInstallPlatform();
+  const installOffer = installUi({ standalone, canPrompt: prompt !== null, platform });
   const code = (chunks: ReactNode) => (
     <code className="rounded bg-muted px-1 py-0.5 font-mono text-[0.8em] text-foreground">{chunks}</code>
   );
@@ -165,17 +173,20 @@ export function AboutSection() {
             </p>
           ) : (
             <div className="space-y-3">
-              <InstallAppButton variant="menu" />
-              <ul className="space-y-1.5 text-sm text-muted-foreground">
-                <li className="flex gap-2">
-                  <Smartphone aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-                  <span>{t("installIos")}</span>
-                </li>
-                <li className="flex gap-2">
-                  <Download aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-                  <span>{t("installOther")}</span>
-                </li>
-              </ul>
+              {installOffer === "hidden" ? (
+                <ul className="space-y-1.5 text-sm text-muted-foreground">
+                  <li className="flex gap-2">
+                    <Smartphone aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+                    <span>{t("installIos")}</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <Download aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+                    <span>{t("installOther")}</span>
+                  </li>
+                </ul>
+              ) : (
+                <InstallAppButton variant="menu" />
+              )}
               {install === "needsHttps" ? (
                 <p className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
                   <ShieldAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />

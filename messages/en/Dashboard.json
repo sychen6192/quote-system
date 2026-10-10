@@ -13,15 +13,16 @@
     "acceptanceRateEmpty": "No decisions in the last 90 days",
     "drafts": "Drafts",
     "draftsHint": "{count, plural, =0 {Nothing waiting to be sent} other {Not sent yet}}",
-    "expiredHint": "{count, plural, one {# quote has expired} other {# quotes have expired}}",
-    "viewList": "View in the quotes list"
+    "expiredHint": "{count, plural, one {Plus # expired quote} other {Plus # expired quotes}}"
   },
   "expiring": {
     "title": "Expiring in 7 days",
     "description": "Follow up before these quotes lapse.",
     "empty": "Nothing expires in the next 7 days.",
     "daysLeft": "{days, plural, =0 {Today} =1 {Tomorrow} other {# days}}",
-    "daysLeftLabel": "Expires {days, plural, =0 {today} =1 {tomorrow} other {in # days}}"
+    "daysLeftLabel": "Expires {days, plural, =0 {today} =1 {tomorrow} other {in # days}}",
+    "more": "{count, plural, other {+ # more}}",
+    "countLabel": "{count, plural, one {# quote} other {# quotes}}"
   },
   "recent": {
     "title": "Recent quotes",

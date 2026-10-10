@@ -11,7 +11,7 @@ The first release meant for other businesses to install. It adds an installable 
 ### Added
 
 - **Install in one command.** `install.sh` downloads the release bundle, verifies its checksum, creates `.env` with random database password, session secret and sign-in password, and starts everything. Running it again upgrades.
-- **Deploy bundle** (`deploy/`): Docker Compose file using the prebuilt image, PostgreSQL with health checks and no published port, an optional `https` profile (Caddy, automatic certificates or its own CA) and an optional `backup` profile (daily `pg_dump` with retention).
+- **Deploy bundle** (`deploy/`): Docker Compose file using the prebuilt image, PostgreSQL with health checks and no published port, an optional `https` profile (Caddy, automatic certificates or its own CA, also for a bare IP address and non-default ports) and an optional `backup` profile (daily `pg_dump` with retention).
 - **Installable app (PWA)**: web app manifest and icons generated from your branding, a service worker that caches static assets only, a bilingual offline page, "new version available" prompt, install button and iPhone instructions.
 - **Settings page** for company details, branding uploads (logo, stamp, app icon), brand colour, quote numbering, defaults (validity, tax, notes, terms, salesperson, amount in words, PDF footer), payment details, email sender, currency, money format, time zone and the Taiwan 統編 lookup. Saved settings override `.env`.
 - **Optional sign-in** with a shared password (`APP_PASSWORD`): signed 30-day session cookie, sign-in throttling, open-redirect protection; every Server Action and private route checks the session.

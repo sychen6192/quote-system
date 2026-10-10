@@ -1,12 +1,31 @@
 "use client";
 
-import type { ComponentProps, FocusEvent, ReactNode } from "react";
+import { Fragment, type ComponentProps, type FocusEvent, type ReactNode } from "react";
 import type { ControllerRenderProps, FieldPath, FieldValues } from "react-hook-form";
 import { cn } from "@/lib/utils";
-import { normalizeDecimalInput } from "./form-model";
+import { moneyBreakParts, normalizeDecimalInput } from "./form-model";
 
 /** 44px tall on phones (touch), the compact 36px from md up. */
 export const fieldClass = "h-11 md:h-9";
+
+/**
+ * A formatted amount that stays on one line when it fits, and otherwise
+ * wraps after a group separator ("NT$1,234,|567") instead of spilling into
+ * the neighbouring column or being cut off.
+ */
+export function WrappingMoney({ value, className }: { value: string; className?: string }) {
+  const parts = moneyBreakParts(value);
+  return (
+    <span className={cn("break-words tabular-nums", className)}>
+      {parts.map((part, index) => (
+        <Fragment key={index}>
+          {index > 0 && <wbr />}
+          {part}
+        </Fragment>
+      ))}
+    </span>
+  );
+}
 
 /** Visual asterisk; the input itself carries aria-required. */
 export function RequiredMark() {

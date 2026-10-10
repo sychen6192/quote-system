@@ -5,6 +5,7 @@ import {
   isFormPath,
   lenientNumber,
   mapServerFieldErrors,
+  moneyBreakParts,
   normalizeDecimalInput,
   roundToDisplayed,
   previewFieldToFormPath,
@@ -180,6 +181,7 @@ describe("previewFieldToFormPath", () => {
     ["items.2.productName", "items.2.productName"],
     ["items.2.amount", "items.2.unitPrice"],
     ["items.4", "items.4.productName"],
+    ["items", "items.0.productName"],
     ["items.1.whatever", "items.1.productName"],
     ["paymentTerms", "paymentMethod"],
     ["deliveryMethod", "shippingMethod"],
@@ -262,5 +264,18 @@ describe("roundToDisplayed", () => {
     expect(roundToDisplayed(12345, 2)).toBe(12345);
     expect(roundToDisplayed(12345, 1)).toBe(12350);
     expect(roundToDisplayed(12345, 3)).toBe(12345);
+  });
+});
+
+describe("moneyBreakParts", () => {
+  it.each([
+    ["$280,781", ["$280,", "781"]],
+    ["NT$1,234,567.50", ["NT$1,", "234,", "567.", "50"]],
+    ["1\u202f234\u00a0€", ["1\u202f", "234\u00a0€"]],
+    ["CHF 1’234.50", ["CHF 1’", "234.", "50"]],
+    ["$0", ["$0"]],
+  ])("%p", (input, parts) => {
+    expect(moneyBreakParts(input)).toEqual(parts);
+    expect(moneyBreakParts(input).join("")).toBe(input);
   });
 });

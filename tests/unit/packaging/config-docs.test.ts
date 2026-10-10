@@ -129,6 +129,16 @@ describe("deploy bundle", () => {
     expect(lastCommand).toBe('main "$@"');
   });
 
+  it("Caddy serves IP addresses and non-default HTTPS ports", () => {
+    const caddyfile = read("deploy/Caddyfile");
+    // Browsers send no SNI for https://<ip>; without a default Caddy drops the handshake.
+    expect(caddyfile).toMatch(/^\s*default_sni \{\$SITE_ADDRESS\}$/m);
+    // The site listens on HTTPS_PORT so redirects carry it; compose must publish it 1:1.
+    expect(caddyfile).toMatch(/^\{\$SITE_ADDRESS\}:\{\$HTTPS_PORT:443\} \{$/m);
+    expect(read(compose)).toContain('- "${HTTPS_PORT:-443}:${HTTPS_PORT:-443}"');
+    expect(read(compose)).toMatch(/^\s+HTTPS_PORT: \$\{HTTPS_PORT:-443\}$/m);
+  });
+
   it("pins QUOTE_VERSION in a line the release job can rewrite", () => {
     expect(read("deploy/.env.example")).toMatch(/^QUOTE_VERSION=latest$/m);
   });

@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { SECTION_IDS, sectionDomId, type SectionId } from "./form-model";
-import { SectionStateIcon, useSectionStates } from "./section-card";
+import { SectionStateIcon, SectionStateText, useSectionStates } from "./section-card";
 
 /** Scroll spy: the last section whose top has passed just below the sticky index. */
 function useCurrentSection(): SectionId {
@@ -76,6 +76,7 @@ export function SectionIndex({ onNavigate }: { onNavigate: (id: SectionId) => vo
               >
                 <SectionStateIcon state={state} />
                 {t(id)}
+                <SectionStateText state={state} />
               </a>
             </li>
           );

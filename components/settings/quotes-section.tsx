@@ -1,10 +1,11 @@
 "use client";
 
 import { useId, useMemo, useRef } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useFormContext, useWatch } from "react-hook-form";
 import { AlertCircle, ReceiptText, Sparkles } from "lucide-react";
-import { amountInWordsEn, amountInWordsZhTW } from "@/lib/amount-in-words";
+import { currencyFractionDigits } from "@/lib/money";
+import { amountInWords } from "@/components/quote-document/format";
 import { settingsSectionSchemas } from "@/lib/settings/schema";
 import {
   Form,
@@ -158,7 +159,7 @@ export function QuotesSection() {
                   className="sm:col-span-2 lg:col-span-3"
                 >
                   {(field) => (
-                    <Textarea {...field} rows={3} placeholder={t("defaultNotesPlaceholder")} className="resize-y" />
+                    <Textarea {...field} rows={3} placeholder={t("defaultNotesPlaceholder")} className="max-h-80 min-h-[5rem] resize-y [field-sizing:content]" />
                   )}
                 </Field>
                 <Field
@@ -169,7 +170,7 @@ export function QuotesSection() {
                   className="sm:col-span-2 lg:col-span-3"
                 >
                   {(field) => (
-                    <Textarea {...field} rows={4} placeholder={t("defaultTermsPlaceholder")} className="resize-y" />
+                    <Textarea {...field} rows={4} placeholder={t("defaultTermsPlaceholder")} className="max-h-80 min-h-[6.5rem] resize-y [field-sizing:content]" />
                   )}
                 </Field>
               </div>
@@ -177,7 +178,10 @@ export function QuotesSection() {
 
             <SettingsCard title={t("documentTitle")} description={t("documentDescription")}>
               <div className="space-y-5">
-                <AmountInWordsField currency={String(data.values.money.currency)} />
+                <AmountInWordsField
+                  currency={String(data.values.money.currency)}
+                  currencyLocale={String(data.values.money.currencyLocale)}
+                />
                 <Field
                   section="quote"
                   name="footerText"
@@ -185,7 +189,7 @@ export function QuotesSection() {
                   description={t("footerTextHint")}
                 >
                   {(field) => (
-                    <Textarea {...field} rows={2} placeholder={t("footerTextPlaceholder")} className="resize-y" />
+                    <Textarea {...field} rows={2} placeholder={t("footerTextPlaceholder")} className="max-h-40 min-h-[3.75rem] resize-y [field-sizing:content]" />
                   )}
                 </Field>
               </div>
@@ -309,10 +313,22 @@ function NumberPatternField({ today }: { today: string }) {
   );
 }
 
-function AmountInWordsField({ currency }: { currency: string }) {
+function AmountInWordsField({
+  currency,
+  currencyLocale,
+}: {
+  currency: string;
+  currencyLocale: string;
+}) {
   const t = useTranslations("Settings.quotes");
+  const locale = useLocale();
   const { control } = useFormContext<QuotesForm>();
-  const example = currency === "TWD" ? amountInWordsZhTW(1234500) : amountInWordsEn(1234500);
+  // Exactly what a quote in the current language prints for 12,345.
+  const example = amountInWords(
+    1234500,
+    { currency, currencyLocale, fractionDigits: currencyFractionDigits(currency) },
+    locale
+  );
   return (
     <FormField
       control={control}
@@ -325,8 +341,10 @@ function AmountInWordsField({ currency }: { currency: string }) {
               <FieldSource section="quote" name="showAmountInWords" current={field.value} label={t("showAmountInWords")} />
             </div>
             <FormDescription>
-              {t("showAmountInWordsHint")}{" "}
-              <span className="font-medium text-foreground">{example}</span>
+              {t.rich("showAmountInWordsHint", {
+                example,
+                b: (chunks) => <span className="break-keep font-medium text-foreground">{chunks}</span>,
+              })}
             </FormDescription>
           </div>
           <FormControl>

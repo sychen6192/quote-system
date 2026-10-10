@@ -78,17 +78,20 @@ export function RecentQuotes({ rows, className }: { rows: QuoteRowView[]; classN
                   <Link
                     href={`/quotes/${row.id}`}
                     aria-label={tList("openQuote", { number: row.number })}
-                    className="whitespace-nowrap font-medium tabular-nums text-foreground after:absolute after:inset-0 after:content-[''] group-hover:text-primary"
+                    title={row.number}
+                    className="inline-block max-w-[9rem] truncate align-middle font-medium tabular-nums xl:max-w-[12rem] text-foreground after:absolute after:inset-0 after:content-[''] group-hover:text-primary"
                   >
                     {row.number}
                   </Link>
                 </TableCell>
-                <TableCell className="max-w-[16rem] py-3">
-                  <p className="truncate font-medium text-foreground">
+                <TableCell className="w-full max-w-0 py-3">
+                  <p title={row.title ?? row.customerName ?? undefined} className="truncate font-medium text-foreground">
                     {row.title ?? row.customerName ?? tList("unknownCustomer")}
                   </p>
                   {row.title && row.customerName ? (
-                    <p className="truncate text-xs text-muted-foreground">{row.customerName}</p>
+                    <p title={row.customerName} className="truncate text-xs text-muted-foreground">
+                      {row.customerName}
+                    </p>
                   ) : null}
                 </TableCell>
                 <TableCell className="hidden whitespace-nowrap py-3 tabular-nums text-muted-foreground xl:table-cell">
@@ -97,7 +100,7 @@ export function RecentQuotes({ rows, className }: { rows: QuoteRowView[]; classN
                 <TableCell className="py-3">
                   <StatusBadge status={row.status} />
                 </TableCell>
-                <TableCell className="money py-3 pr-5 text-right font-semibold text-foreground">
+                <TableCell className="money whitespace-nowrap py-3 pr-5 text-right font-semibold text-foreground">
                   {row.total}
                 </TableCell>
               </TableRow>

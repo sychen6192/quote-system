@@ -80,6 +80,10 @@ export function ImageUploader({
 
   const busy = status !== "idle";
   const hasImage = source !== "none" || preview !== null;
+  // The logo and seal are printed on white paper: preview them there in both
+  // themes (a navy logo would vanish on the dark checkerboard). The icon
+  // shows on the app's own surfaces, so it follows the theme.
+  const onPaper = kind !== "icon" && hasImage;
   const label = t(`${kind}.title`);
   const hintId = `${id}-hint`;
   const errorId = `${id}-error`;
@@ -207,7 +211,8 @@ export function ImageUploader({
         }}
         onDrop={onDrop}
         className={cn(
-          "relative overflow-hidden rounded-lg border-2 border-dashed transition-colors [--checker:220_13%_91%] dark:[--checker:217_33%_24%]",
+          "relative overflow-hidden rounded-lg border-2 border-dashed transition-colors [--checker:220_13%_91%]",
+          !onPaper && "dark:[--checker:217_33%_24%]",
           dragging ? "border-primary bg-primary/5" : "border-border",
           error && !dragging && "border-destructive/60"
         )}
@@ -218,7 +223,10 @@ export function ImageUploader({
           disabled={busy}
           aria-label={hasImage ? t("replaceLabel", { name: label }) : t("uploadLabel", { name: label })}
           aria-describedby={describedBy}
-          className="group relative flex h-36 w-full items-center justify-center bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-progress dark:bg-slate-900"
+          className={cn(
+            "group relative flex h-36 w-full items-center justify-center bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-progress",
+            !onPaper && "dark:bg-slate-900"
+          )}
           style={CHECKERBOARD}
         >
           {hasImage ? (
@@ -272,7 +280,7 @@ export function ImageUploader({
         {busy ? (
           <div
             role="status"
-            className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/60 text-sm font-medium backdrop-blur-[1px]"
+            className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/80 text-sm font-medium backdrop-blur-[1px]"
           >
             <Loader2 aria-hidden="true" className="size-5 animate-spin text-primary" />
             {status === "removing" ? t("removing") : t("uploading")}

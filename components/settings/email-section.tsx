@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, type ReactNode } from "react";
+import { useCallback, useId, useMemo, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { ExternalLink, Mail, MailCheck, MailWarning } from "lucide-react";
 import { MAX_CC_EMAILS, settingsSectionSchemas } from "@/lib/settings/schema";
@@ -57,12 +57,23 @@ export function EmailSection() {
     [m, senderIsDefault]
   );
 
+  // An address typed into the CC field but not added yet: Save must not stay
+  // disabled, and Discard clears it (remounting the field).
+  const [ccPending, setCcPending] = useState(false);
+  const [ccKey, setCcKey] = useState(0);
+  const clearCcDraft = useCallback(() => {
+    setCcPending(false);
+    setCcKey((key) => key + 1);
+  }, []);
+
   const { form, formRef, submit, saving, isDirty, discard, api } = useSettingsForm<EmailForm, EmailForm>({
     tab: "email",
     schema,
     initial,
     toForm: (output) => ({ ...output, ccEmails: [...output.ccEmails] }),
     save: (output, changed) => saveSections([["mail", buildSectionPatch("mail", changed, output)]]),
+    pendingInput: ccPending,
+    onDiscard: clearCcDraft,
   });
 
   return (
@@ -169,6 +180,8 @@ export function EmailSection() {
                 >
                   {(field) => (
                     <EmailChipsInput
+                      key={ccKey}
+                      onPendingChange={setCcPending}
                       value={field.value}
                       onChange={field.onChange}
                       onBlur={field.onBlur}

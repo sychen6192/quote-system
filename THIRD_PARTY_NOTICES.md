@@ -19,7 +19,7 @@ Some code is adapted from [Invoify](https://github.com/al1abb/invoify). Each ada
 - `lib/server/rate-limit.ts`
 - `tests/e2e/helpers.ts`
 
-(`grep -rl "Adapted from Invoify" --exclude-dir=node_modules .` lists the current set.)
+(`git grep --untracked -l "Adapted from Invoify" -- ":!THIRD_PARTY_NOTICES.md"` lists the current set.)
 
 ```
 MIT License

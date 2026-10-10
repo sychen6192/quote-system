@@ -44,7 +44,7 @@ import { cn } from "@/lib/utils";
 import type { ProductOption } from "@/services/products";
 import { AsyncCombobox, Highlight } from "./async-combobox";
 import { useEditor, useMoney, useRevealListener } from "./editor-context";
-import { AdornedInput, RequiredMark, decimalInputProps, fieldClass } from "./field-bits";
+import { AdornedInput, RequiredMark, WrappingMoney, decimalInputProps, fieldClass } from "./field-bits";
 import { emptyItem, lenientNumber } from "./form-model";
 
 type RowActions = {
@@ -63,7 +63,7 @@ const ROW_GRID = cn(
   "grid grid-cols-2 gap-x-3 gap-y-3",
   "[grid-template-areas:'num_menu'_'name_name'_'desc_desc'_'unit_qty'_'price_price'_'tax_amount']",
   "@lg:grid-cols-4 @lg:[grid-template-areas:'num_num_num_menu'_'name_name_name_name'_'desc_desc_desc_desc'_'unit_qty_price_price'_'tax_tax_amount_amount']",
-  "@[40rem]:grid-cols-[1.25rem_minmax(0,1fr)_4.5rem_5rem_7.5rem_6.5rem_2.25rem] @[40rem]:gap-x-2 @[40rem]:gap-y-1",
+  "@[40rem]:grid-cols-[1.25rem_minmax(0,1fr)_4.5rem_5rem_7.5rem_7rem_2.25rem] @[40rem]:gap-x-2 @[40rem]:gap-y-1",
   "@[40rem]:[grid-template-areas:'num_name_unit_qty_price_amount_menu'_'._desc_desc_desc_desc_tax_.']"
 );
 
@@ -255,55 +255,6 @@ function ItemRow({
         <span className="text-sm font-medium @[40rem]:sr-only">{t("items.item", { n })}</span>
       </div>
 
-      <div className="justify-self-end [grid-area:menu]">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label={t("items.menu", { n })}
-              className="size-11 text-muted-foreground md:size-9"
-            >
-              <MoreHorizontal aria-hidden="true" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="end"
-            className="min-w-44"
-            onCloseAutoFocus={(event) => {
-              if (!keepMenuFocus.current) event.preventDefault();
-              keepMenuFocus.current = true;
-            }}
-          >
-            <DropdownMenuItem disabled={index === 0} onSelect={menuAction(() => actions.moveUp(index))}>
-              <ArrowUp aria-hidden="true" />
-              {t("items.moveUp")}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              disabled={index === count - 1}
-              onSelect={menuAction(() => actions.moveDown(index))}
-            >
-              <ArrowDown aria-hidden="true" />
-              {t("items.moveDown")}
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={menuAction(() => actions.duplicate(index), true)}>
-              <Copy aria-hidden="true" />
-              {t("items.duplicate")}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              disabled={count <= 1}
-              onSelect={menuAction(() => actions.remove(index), true)}
-              className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-            >
-              <Trash2 aria-hidden="true" />
-              {t("items.remove")}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
       <FormField
         control={form.control}
         name={`items.${index}.productName`}
@@ -328,6 +279,7 @@ function ItemRow({
                 aria-required="true"
                 placeholder={t("placeholders.productName")}
                 className={fieldClass}
+                popupClassName="sm:right-auto sm:w-[max(100%,24rem)]"
                 labels={{
                   searching: t("combobox.searching"),
                   empty: t("combobox.noProducts"),
@@ -382,7 +334,7 @@ function ItemRow({
                       set("description", "");
                       setShowDescription(false);
                     }}
-                    className="relative -my-1 inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs text-muted-foreground after:absolute after:-inset-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="relative -my-1 inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs text-muted-foreground after:absolute after:-inset-x-1 after:-inset-y-2.5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <X aria-hidden="true" className="size-3.5" />
                     {t("items.removeDescription")}
@@ -507,6 +459,8 @@ function ItemRow({
                 checked={field.value ?? true}
                 onCheckedChange={field.onChange}
                 onBlur={field.onBlur}
+                // 44px-tall touch target around the 20px track.
+                className="relative after:absolute after:-inset-x-1 after:-inset-y-3"
               />
             </FormControl>
             <FormLabel className="cursor-pointer text-sm font-normal text-muted-foreground">
@@ -517,9 +471,58 @@ function ItemRow({
         )}
       />
 
-      <div className="flex min-h-11 items-center justify-end gap-2 [grid-area:amount] md:min-h-8 @[40rem]:min-h-9 @[40rem]:items-start @[40rem]:pt-2">
+      <div className="flex min-h-11 min-w-0 flex-wrap items-center justify-end gap-x-2 text-right [grid-area:amount] md:min-h-8 @[40rem]:min-h-9 @[40rem]:items-start @[40rem]:pt-2">
         <span className="text-sm text-muted-foreground @[40rem]:sr-only">{t("fields.amount")}</span>
         <LineAmount index={index} />
+      </div>
+
+      <div className="justify-self-end [grid-area:menu]">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={t("items.menu", { n })}
+              className="size-11 text-muted-foreground md:size-9"
+            >
+              <MoreHorizontal aria-hidden="true" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            className="min-w-44"
+            onCloseAutoFocus={(event) => {
+              if (!keepMenuFocus.current) event.preventDefault();
+              keepMenuFocus.current = true;
+            }}
+          >
+            <DropdownMenuItem disabled={index === 0} onSelect={menuAction(() => actions.moveUp(index))}>
+              <ArrowUp aria-hidden="true" />
+              {t("items.moveUp")}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={index === count - 1}
+              onSelect={menuAction(() => actions.moveDown(index))}
+            >
+              <ArrowDown aria-hidden="true" />
+              {t("items.moveDown")}
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={menuAction(() => actions.duplicate(index), true)}>
+              <Copy aria-hidden="true" />
+              {t("items.duplicate")}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              disabled={count <= 1}
+              onSelect={menuAction(() => actions.remove(index), true)}
+              className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+            >
+              <Trash2 aria-hidden="true" />
+              {t("items.remove")}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </li>
   );
@@ -532,5 +535,5 @@ function LineAmount({ index }: { index: number }) {
     name: [`items.${index}.quantity`, `items.${index}.unitPrice`],
   }) as [unknown, unknown];
   const amount = lineAmount(lenientNumber(quantity), toCents(lenientNumber(unitPrice)));
-  return <span className="money text-right text-sm font-semibold">{money.format(amount)}</span>;
+  return <WrappingMoney value={money.format(amount)} className="min-w-0 text-sm font-semibold" />;
 }

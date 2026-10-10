@@ -248,8 +248,9 @@ export function QuoteDocument({
               .map((row) => (
                 <div key={row.field} className="min-w-0">
                   <dt className="text-[10.5px] leading-tight text-slate-500">{row.label}</dt>
-                  <dd {...editable(row.field, "mt-0.5 break-words text-[12px] font-semibold tabular-nums text-slate-900")}>
-                    {row.value}
+                  {/* The edit target sits inside the <dd>: a <dd> cannot be a button. */}
+                  <dd className="mt-0.5 break-words text-[12px] font-semibold tabular-nums text-slate-900">
+                    <span {...editable(row.field)}>{row.value}</span>
                   </dd>
                 </div>
               ))}
@@ -306,8 +307,15 @@ export function QuoteDocument({
                 <tr key={index} className="break-inside-avoid border-b border-slate-200 align-top">
                   <td className="px-2 py-2.5 print:py-2 tabular-nums text-slate-500">{index + 1}</td>
                   <td className="px-2 py-2.5 print:py-2">
+                    {/* overflow-wrap:anywhere also lowers the cell's min-content width, so a long
+                        part number wraps instead of pushing the table past the margin. */}
                     <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                      <span {...editable(`items.${index}.productName`, "font-semibold text-slate-900")}>
+                      <span
+                        {...editable(
+                          `items.${index}.productName`,
+                          "min-w-0 font-semibold text-slate-900 [overflow-wrap:anywhere]"
+                        )}
+                      >
                         {item.productName || (
                           <span className="font-normal italic text-slate-500">{labels.itemPlaceholder}</span>
                         )}
@@ -327,7 +335,7 @@ export function QuoteDocument({
                       <p
                         {...editable(
                           `items.${index}.description`,
-                          "mt-0.5 whitespace-pre-wrap break-words text-[11.5px] leading-[1.5] text-slate-600"
+                          "mt-0.5 whitespace-pre-wrap text-[11.5px] leading-[1.5] text-slate-600 [overflow-wrap:anywhere]"
                         )}
                       >
                         {item.description}
@@ -371,7 +379,8 @@ export function QuoteDocument({
               </section>
             ) : null}
           </div>
-          <dl className="text-[12px]">
+          {/* Editable rows are buttons, which a <dl> may not contain: the preview drops the list semantics. */}
+          <TotalsList list={!interactive} className="text-[12px]">
             <TotalRow label={labels.subtotal} value={formatAmount(totals.subtotal, money)} {...editable("totals.subtotal")} />
             {totals.discount > 0 ? (
               <TotalRow
@@ -400,18 +409,28 @@ export function QuoteDocument({
               className="mt-2 flex items-baseline justify-between gap-4 rounded-md px-3 py-2.5"
               style={{ background: accent.soft, boxShadow: `inset 0 1.5px 0 ${accent.color}` }}
             >
-              <dt className="text-[13px] font-semibold text-slate-900">{labels.total}</dt>
-              <dd className="whitespace-nowrap text-[19px] font-bold tabular-nums leading-tight" style={{ color: accent.text }}>
+              <Term list={!interactive} className="text-[13px] font-semibold text-slate-900">
+                {labels.total}
+              </Term>
+              <Desc
+                list={!interactive}
+                className="whitespace-nowrap text-[19px] font-bold tabular-nums leading-tight"
+                style={{ color: accent.text }}
+              >
                 {formatTotal(totals.total, money)}
-              </dd>
+              </Desc>
             </div>
             {branding.showAmountInWords ? (
               <div className="mt-1.5 flex justify-between gap-3 px-3 text-[11px] text-slate-600">
-                <dt className="shrink-0 text-slate-500">{labels.amountInWords}</dt>
-                <dd className="text-right font-medium text-slate-700">{amountInWords(totals.total, money, locale)}</dd>
+                <Term list={!interactive} className="shrink-0 text-slate-500">
+                  {labels.amountInWords}
+                </Term>
+                <Desc list={!interactive} className="text-right font-medium text-slate-700">
+                  {amountInWords(totals.total, money, locale)}
+                </Desc>
               </div>
             ) : null}
-          </dl>
+          </TotalsList>
         </div>
 
         {/* Notes and terms beside the signatures, at the foot of the page */}
@@ -453,6 +472,20 @@ export function QuoteDocument({
   );
 }
 
+type ListPartProps = { list: boolean; className?: string; style?: CSSProperties; children: ReactNode };
+
+function TotalsList({ list, className, children }: Omit<ListPartProps, "style">) {
+  return list ? <dl className={className}>{children}</dl> : <div className={className}>{children}</div>;
+}
+
+function Term({ list, ...props }: ListPartProps) {
+  return list ? <dt {...props} /> : <span {...props} />;
+}
+
+function Desc({ list, ...props }: ListPartProps) {
+  return list ? <dd {...props} /> : <span {...props} />;
+}
+
 function TotalRow({
   label,
   value,
@@ -462,10 +495,16 @@ function TotalRow({
   label: string;
   value: string;
 } & HTMLAttributes<HTMLDivElement> & { "data-edit-field"?: string }) {
+  // An editable row is a button (role set by editable()), so it holds spans, not dt/dd.
+  const list = rest.role !== "button";
   return (
     <div {...rest} className={cn("flex items-baseline justify-between gap-4 px-3 py-[5px]", className)}>
-      <dt className="text-slate-600">{label}</dt>
-      <dd className="whitespace-nowrap font-medium tabular-nums text-slate-900">{value}</dd>
+      <Term list={list} className="text-slate-600">
+        {label}
+      </Term>
+      <Desc list={list} className="whitespace-nowrap font-medium tabular-nums text-slate-900">
+        {value}
+      </Desc>
     </div>
   );
 }

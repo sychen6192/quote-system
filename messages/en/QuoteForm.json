@@ -21,7 +21,12 @@
     "discarded": "Draft discarded",
     "duplicated": "Duplicated from <strong>{number}</strong>. The customer, items and terms were copied; the dates start from today.",
     "viewOriginal": "View original",
-    "customerPrefilled": "Customer details filled in from the latest quote for <strong>{company}</strong>."
+    "customerPrefilled": "Customer details filled in from the latest quote for <strong>{company}</strong>.",
+    "statusSent": "This quote has already been sent. Saving keeps the same number, so send the customer the updated version afterwards.",
+    "statusAccepted": "The customer accepted this quote. To offer different terms, duplicate it instead of changing what they agreed to.",
+    "statusExpired": "This quote expired on {date}. Set a new valid-until date before you send it again.",
+    "duplicateInstead": "Duplicate instead",
+    "setValidity": "Set new date"
   },
   "sections": {
     "nav": "Form sections",
@@ -41,7 +46,8 @@
       "error": "Needs attention",
       "incomplete": "Incomplete",
       "optional": "Optional"
-    }
+    },
+    "stateSuffix": "({state})"
   },
   "fields": {
     "companyName": "Company name",

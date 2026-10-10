@@ -29,7 +29,7 @@ The bundle includes [Caddy](https://caddyserver.com), a web server that handles 
    COMPOSE_PROFILES=https
    ```
 
-   Give the server a fixed IP (a DHCP reservation in your router) so the address does not change. If ports 80 or 443 are taken (NAS web interfaces often use them), set `HTTP_PORT=8080` and `HTTPS_PORT=8443` and open `https://192.168.1.20:8443`.
+   Give the server a fixed IP (a DHCP reservation in your router) so the address does not change. If ports 80 or 443 are taken (NAS web interfaces often use them), set `HTTP_PORT=8081` and `HTTPS_PORT=8443` and open `https://192.168.1.20:8443` (plain `http://192.168.1.20:8081` redirects there).
 
 2. Start it and check the address:
 

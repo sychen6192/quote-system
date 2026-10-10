@@ -29,10 +29,11 @@ type Params = Promise<{ locale: string; id: string }>;
 
 // The browser paginates the sheet itself: A4 with real page margins (the
 // globals.css #printable-content rule assumes margin-less pages). The shell's
-// viewport-high min-heights would otherwise add a blank trailing page.
+// viewport-high min-heights would otherwise add a blank trailing page, and in
+// dark mode the dark canvas (color-scheme) would print around the paper.
 const PRINT_CSS =
   "@media print{@page{size:A4;margin:10mm 0 12mm}#printable-content{padding:0 14mm!important}" +
-  "body,#main{min-height:0!important}}";
+  "body,#main{min-height:0!important}:root{color-scheme:light!important}html,body{background:#fff!important}}";
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { locale, id } = await params;
@@ -97,6 +98,7 @@ export default async function QuoteDetailPage({ params }: { params: Params }) {
     customerEmail: view.customer.email,
     companyName: pickCompanyName(settings.company.name, settings.company.nameLocal, lang),
     mailEnabled: settings.mail.enabled,
+    authEnabled: settings.auth.enabled,
     locale: lang,
     pdfFilename: localizedPdfFilename(quote.quotationNumber, lang),
   };

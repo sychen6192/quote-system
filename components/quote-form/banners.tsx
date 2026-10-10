@@ -2,10 +2,20 @@
 
 import type { ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Copy, History, UserCheck } from "lucide-react";
+import { CalendarX2, Copy, Handshake, History, Send, UserCheck } from "lucide-react";
+import { formatIsoDate } from "@/components/app-shell/format";
 import { Link } from "@/navigation";
 import { Button } from "@/components/ui/button";
+import type { DisplayStatus } from "@/lib/status";
 import { cn } from "@/lib/utils";
+
+type Tone = "info" | "primary" | "warning";
+
+const TONE: Record<Tone, { bar: string; icon: string }> = {
+  info: { bar: "before:bg-info", icon: "bg-info/10 text-info" },
+  primary: { bar: "before:bg-primary", icon: "bg-primary/10 text-primary" },
+  warning: { bar: "before:bg-warning", icon: "bg-warning/10 text-warning" },
+};
 
 function Banner({
   icon,
@@ -16,7 +26,7 @@ function Banner({
   className,
 }: {
   icon: ReactNode;
-  tone?: "info" | "primary";
+  tone?: Tone;
   title?: ReactNode;
   children?: ReactNode;
   actions?: ReactNode;
@@ -27,17 +37,14 @@ function Banner({
       className={cn(
         "relative flex flex-col gap-3 overflow-hidden rounded-xl border bg-card py-3 pl-5 pr-4 shadow-card sm:flex-row sm:items-center",
         "before:absolute before:inset-y-0 before:left-0 before:w-1",
-        tone === "primary" ? "before:bg-primary" : "before:bg-info",
+        TONE[tone].bar,
         className
       )}
     >
       <div className="flex min-w-0 flex-1 items-start gap-3">
         <span
           aria-hidden="true"
-          className={cn(
-            "flex size-8 shrink-0 items-center justify-center rounded-lg",
-            tone === "primary" ? "bg-primary/10 text-primary" : "bg-info/10 text-info"
-          )}
+          className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", TONE[tone].icon)}
         >
           {icon}
         </span>
@@ -119,4 +126,58 @@ export function CustomerPrefilledBanner({ company }: { company: string }) {
       })}
     </Banner>
   );
+}
+
+/**
+ * Editing a quote the customer has already seen: say what saving will do,
+ * and offer the safer path (a new validity date, or a duplicate).
+ */
+export function StatusNoticeBanner({
+  quoteId,
+  status,
+  validUntil,
+  onSetValidity,
+}: {
+  quoteId: number;
+  status: DisplayStatus;
+  validUntil: string;
+  onSetValidity: () => void;
+}) {
+  const t = useTranslations("QuoteForm.banners");
+  const locale = useLocale();
+  const action = "h-11 w-full bg-background sm:h-9 sm:w-auto";
+  switch (status) {
+    case "expired":
+      return (
+        <Banner
+          tone="warning"
+          icon={<CalendarX2 className="size-4" />}
+          actions={
+            <Button type="button" variant="outline" onClick={onSetValidity} className={action}>
+              {t("setValidity")}
+            </Button>
+          }
+        >
+          {t("statusExpired", { date: formatIsoDate(validUntil, locale) })}
+        </Banner>
+      );
+    case "accepted":
+      return (
+        <Banner
+          tone="warning"
+          icon={<Handshake className="size-4" />}
+          actions={
+            <Button asChild variant="outline" className={action}>
+              <Link href={`/quotes/new?from=${quoteId}`}>{t("duplicateInstead")}</Link>
+            </Button>
+          }
+        >
+          {t("statusAccepted")}
+        </Banner>
+      );
+    case "sent":
+      return <Banner icon={<Send className="size-4" />}>{t("statusSent")}</Banner>;
+    default:
+      return null;
+  }
 }

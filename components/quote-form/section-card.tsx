@@ -7,8 +7,11 @@ import { AlertCircle, Check, ChevronDown, type LucideIcon } from "lucide-react";
 import type { QuoteFormValues } from "@/lib/schemas/quote";
 import { cn } from "@/lib/utils";
 import {
+  SECTION_FIELDS,
+  SECTION_IDS,
   SECTION_WATCH_FIELDS,
   collectErrorPaths,
+  sectionForPath,
   sectionDomId,
   sectionStates,
   type SectionId,
@@ -16,17 +19,31 @@ import {
   type SectionState,
 } from "./form-model";
 
-/** Live ✓ / ! / • state per section from a narrow watch (not the whole form). */
+/**
+ * Live ✓ / ! / • state per section from a narrow watch (not the whole form);
+ * re-renders only when a state flips, not on every keystroke.
+ */
 export function useSectionStates(): Record<SectionId, SectionState> {
   const { control } = useFormContext<QuoteFormValues>();
-  const watched = useWatch({ control, name: [...SECTION_WATCH_FIELDS] });
+  const filled = useWatch({
+    control,
+    name: [...SECTION_WATCH_FIELDS],
+    compute: (watched) =>
+      sectionStates(
+        Object.fromEntries(
+          SECTION_WATCH_FIELDS.map((field, index) => [field, watched[index]])
+        ) as SectionInputs,
+        []
+      ),
+  });
   const { errors } = useFormState({ control });
-  const values = Object.fromEntries(
-    SECTION_WATCH_FIELDS.map((field, index) => [field, watched[index]])
-  ) as SectionInputs;
-  return sectionStates(values, collectErrorPaths(errors));
+  const withErrors = new Set(collectErrorPaths(errors).map(sectionForPath));
+  return Object.fromEntries(
+    SECTION_IDS.map((id) => [id, withErrors.has(id) ? "error" : filled[id]])
+  ) as Record<SectionId, SectionState>;
 }
 
+/** Decorative; pair it with <SectionStateText> after the section name. */
 export function SectionStateIcon({
   state,
   className,
@@ -34,20 +51,24 @@ export function SectionStateIcon({
   state: SectionState;
   className?: string;
 }) {
-  const t = useTranslations("QuoteForm.sections.state");
   const base = "flex size-5 shrink-0 items-center justify-center rounded-full";
   return (
-    <span className={cn(base, STATE_STYLES[state], className)}>
+    <span aria-hidden="true" className={cn(base, STATE_STYLES[state], className)}>
       {state === "complete" ? (
-        <Check aria-hidden="true" className="size-3" strokeWidth={3} />
+        <Check className="size-3" strokeWidth={3} />
       ) : state === "error" ? (
-        <AlertCircle aria-hidden="true" className="size-3.5" strokeWidth={2.5} />
+        <AlertCircle className="size-3.5" strokeWidth={2.5} />
       ) : (
-        <span aria-hidden="true" className="size-1.5 rounded-full bg-current" />
+        <span className="size-1.5 rounded-full bg-current" />
       )}
-      <span className="sr-only">{t(state)}</span>
     </span>
   );
+}
+
+/** Screen-reader text: "Customer (Incomplete)" rather than "IncompleteCustomer". */
+export function SectionStateText({ state }: { state: SectionState }) {
+  const t = useTranslations("QuoteForm.sections");
+  return <span className="sr-only"> {t("stateSuffix", { state: t(`state.${state}`) })}</span>;
 }
 
 const STATE_STYLES: Record<SectionState, string> = {
@@ -152,7 +173,14 @@ export function SectionCard({
 
 /** Only errors are flagged in the header; the index shows the full state. */
 function SectionStateBadge({ id }: { id: SectionId }) {
-  const states = useSectionStates();
-  if (states[id] !== "error") return null;
-  return <SectionStateIcon state="error" />;
+  const fields = SECTION_FIELDS[id];
+  // Subscribes to this section's errors only, not to every keystroke.
+  const { errors } = useFormState<QuoteFormValues>({ name: [...fields] });
+  if (!fields.some((field) => errors[field])) return null;
+  return (
+    <>
+      <SectionStateIcon state="error" />
+      <SectionStateText state="error" />
+    </>
+  );
 }

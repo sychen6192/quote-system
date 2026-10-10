@@ -21,6 +21,8 @@ import { pickCompanyName } from "@/lib/company-name";
 import { PDF_FONT_FAMILY } from "@/lib/pdf/fonts";
 import type { QuoteView } from "@/lib/quote-view";
 import type { DocumentBranding } from "@/lib/settings/types";
+import { pdfWrapSyllables } from "./line-wrap";
+import { estimateLineCount } from "./text-metrics";
 
 export type QuotePDFDocumentProps = {
   view: QuoteView;
@@ -42,13 +44,19 @@ const SLATE = {
 };
 
 const PAGE_BOTTOM = 50;
+const PAGE_PADDING_X = 42;
 // The footer text (Settings) is reserved on every page but only printed on the last.
+const FOOTER_FONT_SIZE = 7.5;
 const FOOTER_LINE = 11;
-const FOOTER_CHARS_PER_LINE = 90;
+// A4 is 595.28pt wide.
+const FOOTER_WIDTH_EM = (595.28 - 2 * PAGE_PADDING_X) / FOOTER_FONT_SIZE;
 
 // Longer descriptions may split across pages instead of pushing the whole
 // row over (a row taller than a page must be allowed to break).
 const KEEP_ROW_TOGETHER_MAX_CHARS = 600;
+
+// On every <Text> that holds user content: long codes and URLs wrap instead of overprinting.
+const WRAP = { hyphenationCallback: pdfWrapSyllables };
 
 const s = StyleSheet.create({
   page: {
@@ -56,7 +64,7 @@ const s = StyleSheet.create({
     fontSize: 9,
     color: SLATE[900],
     paddingTop: 34,
-    paddingHorizontal: 42,
+    paddingHorizontal: PAGE_PADDING_X,
   },
   accentBar: { position: "absolute", top: 0, left: 0, right: 0, height: 4 },
   // Line height lives here, not on the Page: on the Page it stops the
@@ -191,17 +199,17 @@ const s = StyleSheet.create({
   // Sits just above the page footer on the last page.
   footerText: {
     position: "absolute",
-    left: 42,
-    right: 42,
+    left: PAGE_PADDING_X,
+    right: PAGE_PADDING_X,
     bottom: 40,
     textAlign: "center",
-    fontSize: 7.5,
+    fontSize: FOOTER_FONT_SIZE,
     color: SLATE[500],
   },
   pageFooter: {
     position: "absolute",
-    left: 42,
-    right: 42,
+    left: PAGE_PADDING_X,
+    right: PAGE_PADDING_X,
     bottom: 24,
     flexDirection: "row",
     justifyContent: "space-between",
@@ -254,11 +262,8 @@ export function QuotePDFDocument({ view, branding, labels, lang }: QuotePDFDocum
   const notes = present(view.notes);
   const terms = present(view.terms);
   const footer = present(branding.footerText);
-  const footerLines = footer
-    ? footer
-        .split(/\r?\n/)
-        .reduce((sum, line) => sum + Math.max(1, Math.ceil(line.length / FOOTER_CHARS_PER_LINE)), 0) + 0.5
-    : 0;
+  // Half a line of slack: the estimate is rough and the box must not reach the page number.
+  const footerLines = footer ? estimateLineCount(footer, FOOTER_WIDTH_EM) + 0.5 : 0;
   const number = view.quotationNumber ?? "";
   const docTitle = fillLabel(labels.documentLabel, { number }).trim();
   const contact = [
@@ -279,13 +284,16 @@ export function QuotePDFDocument({ view, branding, labels, lang }: QuotePDFDocum
         <View fixed style={[s.accentBar, { backgroundColor: accent.color }]} />
         {footer ? (
           <Text
+            {...WRAP}
             fixed
             style={[s.footerText, { height: footerLines * FOOTER_LINE }]}
             render={({ pageNumber, totalPages }) => (pageNumber === totalPages ? footer : "")}
           />
         ) : null}
         <View fixed style={s.pageFooter}>
-          <Text>{[companyName, number].filter(Boolean).join("  ·  ")}</Text>
+          <Text {...WRAP} style={{ flexShrink: 1, paddingRight: 12 }}>
+            {[companyName, number].filter(Boolean).join("  ·  ")}
+          </Text>
           <Text
             render={({ pageNumber, totalPages }) =>
               fillLabel(labels.page, { current: pageNumber, total: totalPages })
@@ -299,14 +307,14 @@ export function QuotePDFDocument({ view, branding, labels, lang }: QuotePDFDocum
           <View style={s.brand}>
             {branding.logoSrc ? <Image src={branding.logoSrc} style={s.logo} /> : null}
             <View style={{ flexShrink: 1 }}>
-              <Text style={s.companyName}>{companyName}</Text>
-              {companyAltName ? <Text style={s.companyAlt}>{companyAltName}</Text> : null}
+              <Text {...WRAP} style={s.companyName}>{companyName}</Text>
+              {companyAltName ? <Text {...WRAP} style={s.companyAlt}>{companyAltName}</Text> : null}
               {companyLines.length ? (
                 <View style={s.companyLines}>
                   {companyLines.map((parts) => (
                     <View key={parts.join("|")} style={s.lineParts}>
                       {parts.map((part) => (
-                        <Text key={part} style={s.linePart}>
+                        <Text {...WRAP} key={part} style={s.linePart}>
                           {part}
                         </Text>
                       ))}
@@ -321,7 +329,7 @@ export function QuotePDFDocument({ view, branding, labels, lang }: QuotePDFDocum
             {labels.titleAlt ? <Text style={s.titleAlt}>{labels.titleAlt}</Text> : null}
             <View style={s.numberRow}>
               <Text style={s.numberLabel}>{labels.number}</Text>
-              <Text style={s.numberValue}>{number || labels.numberPending}</Text>
+              <Text {...WRAP} style={s.numberValue}>{number || labels.numberPending}</Text>
             </View>
           </View>
         </View>
@@ -332,17 +340,17 @@ export function QuotePDFDocument({ view, branding, labels, lang }: QuotePDFDocum
         <View style={s.parties} wrap={false}>
           <View style={s.billTo}>
             <Text style={[s.sectionLabel, { color: accent.text }]}>{labels.billTo}</Text>
-            <Text style={s.customerName}>{customer.companyName ?? labels.customerPlaceholder}</Text>
+            <Text {...WRAP} style={s.customerName}>{customer.companyName ?? labels.customerPlaceholder}</Text>
             {customer.contactPerson ? (
-              <Text style={s.customerLine}>
+              <Text {...WRAP} style={s.customerLine}>
                 <Text style={s.muted}>{labels.attn} </Text>
                 {customer.contactPerson}
               </Text>
             ) : null}
             {customer.address ? <Lines text={customer.address} style={s.customerLine} /> : null}
-            {contact.length ? <Text style={s.customerLine}>{contact.join("    ")}</Text> : null}
+            {contact.length ? <Text {...WRAP} style={s.customerLine}>{contact.join("    ")}</Text> : null}
             {customer.vatNumber ? (
-              <Text style={s.customerLine}>
+              <Text {...WRAP} style={s.customerLine}>
                 <Text style={s.muted}>{labels.vatNumber} </Text>
                 {customer.vatNumber}
               </Text>
@@ -352,7 +360,7 @@ export function QuotePDFDocument({ view, branding, labels, lang }: QuotePDFDocum
             {meta.map((row) => (
               <View key={row.label} style={s.metaCell}>
                 <Text style={s.metaLabel}>{row.label}</Text>
-                <Text style={s.metaValue}>{row.value}</Text>
+                <Text {...WRAP} style={s.metaValue}>{row.value}</Text>
               </View>
             ))}
           </View>
@@ -361,7 +369,7 @@ export function QuotePDFDocument({ view, branding, labels, lang }: QuotePDFDocum
         {view.title ? (
           <View style={s.subject} wrap={false}>
             <Text style={s.subjectLabel}>{labels.subject}</Text>
-            <Text style={s.subjectValue}>{view.title}</Text>
+            <Text {...WRAP} style={s.subjectValue}>{view.title}</Text>
           </View>
         ) : null}
 
@@ -391,7 +399,7 @@ export function QuotePDFDocument({ view, branding, labels, lang }: QuotePDFDocum
                 <Text style={[s.td, s.colIndex, s.muted]}>{index + 1}</Text>
                 <View style={[s.td, s.colItem]}>
                   <View style={s.itemHead}>
-                    <Text style={s.itemName}>{item.productName || labels.itemPlaceholder}</Text>
+                    <Text {...WRAP} style={s.itemName}>{item.productName || labels.itemPlaceholder}</Text>
                     {item.isTaxable ? null : <Text style={s.taxExempt}>{labels.taxExempt}</Text>}
                   </View>
                   {item.description ? <Lines text={item.description} style={s.description} /> : null}
@@ -417,7 +425,7 @@ export function QuotePDFDocument({ view, branding, labels, lang }: QuotePDFDocum
                   {paymentRows.map((row) => (
                     <View key={row.label} style={s.paymentRow}>
                       <Text style={s.paymentLabel}>{row.label}</Text>
-                      <Text style={s.paymentValue}>{row.value}</Text>
+                      <Text {...WRAP} style={s.paymentValue}>{row.value}</Text>
                     </View>
                   ))}
                 </View>
@@ -477,7 +485,7 @@ export function QuotePDFDocument({ view, branding, labels, lang }: QuotePDFDocum
               <View style={s.signatureBox}>
                 {branding.stampSrc ? <Image src={branding.stampSrc} style={s.stamp} /> : null}
               </View>
-              <Text style={s.signatureHint}>{companyName}</Text>
+              <Text {...WRAP} style={s.signatureHint}>{companyName}</Text>
             </View>
           </View>
         </View>
@@ -526,7 +534,7 @@ function Lines({ text, style }: { text: string; style: ComponentProps<typeof Vie
   return (
     <View style={style}>
       {text.split(/\r?\n/).map((line, index) => (
-        <Text key={index}>{line === "" ? " " : line}</Text>
+        <Text {...WRAP} key={index}>{line === "" ? " " : line}</Text>
       ))}
     </View>
   );

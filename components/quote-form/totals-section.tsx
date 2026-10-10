@@ -17,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { amountInWordsEn, amountInWordsZhTW } from "@/lib/amount-in-words";
+import type { QuoteFinancials } from "@/lib/money";
 import type { QuoteFormValues } from "@/lib/schemas/quote";
 import { cn } from "@/lib/utils";
 import { useMoney, useRevealListener } from "./editor-context";
@@ -25,18 +26,24 @@ import { formTotals, lenientNumber, roundToDisplayed } from "./form-model";
 
 const TOTAL_FIELDS = ["items", "taxRate", "discountType", "discountValue", "otherFees"] as const;
 
-/** Live totals with exactly the server's arithmetic (lib/money). */
-export function useFormTotals() {
-  const [items, taxRate, discountType, discountValue, otherFees] = useWatch<QuoteFormValues>({
+/**
+ * Live totals with exactly the server's arithmetic (lib/money). Re-renders
+ * only when a total changes, not on every keystroke in a product name.
+ */
+export function useFormTotals(): QuoteFinancials {
+  return useWatch<QuoteFormValues, (typeof TOTAL_FIELDS)[number][], QuoteFormValues, QuoteFinancials>({
     name: [...TOTAL_FIELDS],
-  }) as [
-    QuoteFormValues["items"] | undefined,
-    QuoteFormValues["taxRate"],
-    QuoteFormValues["discountType"],
-    QuoteFormValues["discountValue"],
-    QuoteFormValues["otherFees"],
-  ];
-  return formTotals({ items: items ?? [], taxRate, discountType, discountValue, otherFees });
+    compute: (watched) => {
+      const [items, taxRate, discountType, discountValue, otherFees] = watched as [
+        QuoteFormValues["items"] | undefined,
+        QuoteFormValues["taxRate"],
+        QuoteFormValues["discountType"],
+        QuoteFormValues["discountValue"],
+        QuoteFormValues["otherFees"],
+      ];
+      return formTotals({ items: items ?? [], taxRate, discountType, discountValue, otherFees });
+    },
+  });
 }
 
 const compactField = "h-11 w-full bg-background md:h-9";

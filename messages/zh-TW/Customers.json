@@ -15,7 +15,6 @@
     "actions": "操作"
   },
   "vat": "統編 {vat}",
-  "quoteCount": "{count, plural, other {# 張報價單}}",
   "acceptedTotal": "成交金額",
   "lastQuote": "最近報價",
   "noContact": "未提供聯絡資訊",

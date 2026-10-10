@@ -53,7 +53,7 @@ export const ITEM_FIELDS = [
   "isTaxable",
 ] as const satisfies readonly (keyof QuoteItemFormValues)[];
 
-const SECTION_FIELDS: Record<SectionId, readonly FormFieldName[]> = {
+export const SECTION_FIELDS: Record<SectionId, readonly FormFieldName[]> = {
   customer: ["companyName", "contactPerson", "email", "phone", "vatNumber", "address"],
   details: ["title", "salesperson", "issuedDate", "validUntil"],
   items: ["items"],
@@ -233,6 +233,14 @@ export function roundToDisplayed(cents: number, fractionDigits: number): number 
   return cents < 0 ? -rounded : rounded;
 }
 
+/**
+ * "NT$1,234,567.50" → ["NT$1,", "234,", "567.", "50"]: the places a long
+ * amount may wrap (after a group or decimal separator, never inside a group).
+ */
+export function moneyBreakParts(formatted: string): string[] {
+  return formatted.split(/(?<=[,.'\u2019\u00a0\u202f])(?=\d)/);
+}
+
 export function emptyItem(): QuoteItemFormValues {
   return {
     productName: "",
@@ -274,6 +282,8 @@ const PREVIEW_ALIASES: Record<string, string> = {
   "totals.otherFees": "otherFees",
   "totals.subtotal": "items.0.unitPrice",
   customer: "companyName",
+  // The document's "no items yet" placeholder.
+  items: "items.0.productName",
 };
 
 /**

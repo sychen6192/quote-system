@@ -1,6 +1,5 @@
 {
   "downloadPdf": "Download PDF",
-  "pdf": "PDF",
   "send": "Send",
   "sendEmail": "Send email",
   "edit": "Edit",
@@ -11,15 +10,7 @@
   "more": "More actions",
   "moreTitle": "Quote {number}",
   "status": {
-    "label": "Status",
     "change": "Change status",
-    "markAs": {
-      "draft": "Mark as draft",
-      "sent": "Mark as sent",
-      "accepted": "Mark as accepted",
-      "rejected": "Mark as rejected"
-    },
-    "current": "Current status",
     "changed": "Marked as {status}",
     "undo": "Undo",
     "failed": "Couldn't change the status. Please try again.",
@@ -31,8 +22,7 @@
     "preparing": "Preparing the PDF…",
     "copied": "Link copied",
     "copiedHint": "People signed in to this app can open it.",
-    "failed": "Couldn't share this quote. Download the PDF instead.",
-    "retry": "Try again"
+    "copiedHintOpen": "Anyone who can reach this app can open it."
   },
   "email": {
     "title": "Send quotation",

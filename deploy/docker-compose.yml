@@ -77,11 +77,13 @@ services:
     restart: unless-stopped
     ports:
       - "${HTTP_PORT:-80}:80"
-      - "${HTTPS_PORT:-443}:443"
-      - "${HTTPS_PORT:-443}:443/udp"
+      # Same port inside and out: the Caddyfile puts it in its redirects.
+      - "${HTTPS_PORT:-443}:${HTTPS_PORT:-443}"
+      - "${HTTPS_PORT:-443}:${HTTPS_PORT:-443}/udp"
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:-localhost}
       CADDY_TLS: ${CADDY_TLS:-}
+      HTTPS_PORT: ${HTTPS_PORT:-443}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       # Certificates and Caddy's local CA (root.crt); must survive upgrades.

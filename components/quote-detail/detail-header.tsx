@@ -36,7 +36,7 @@ export function DetailHeader({ total, issuedDateLabel, validUntilLabel }: Detail
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div className="min-w-0 space-y-2">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            <h1 className="break-all text-2xl font-semibold tracking-tight text-foreground md:text-[1.75rem] md:leading-9">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground [overflow-wrap:anywhere] md:text-[1.75rem] md:leading-9">
               {quote.quotationNumber}
             </h1>
             <StatusBadge status={displayStatus} size="md" />

@@ -15,7 +15,6 @@
     "actions": "Actions"
   },
   "vat": "Tax ID {vat}",
-  "quoteCount": "{count, plural, one {# quote} other {# quotes}}",
   "acceptedTotal": "Accepted",
   "lastQuote": "Last quote",
   "noContact": "No contact details",

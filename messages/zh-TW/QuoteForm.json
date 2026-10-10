@@ -21,7 +21,12 @@
     "discarded": "已捨棄草稿",
     "duplicated": "已從 <strong>{number}</strong> 複製。客戶、報價項目與條款皆已帶入，日期則從今天重新起算。",
     "viewOriginal": "查看原報價單",
-    "customerPrefilled": "已帶入「<strong>{company}</strong>」最近一次報價的客戶資料。"
+    "customerPrefilled": "已帶入「<strong>{company}</strong>」最近一次報價的客戶資料。",
+    "statusSent": "這份報價單已寄給客戶。儲存後單號不變，記得將更新後的版本再寄給客戶。",
+    "statusAccepted": "客戶已接受這份報價單。若要提出不同條件，建議複製成新報價單，而不是修改客戶已同意的內容。",
+    "statusExpired": "這份報價單已於 {date} 過期。再次寄出前，請先設定新的有效期限。",
+    "duplicateInstead": "改為複製",
+    "setValidity": "設定新期限"
   },
   "sections": {
     "nav": "表單區段",
@@ -41,7 +46,8 @@
       "error": "需要修正",
       "incomplete": "尚未完成",
       "optional": "選填"
-    }
+    },
+    "stateSuffix": "（{state}）"
   },
   "fields": {
     "companyName": "公司名稱",

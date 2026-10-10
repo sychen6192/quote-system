@@ -111,7 +111,7 @@ export function CompanySection() {
                         rows={2}
                         autoComplete="street-address"
                         placeholder={t("addressPlaceholder")}
-                        className="min-h-[4.5rem] resize-y"
+                        className="max-h-60 min-h-[4.5rem] resize-y [field-sizing:content]"
                       />
                     )}
                   </Field>

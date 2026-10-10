@@ -12,13 +12,13 @@ export default function QuotesListLoading() {
         <span className="sr-only" role="status">
           {t("loading")}
         </span>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex items-end justify-between gap-3">
           <div className="space-y-2">
-            <Skeleton className="h-8 w-40" />
+            <Skeleton className="h-8 w-32 md:h-9 md:w-40" />
             <Skeleton className="h-4 w-24" />
           </div>
           <div className="flex gap-2">
-            <Skeleton className="h-11 flex-1 rounded-lg sm:h-9 sm:w-32 sm:flex-none" />
+            <Skeleton className="h-10 w-[8.5rem] rounded-lg sm:h-9 sm:w-32" />
             <Skeleton className="hidden h-9 w-32 rounded-lg sm:block" />
           </div>
         </div>

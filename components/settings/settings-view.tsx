@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type MouseEvent,
 } from "react";
 import { useRouter } from "next/navigation";
@@ -65,7 +66,21 @@ export const TAB_ICONS: Record<SettingsTab, LucideIcon> = {
 
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
-type PendingNavigation = { tab: SettingsTab } | { href: string };
+type PendingNavigation = { tab: SettingsTab } | { href: string } | { traverseTo: string };
+
+// The parts of the Navigation API used here (not in every TS DOM lib yet).
+type NavigationLike = EventTarget & {
+  traverseTo: (key: string) => { committed?: Promise<unknown>; finished?: Promise<unknown> };
+};
+type NavigateEventLike = Event & {
+  navigationType: "push" | "replace" | "reload" | "traverse";
+  destination: { key: string };
+};
+
+function getNavigation(): NavigationLike | null {
+  const navigation = (window as Window & { navigation?: NavigationLike }).navigation;
+  return navigation && typeof navigation.traverseTo === "function" ? navigation : null;
+}
 
 function panelId(tab: SettingsTab) {
   return `settings-panel-${tab}`;
@@ -167,9 +182,23 @@ export function SettingsView({ data }: { data: SettingsPageData }) {
       setPending(null);
       if ("tab" in target) {
         show(target.tab);
-      } else {
+      } else if ("href" in target) {
         allowLeave.current = true;
         router.push(target.href);
+      } else {
+        const navigation = getNavigation();
+        if (!navigation) return;
+        allowLeave.current = true;
+        const stayed = () => {
+          allowLeave.current = false;
+        };
+        try {
+          const result = navigation.traverseTo(target.traverseTo);
+          result.committed?.catch(stayed);
+          result.finished?.catch(() => {});
+        } catch {
+          stayed();
+        }
       }
     },
     [router, show]
@@ -199,7 +228,9 @@ export function SettingsView({ data }: { data: SettingsPageData }) {
   }, [isActiveDirty, show]);
 
   // Leaving the page with unsaved changes: the browser's prompt for reloads
-  // and closing the tab, our dialog for in-app links (nav bar, tab bar).
+  // and closing the tab, our dialog for in-app links (nav bar, tab bar) and,
+  // where the Navigation API can cancel it, for Back / Forward (including the
+  // Android back gesture), which would otherwise drop the edits silently.
   useEffect(() => {
     const anyDirty = () => [...handles.current.values()].some((handle) => handle.isDirty());
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -216,11 +247,21 @@ export function SettingsView({ data }: { data: SettingsPageData }) {
       event.stopPropagation();
       setPending({ href });
     };
+    const onNavigate = (event: Event) => {
+      const navigate = event as NavigateEventLike;
+      if (allowLeave.current || navigate.navigationType !== "traverse" || !navigate.cancelable) return;
+      if (!isActiveDirty()) return;
+      navigate.preventDefault();
+      setPending({ traverseTo: navigate.destination.key });
+    };
+    const navigation = getNavigation();
     window.addEventListener("beforeunload", onBeforeUnload);
     document.addEventListener("click", onClick, true);
+    navigation?.addEventListener("navigate", onNavigate);
     return () => {
       window.removeEventListener("beforeunload", onBeforeUnload);
       document.removeEventListener("click", onClick, true);
+      navigation?.removeEventListener("navigate", onNavigate);
     };
   }, [isActiveDirty]);
 
@@ -232,6 +273,24 @@ export function SettingsView({ data }: { data: SettingsPageData }) {
     const left = item.offsetLeft - (strip.clientWidth - item.offsetWidth) / 2;
     strip.scrollTo({ left, behavior: reducedMotion ? "auto" : "smooth" });
   }, [active, reducedMotion]);
+
+  // Fade the strip's edges only where more tabs are scrolled out of view: with
+  // the tabs filling the width exactly, nothing else hints that there are more.
+  const [stripEdges, setStripEdges] = useState({ start: false, end: true });
+  const updateStripEdges = useCallback(() => {
+    const strip = stripRef.current;
+    if (!strip) return;
+    const start = strip.scrollLeft > 1;
+    const end = strip.scrollLeft + strip.clientWidth < strip.scrollWidth - 1;
+    setStripEdges((current) =>
+      current.start === start && current.end === end ? current : { start, end }
+    );
+  }, []);
+  useEffect(() => {
+    updateStripEdges();
+    window.addEventListener("resize", updateStripEdges);
+    return () => window.removeEventListener("resize", updateStripEdges);
+  }, [updateStripEdges]);
 
   const sessionExpired = useCallback(() => {
     allowLeave.current = true;
@@ -282,18 +341,26 @@ export function SettingsView({ data }: { data: SettingsPageData }) {
       <div className="mt-4 lg:mt-8 lg:grid lg:grid-cols-[13.5rem_minmax(0,1fr)] lg:items-start lg:gap-10 xl:gap-12">
         <nav
           aria-label={t("sectionsLabel")}
-          className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 -mx-4 border-b bg-ground/95 px-4 py-2 backdrop-blur-md supports-[backdrop-filter]:bg-ground/90 md:-mx-6 md:px-6 lg:top-[calc(3.5rem+2rem)] lg:mx-0 lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none"
+          className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 -mx-4 border-b bg-ground/95 py-1.5 backdrop-blur-md supports-[backdrop-filter]:bg-ground/90 md:-mx-6 lg:top-[calc(3.5rem+2rem)] lg:mx-0 lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none"
         >
+          {/* Edge to edge on phones, so a tab cut off by the screen edge shows there is more. */}
           <ul
             ref={stripRef}
-            className="no-scrollbar flex gap-1 overflow-x-auto [mask-image:linear-gradient(to_right,transparent,#000_12px,#000_calc(100%-12px),transparent)] lg:flex-col lg:overflow-visible lg:[mask-image:none]"
+            onScroll={updateStripEdges}
+            style={
+              {
+                "--strip-fade-start": stripEdges.start ? "2.5rem" : "0px",
+                "--strip-fade-end": stripEdges.end ? "2.5rem" : "0px",
+              } as CSSProperties
+            }
+            className="no-scrollbar relative flex scroll-px-4 gap-1 overflow-x-auto px-4 py-0.5 [mask-image:linear-gradient(to_right,transparent,#000_var(--strip-fade-start),#000_calc(100%-var(--strip-fade-end)),transparent)] md:scroll-px-6 md:px-6 lg:flex-col lg:overflow-visible lg:p-0 lg:[mask-image:none]"
           >
             {SETTINGS_TABS.map((tab) => {
               const Icon = TAB_ICONS[tab];
               const current = tab === active;
               const dirty = dirtyTabs.has(tab);
               return (
-                <li key={tab} data-tab={tab} className="shrink-0 first:pl-1 last:pr-1 lg:p-0 lg:first:pl-0 lg:last:pr-0">
+                <li key={tab} data-tab={tab} className="shrink-0">
                   <a
                     href={`#${tab}`}
                     aria-current={current ? "true" : undefined}
@@ -301,7 +368,7 @@ export function SettingsView({ data }: { data: SettingsPageData }) {
                     onClick={(event) => onNavClick(event, tab)}
                     className={cn(
                       // Inset ring: the scrolling strip would clip an outside one.
-                      "group flex h-11 items-center gap-2.5 whitespace-nowrap rounded-full px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring lg:h-10 lg:rounded-lg lg:px-3",
+                      "group flex h-11 items-center gap-2 whitespace-nowrap rounded-full px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring lg:h-10 lg:gap-2.5 lg:rounded-lg lg:px-3",
                       current
                         ? "bg-card text-foreground shadow-card ring-1 ring-border"
                         : "text-muted-foreground hover:bg-muted hover:text-foreground"

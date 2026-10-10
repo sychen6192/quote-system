@@ -207,7 +207,7 @@
     "documentTitle": "文件",
     "documentDescription": "報價單與 PDF 上的其他資訊。",
     "showAmountInWords": "顯示中文大寫金額",
-    "showAmountInWordsHint": "正式報價單常用，例如：",
+    "showAmountInWordsHint": "在總計下方加印大寫金額，正式報價單常見，例如：<b>{example}</b>",
     "footerText": "頁尾文字",
     "footerTextHint": "顯示在每一頁最下方的簡短文字，例如感謝語。",
     "footerTextPlaceholder": "例如：感謝您的支持與愛護！"

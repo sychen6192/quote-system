@@ -95,6 +95,8 @@ export function SendEmailDialog({
 
   const handleResult = (result: SendEmailResult, recipient: string) => {
     const retry = { label: t("retry"), onClick: () => submitRef.current() };
+    // Long enough to reach the Retry button (sonner's default is 4 s).
+    const actionable = { action: retry, duration: 10_000 };
     if (result.success) {
       toast.success(t("success", { email: recipient }), {
         description: status === "draft" ? t("successDraft") : undefined,
@@ -118,12 +120,12 @@ export function SendEmailDialog({
       case "RATE_LIMITED":
         toast.error(
           t("errors.rateLimited", { minutes: Math.max(1, Math.ceil(result.retryAfterMs / 60_000)) }),
-          { action: retry }
+          actionable
         );
         return;
       case "SEND_FAILED":
       case "INTERNAL":
-        toast.error(t("errors.sendFailed"), { action: retry });
+        toast.error(t("errors.sendFailed"), actionable);
         return;
       case "MAIL_DISABLED":
         toast.error(t("errors.mailDisabled"));

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ElementType, type ReactNode } from "react";
+import { useId, useState, type ElementType, type ReactNode } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { ChevronRight, Download, Ellipsis, MonitorDown, Share, SquarePlus } from "lucide-react";
@@ -45,7 +45,7 @@ function Step({ index, children }: { index: number; children: ReactNode }) {
       >
         {index}
       </span>
-      <span className="min-w-0 flex-1 text-sm leading-6">{children}</span>
+      <span className="min-w-0 flex-1 text-pretty text-sm leading-6">{children}</span>
     </li>
   );
 }
@@ -56,9 +56,19 @@ type ManualStepsProps = {
   /** SheetTitle / SheetDescription inside a sheet (it needs an accessible name). */
   titleAs?: ElementType;
   descriptionAs?: ElementType;
+  /** For a popover, which has no built-in title wiring (a sheet's SheetTitle does its own). */
+  titleId?: string;
+  descriptionId?: string;
 };
 
-function ManualSteps({ ui, onDone, titleAs: Title = "p", descriptionAs: Description = "p" }: ManualStepsProps) {
+function ManualSteps({
+  ui,
+  onDone,
+  titleAs: Title = "p",
+  descriptionAs: Description = "p",
+  titleId,
+  descriptionId,
+}: ManualStepsProps) {
   const t = useTranslations("Pwa.install");
   const { appName: fullName, iconUrl } = useAppConfig();
   // The Home Screen label (apple-mobile-web-app-title) is the short name.
@@ -100,8 +110,8 @@ function ManualSteps({ ui, onDone, titleAs: Title = "p", descriptionAs: Descript
           className="size-10 shrink-0 rounded-xl bg-white object-contain p-0.5 shadow-card ring-1 ring-border"
         />
         <div className="min-w-0 space-y-0.5">
-          <Title className="text-sm font-semibold leading-5 text-foreground">{t(`${prefix}.title`)}</Title>
-          <Description className="text-xs leading-5 text-muted-foreground">
+          <Title id={titleId} className="text-sm font-semibold leading-5 text-foreground">{t(`${prefix}.title`)}</Title>
+          <Description id={descriptionId} className="text-pretty text-xs leading-5 text-muted-foreground">
             {t(`${prefix}.intro`, { name: appName })}
           </Description>
         </div>
@@ -128,6 +138,8 @@ function ManualHelp({ ui, children, align }: { ui: ManualUi; children: ReactNode
   const [open, setOpen] = useState(false);
   const wide = useMediaQuery("(min-width: 768px)");
   const t = useTranslations("UI");
+  const titleId = useId();
+  const descriptionId = useId();
   const done = () => setOpen(false);
 
   if (!wide) {
@@ -145,8 +157,15 @@ function ManualHelp({ ui, children, align }: { ui: ManualUi; children: ReactNode
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
-      <PopoverContent align={align} sideOffset={8} collisionPadding={16} className="w-80 rounded-xl p-4 shadow-elevated">
-        <ManualSteps ui={ui} onDone={done} />
+      <PopoverContent
+        align={align}
+        sideOffset={8}
+        collisionPadding={16}
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
+        className="w-80 rounded-xl p-4 shadow-elevated"
+      >
+        <ManualSteps ui={ui} onDone={done} titleId={titleId} descriptionId={descriptionId} />
       </PopoverContent>
     </Popover>
   );
@@ -207,16 +226,18 @@ function MenuVariant({ ui }: { ui: Exclude<InstallUi, "hidden"> }) {
       />
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-medium">{t("rowTitle")}</span>
-        <span className="mt-0.5 block text-xs text-muted-foreground">{description}</span>
+        <span className="mt-0.5 block text-pretty text-xs text-muted-foreground">{description}</span>
       </span>
       {ui === "prompt" ? (
-        <span className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-sm transition-colors group-hover:bg-primary/90 [&_svg]:size-3.5">
+        // Phones: a round icon, so the description is not squeezed into three lines.
+        <span className="inline-flex size-9 shrink-0 items-center justify-center gap-1.5 rounded-full bg-primary text-xs font-semibold text-primary-foreground shadow-sm transition-colors group-hover:bg-primary/90 sm:h-8 sm:w-auto sm:rounded-md sm:px-3 [&_svg]:size-4 sm:[&_svg]:size-3.5">
           <Download aria-hidden="true" />
-          {t("install")}
+          <span className="hidden sm:inline">{t("install")}</span>
         </span>
       ) : (
         <span className="inline-flex shrink-0 items-center gap-0.5 text-xs font-medium text-primary">
-          {t("showSteps")}
+          {/* Phones: the chevron alone, so the title and description keep the width. */}
+          <span className="hidden sm:inline">{t("showSteps")}</span>
           <ChevronRight aria-hidden="true" className="size-4 transition-transform group-hover:translate-x-0.5" />
         </span>
       )}

@@ -18,7 +18,10 @@
   "network": {
     "offlineTitle": "You're offline",
     "offlineDescription": "Saving, sending and PDFs will work again once you reconnect.",
-    "backOnline": "Back online"
+    "backOnline": "Back online",
+    "offlineBadge": "Offline",
+    "offlineAnnouncement": "You're offline. Saving, sending and PDFs will work again once you reconnect.",
+    "hide": "Hide"
   },
   "install": {
     "button": "Install app",
@@ -54,6 +57,11 @@
     "autoReload": "This page reloads by itself once you're back online.",
     "whileOffline": "While you're offline",
     "tipDrafts": "Quotes you were editing are kept as drafts on this device. Pick up where you left off when you're back.",
-    "tipConnection": "Saving, emailing and downloading PDFs need a connection."
+    "tipConnection": "Saving, emailing and downloading PDFs need a connection.",
+    "serverTitle": "Can't reach the server",
+    "serverDescription": "Your device is online, but the server isn't responding. It may be restarting after an update.",
+    "serverStill": "The server still isn't responding. Try again in a moment.",
+    "serverAutoRetry": "We'll keep checking and reload this page when it's back.",
+    "serverWhile": "In the meantime"
   }
 }

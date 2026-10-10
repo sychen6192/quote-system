@@ -8,6 +8,7 @@ export function SectionCard({
   title,
   description,
   count,
+  countLabel,
   action,
   children,
   className,
@@ -16,6 +17,8 @@ export function SectionCard({
   title: string;
   description?: string;
   count?: number;
+  /** What screen readers hear for the count badge, e.g. "4 quotes" */
+  countLabel?: string;
   action?: ReactNode;
   children: ReactNode;
   className?: string;
@@ -28,9 +31,15 @@ export function SectionCard({
             {Icon ? <Icon aria-hidden="true" className="size-4 text-muted-foreground" /> : null}
             {title}
             {count ? (
-              <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums text-muted-foreground">
-                {count}
-              </span>
+              <>
+                <span
+                  aria-hidden={countLabel ? true : undefined}
+                  className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums text-muted-foreground"
+                >
+                  {count}
+                </span>
+                {countLabel ? <span className="sr-only">{countLabel}</span> : null}
+              </>
             ) : null}
           </h2>
           {description ? <p className="mt-0.5 text-sm text-muted-foreground">{description}</p> : null}

@@ -37,6 +37,8 @@ export type QuoteDetailInfo = {
   /** the sender, for the share text */
   companyName: string;
   mailEnabled: boolean;
+  /** APP_PASSWORD is set: only signed-in people can open a shared link */
+  authEnabled: boolean;
   locale: AppLocale;
   /** localized PDF file name, e.g. 報價單-QT-20261009-001.pdf */
   pdfFilename: string;
@@ -74,6 +76,48 @@ function canShareFiles(): boolean {
     typeof navigator.canShare === "function" &&
     typeof File === "function"
   );
+}
+
+/**
+ * navigator.clipboard only exists in secure contexts; self-hosted installs
+ * are often opened over plain http on the LAN, where execCommand still works.
+ */
+async function copyText(text: string): Promise<void> {
+  if (window.isSecureContext && navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const field = document.createElement("textarea");
+  field.value = text;
+  field.setAttribute("readonly", "");
+  field.style.position = "fixed";
+  field.style.opacity = "0";
+  const focused = document.activeElement as HTMLElement | null;
+  // Inside the open menu / sheet: its focus trap would pull focus back from the body.
+  const host = focused?.closest<HTMLElement>('[role="menu"], [role="dialog"]') ?? document.body;
+  host.appendChild(field);
+  field.focus({ preventScroll: true });
+  field.select();
+  try {
+    if (!document.execCommand("copy")) throw new Error("copy command refused");
+  } finally {
+    field.remove();
+    focused?.focus?.();
+  }
+}
+
+/** Shows a "Preparing the PDF…" toast only if the file takes a moment. */
+async function withSlowToast<T>(work: Promise<T>, message: string): Promise<T> {
+  let toastId: string | number | undefined;
+  const timer = window.setTimeout(() => {
+    toastId = toast.loading(message);
+  }, 400);
+  try {
+    return await work;
+  } finally {
+    window.clearTimeout(timer);
+    if (toastId !== undefined) toast.dismiss(toastId);
+  }
 }
 
 function errorName(error: unknown): string {
@@ -118,6 +162,7 @@ export function QuoteDetailProvider({ quote, children }: { quote: QuoteDetailInf
             action: undoable
               ? { label: t("status.undo"), onClick: () => changeStatusRef.current(previous, false) }
               : undefined,
+            duration: undoable ? 8_000 : undefined,
           });
         } else if (result.code === "UNAUTHORIZED") {
           reloadForSignIn(tCommon("sessionExpired"));
@@ -158,19 +203,22 @@ export function QuoteDetailProvider({ quote, children }: { quote: QuoteDetailInf
   const copyLink = useCallback(async () => {
     const url = window.location.href.split("#")[0];
     try {
-      await navigator.clipboard.writeText(url);
-      toast.success(t("shareSheet.copied"), { description: t("shareSheet.copiedHint") });
+      await copyText(url);
+      toast.success(t("shareSheet.copied"), {
+        description: t(quote.authEnabled ? "shareSheet.copiedHint" : "shareSheet.copiedHintOpen"),
+      });
     } catch {
-      toast.error(tCommon("copyFailed"));
+      // Nothing on this page to select: show the link so it can be copied by hand.
+      toast.error(tCommon("copyFailed"), { description: url, duration: 10_000 });
     }
-  }, [t, tCommon]);
+  }, [quote.authEnabled, t, tCommon]);
 
   const share = useCallback(
     async function shareQuote(): Promise<void> {
       if (canShareFiles()) {
         let file: File | null = null;
         try {
-          file = await loadPdfFile();
+          file = await withSlowToast(loadPdfFile(), t("shareSheet.preparing"));
         } catch (error) {
           console.error(error);
         }

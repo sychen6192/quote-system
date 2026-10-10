@@ -50,3 +50,14 @@ export function initialOf(name: string | null | undefined): string {
   const [first] = Array.from(trimmed);
   return first.toLocaleUpperCase();
 }
+
+/**
+ * Rough rendered width of a figure in em (Inter semibold, tabular digits):
+ * separators are narrow, everything else about a digit wide. Lets a KPI
+ * shrink a huge amount to fit instead of cutting digits off.
+ */
+export function figureWidthEm(text: string): number {
+  let em = 0;
+  for (const ch of text) em += /[\s,.'’·]/.test(ch) ? 0.3 : 0.62;
+  return Math.max(em, 1);
+}

@@ -5,15 +5,7 @@
 [English → README.md](README.md)
 
 <p align="center">
-  <img src="docs/images/dashboard.png" alt="儀表板：洽談中金額、成交率、即將到期與最近的報價單" width="860">
-</p>
-
-<p align="center">
-  <img src="docs/images/quote-editor.png" alt="報價單編輯畫面，右側即時顯示 A4 預覽" width="860">
-</p>
-
-<p align="center">
-  <img src="docs/images/mobile.png" alt="安裝在手機上的 App：儀表板與報價單列表，淺色與深色主題" width="860">
+  <img src="docs/images/dashboard.zh-TW.png" alt="儀表板：洽談中金額、成交率、即將到期與最近的報價單" width="860">
 </p>
 
 ## 功能特色
@@ -22,12 +14,20 @@
 - **中英文 PDF**：由伺服器產生 A4 PDF 並內嵌思源黑體（Noto Sans TC），中文在任何裝置都能正確顯示與列印。可下載、列印，也能直接從手機分享。
 - **Email 寄送**：透過 [Resend](https://resend.com) 寄出報價單並附上 PDF，收件人、副本與內文都能修改。
 - **案件狀態一目了然**：儀表板顯示洽談中金額、本月成交、成交率與草稿數量，以及 7 天內到期的報價單；報價單有完整狀態流程（草稿、已發送、已成交、已拒絕、已過期）與異動紀錄。
-- **快速輸入**：依過去的報價自動帶出客戶與品項、一鍵複製報價單、常用付款條件與有效期限快捷鍵、草稿自動儲存與還原，按 Ctrl/⌘+S 即可儲存。可選用統一編號查詢公司資料。
+- **快速輸入**：依過去的報價自動帶出客戶與品項、一鍵複製報價單、常用付款條件與有效期限一鍵套用、草稿自動儲存與還原，按 Ctrl/⌘+S 即可儲存。可選用統一編號查詢公司資料。
 - **客戶名錄**：列出每位客戶的報價次數、成交金額，一鍵為該客戶新增報價單。
 - **在 App 內完成設定**：公司資料、Logo、公司大小章、App 圖示、品牌色、報價單編號規則（`QT-{YYYY}{MM}{DD}-{SEQ:3}`，支援民國年）、預設稅率、條款、匯款帳戶、寄件者、幣別與時區，全部都在「設定」頁面調整。
 - **可安裝的 App（PWA）**：加到手機主畫面或電腦的 Dock／工作列，以獨立視窗開啟；網路中斷時會顯示友善的離線頁面。
 - **手機、電腦都好用**：手機版有底部分頁列與固定操作列，電腦版支援鍵盤快捷鍵；淺色／深色主題；介面支援繁體中文與英文。
 - **自架也安心**：可選擇啟用密碼登入、資料庫自動升級（migration）、CSV 匯出、排程備份；Docker 映像檔支援 amd64 與 arm64，並以非 root 使用者執行。
+
+<p align="center">
+  <img src="docs/images/quote-editor.zh-TW.png" alt="報價單編輯畫面，右側即時顯示 A4 預覽" width="860">
+</p>
+
+<p align="center">
+  <img src="docs/images/mobile.png" alt="手機畫面：儀表板、深色主題的報價單列表，以及附 PDF 預覽的報價單" width="860">
+</p>
 
 ## 5 分鐘完成安裝
 
@@ -74,7 +74,7 @@ APP_PASSWORD=<大家共用的登入密碼>
 docker compose up -d
 ```
 
-App 預設使用 3000 埠（`APP_PORT`），資料庫不會對外開放任何連接埠。Windows 可在 PowerShell 執行相同指令（Windows 10 以上已內建 `curl` 與 `tar`），詳見〈[Windows 與 macOS 的 Docker Desktop](docs/deploy/docker-desktop.md)〉；Synology 與 QNAP 請參考〈[NAS 安裝說明](docs/deploy/nas.md)〉。
+App 預設使用 3000 埠（`APP_PORT`），資料庫不會對外開放任何連接埠。Windows 可在 PowerShell 執行相同指令（Windows 10 以上已內建 `curl` 與 `tar`），詳見〈[Windows 與 macOS 的 Docker Desktop](docs/deploy/docker-desktop.zh-TW.md)〉；Synology 與 QNAP 請參考〈[NAS 安裝說明](docs/deploy/nas.zh-TW.md)〉。
 
 ## 首次設定
 
@@ -96,7 +96,7 @@ App 預設使用 3000 埠（`APP_PORT`），資料庫不會對外開放任何連
 
 瀏覽器只允許從安全網址安裝 App：`https://…`，或同一台電腦上的 `http://localhost`。一般的 `http://192.168.1.20:3000` 可以正常使用所有功能，只是手機上不會出現「安裝」選項。以下三種方式擇一：
 
-1. **使用 Caddy 自有憑證（公司或家中區網）**：在 `.env` 將 `SITE_ADDRESS` 設為伺服器 IP 或 `quote.local` 這類名稱，並設定 `APP_BIND=127.0.0.1`，接著執行 `docker compose --profile https up -d`，再開啟 `https://<SITE_ADDRESS>`。每台裝置都要先信任一次 Caddy 的根憑證（iPhone、iPad、Android、Windows 與 macOS 的步驟請見〈[HTTPS 設定指南](docs/deploy/https.md)〉）。
+1. **使用 Caddy 自有憑證（公司或家中區網）**：在 `.env` 將 `SITE_ADDRESS` 設為伺服器 IP 或 `quote.local` 這類名稱，並設定 `APP_BIND=127.0.0.1`，接著執行 `docker compose --profile https up -d`，再開啟 `https://<SITE_ADDRESS>`。每台裝置都要先信任一次 Caddy 的根憑證（iPhone、iPad、Android、Windows 與 macOS 的步驟請見〈[HTTPS 設定指南](docs/deploy/https.zh-TW.md)〉）。
 2. **使用自己的網域**：將 `quote.example.com` 之類的 DNS 記錄指向伺服器，並讓 80 與 443 埠可從網際網路連入，設定 `SITE_ADDRESS=quote.example.com` 後執行 `docker compose --profile https up -d`。Caddy 會自動申請並更新免費憑證。請務必設定 `APP_PASSWORD`。
 3. **使用 Tailscale 或 Cloudflare Tunnel（不必開放連接埠）**：執行 `tailscale serve --bg 3000`，tailnet 內的每台裝置都能透過 `https://<主機名稱>.<tailnet>.ts.net` 以有效憑證連線；Cloudflare Tunnel 則可把 App 發布到你的網域，並可搭配 Cloudflare Access 在前面再加一道登入。
 
@@ -198,7 +198,7 @@ docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB
 docker compose start app
 ```
 
-搬遷到新伺服器、更換資料庫密碼與升級 PostgreSQL 版本，請參考〈[備份指南](docs/deploy/backup.md)〉。
+搬遷到新伺服器、更換資料庫密碼與升級 PostgreSQL 版本，請參考〈[備份指南](docs/deploy/backup.zh-TW.md)〉。
 
 ## 升級
 
@@ -257,26 +257,33 @@ Service Worker 只在正式版建置中註冊；若要在 `npm run dev` 中測�
 每次 push 與 pull request 都會執行 `.github/workflows/pipeline.yml`：
 
 - **ci**：確認 schema 變更都有對應的 migration、lint、型別檢查、以 PostgreSQL 執行單元與整合測試、正式版建置，最後以空資料庫啟動 standalone 伺服器兩次（第一次套用 migration，第二次不應有任何變更）。
-- **e2e**：Playwright 冒煙測試（失敗時上傳報告）。
+- **e2e**：以正式版建置、啟用登入的狀態執行 Playwright 冒煙測試，涵蓋桌面與 375 px 手機版面（失敗時上傳報告）。
 - **image**：建置 linux/amd64 與 linux/arm64 多架構映像檔，附 OCI 標籤、provenance 與 SBOM；只有 `main` 分支（`main`、`sha-<commit>`）與版本標籤（`1.2.3`、`1.2`、`1`、`latest`）會推送到 `ghcr.io/sychen6192/quote-system`。
 - **release**（`v*.*.*` 標籤）：建立 GitHub Release，附上發行套件、`install.sh` 與 `SHA256SUMS`。
 
 ## 系統架構
 
 ```mermaid
-flowchart LR
-  Browser["瀏覽器或已安裝的 App<br/>（Service Worker、離線頁面）"] -->|HTTPS| Caddy["Caddy<br/>（選用）"]
-  Browser -->|HTTP| App
-  Caddy --> App
-  subgraph App["Next.js App（standalone Node.js 伺服器）"]
-    Proxy["proxy.ts<br/>登入檢查與語系導向"] --> Pages["伺服器端渲染頁面<br/>與 Server Actions"]
-    Proxy --> Routes["Route handlers<br/>PDF、CSV、品牌圖片、PWA、健康檢查"]
-    Pages --> Services["services/（查詢）<br/>lib/（金額、編號、設定）"]
-    Routes --> Services
+flowchart TB
+  Browser["瀏覽器或已安裝的 App<br/>（Service Worker、離線頁面）"]
+  Caddy["Caddy（選用）<br/>HTTPS 憑證"]
+  Browser -->|HTTPS| Caddy
+  subgraph App["Next.js App（Docker）"]
+    Proxy["proxy.ts<br/>登入檢查與語系導向"]
+    Pages["頁面與 Server Actions"]
+    Routes["Route handlers<br/>PDF、CSV、品牌圖片、PWA、健康檢查"]
+    Services["services/ 與 lib/<br/>查詢、金額、編號、設定"]
+    Proxy --> Pages & Routes
+    Pages & Routes --> Services
   end
-  Services -->|Drizzle ORM| DB[("PostgreSQL 16<br/>報價單、設定、圖片")]
-  Routes -.->|"@react-pdf/renderer + 思源黑體"| PDF["A4 PDF"]
-  Pages -.->|"react-email"| Resend["Resend API"]
+  Caddy --> Proxy
+  Browser -->|"HTTP（區網）"| Proxy
+  Resend["Resend API<br/>（寄信）"]
+  DB[("PostgreSQL 16<br/>報價單、設定、圖片")]
+  PDF["A4 PDF<br/>（react-pdf、思源黑體）"]
+  Pages -.-> Resend
+  Services -->|Drizzle ORM| DB
+  Routes -.-> PDF
 ```
 
 - **Next.js 16 App Router**：React Server Components 與 Server Actions；每個 Action 與非公開路由都會再次檢查登入狀態。

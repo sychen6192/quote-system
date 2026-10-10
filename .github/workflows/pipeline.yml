@@ -85,7 +85,8 @@ jobs:
           }
           expected=$(node -p "require('./drizzle/meta/_journal.json').entries.length")
           for run in 1 2; do
-            PORT=3000 node .next/standalone/server.js > "server-$run.log" 2>&1 &
+            # HOSTNAME explicitly: Next binds to it, and some shells export the machine name.
+            PORT=3000 HOSTNAME=127.0.0.1 node .next/standalone/server.js > "server-$run.log" 2>&1 &
             pid=$!
             ok=
             for _ in $(seq 1 60); do
@@ -120,6 +121,10 @@ jobs:
           --health-timeout 5s --health-retries 10
     env:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/quote-e2e
+      # Sign-in on, as install.sh sets it up: covers the session paths and the sign-in test.
+      APP_PASSWORD: e2e-password
+      AUTH_SECRET: e2e-secret-0123456789abcdef0123456789abcdef
+      E2E_APP_PASSWORD: e2e-password
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -133,7 +138,7 @@ jobs:
         run: npm run test:e2e
       - name: Upload the Playwright report
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report
           path: |
@@ -243,14 +248,16 @@ jobs:
             echo "## Install"
             echo '```sh'
             echo "curl -fsSLO https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/install.sh"
-            echo "sh install.sh"
+            # Pinned: on a pre-release, "latest" would install the previous stable release instead.
+            echo "QUOTE_VERSION=${version} sh install.sh"
             echo '```'
             echo
             echo "## Upgrade"
-            echo 'Run the installer again, or in your install directory:'
+            echo 'In your install directory, run the installer again:'
             echo '```sh'
-            echo "sed -i 's/^QUOTE_VERSION=.*/QUOTE_VERSION=${version}/' .env && docker compose pull && docker compose up -d"
+            echo "QUOTE_VERSION=${version} sh install.sh"
             echo '```'
+            echo "or set \`QUOTE_VERSION=${version}\` in \`.env\`, then run \`docker compose pull && docker compose up -d\`."
             echo "Image: \`${IMAGE}:${version}\` (linux/amd64, linux/arm64). Database migrations run automatically on start."
             echo
             echo "## Commits"

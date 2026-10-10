@@ -12,8 +12,19 @@ export type ExpiringItem = {
   daysLeft: number;
 };
 
-/** Open quotes whose validity ends within 7 days, soonest first. */
-export function ExpiringList({ items, className }: { items: ExpiringItem[]; className?: string }) {
+/**
+ * Open quotes whose validity ends within 7 days, soonest first. `total` is
+ * how many there are in all (only the first few are listed).
+ */
+export function ExpiringList({
+  items,
+  total = items.length,
+  className,
+}: {
+  items: ExpiringItem[];
+  total?: number;
+  className?: string;
+}) {
   const t = useTranslations("Dashboard.expiring");
   const tList = useTranslations("QuotesList");
 
@@ -22,7 +33,8 @@ export function ExpiringList({ items, className }: { items: ExpiringItem[]; clas
       icon={CalendarClock}
       title={t("title")}
       description={t("description")}
-      count={items.length || undefined}
+      count={total || undefined}
+      countLabel={t("countLabel", { count: total })}
       className={className}
     >
       {items.length === 0 ? (
@@ -62,6 +74,11 @@ export function ExpiringList({ items, className }: { items: ExpiringItem[]; clas
               </Link>
             </li>
           ))}
+          {total > items.length ? (
+            <li className="px-5 py-3 text-xs font-medium text-muted-foreground">
+              {t("more", { count: total - items.length })}
+            </li>
+          ) : null}
         </ul>
       )}
     </SectionCard>

@@ -28,9 +28,9 @@ export default function LanguageSwitcher({ className }: { className?: string }) 
   const switchLocale = () => {
     // Read at click time rather than via useSearchParams(), which would force
     // a Suspense boundary around the whole shell.
-    const search = window.location.search;
+    const { search, hash } = window.location;
     startTransition(() => {
-      router.replace(`${pathname}${search}`, { locale: target, scroll: false });
+      router.replace(`${pathname}${search}${hash}`, { locale: target, scroll: false });
     });
   };
 

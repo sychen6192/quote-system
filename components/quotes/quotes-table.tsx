@@ -51,19 +51,27 @@ export function QuotesTable({ rows }: { rows: QuoteRowView[] }) {
                   <Link
                     href={`/quotes/${row.id}`}
                     aria-label={t("openQuote", { number: row.number })}
-                    className="whitespace-nowrap font-medium tabular-nums text-foreground after:absolute after:inset-0 after:content-[''] group-hover:text-primary"
+                    title={row.number}
+                    className="inline-block max-w-[9rem] truncate align-middle font-medium tabular-nums xl:max-w-[12rem] text-foreground after:absolute after:inset-0 after:content-[''] group-hover:text-primary"
                   >
                     {row.number}
                   </Link>
                 </TableCell>
-                <TableCell className="max-w-[22rem] py-3">
-                  <div className="truncate font-medium text-foreground">{primary}</div>
+                {/* w-full + max-w-0: this column takes the space the others leave and truncates. */}
+                <TableCell className="w-full max-w-0 py-3">
+                  <div title={primary} className="truncate font-medium text-foreground">
+                    {primary}
+                  </div>
                   {secondary ? (
-                    <div className="truncate text-xs text-muted-foreground">{secondary}</div>
+                    <div title={secondary} className="truncate text-xs text-muted-foreground">
+                      {secondary}
+                    </div>
                   ) : null}
                 </TableCell>
-                <TableCell className="hidden max-w-[10rem] truncate py-3 text-muted-foreground xl:table-cell">
-                  {row.salesperson}
+                <TableCell className="hidden py-3 text-muted-foreground xl:table-cell">
+                  <div title={row.salesperson} className="max-w-[10rem] truncate">
+                    {row.salesperson}
+                  </div>
                 </TableCell>
                 <TableCell className="hidden whitespace-nowrap py-3 tabular-nums text-muted-foreground lg:table-cell">
                   {row.issuedLabel}
@@ -74,7 +82,7 @@ export function QuotesTable({ rows }: { rows: QuoteRowView[] }) {
                 <TableCell className="py-3">
                   <StatusBadge status={row.status} />
                 </TableCell>
-                <TableCell className="money py-3 text-right font-semibold text-foreground">
+                <TableCell className="money whitespace-nowrap py-3 text-right font-semibold text-foreground">
                   {row.total}
                 </TableCell>
                 <TableCell className="relative z-10 py-2 pr-3 text-right">

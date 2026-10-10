@@ -43,6 +43,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { StatusBadge } from "@/components/quotes/quote-status-badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import { KbdHotkey } from "@/components/ui/kbd";
@@ -66,14 +67,20 @@ import {
   type QuoteFormValues,
 } from "@/lib/schemas/quote";
 import type { DocumentBranding } from "@/lib/settings/types";
-import type { QuoteStatus } from "@/lib/status";
+import { displayStatus, type QuoteStatus } from "@/lib/status";
 import { cn } from "@/lib/utils";
 import { useRouter } from "@/navigation";
 import { AutosaveIndicator } from "./autosave-indicator";
-import { CustomerPrefilledBanner, DraftRestoreBanner, DuplicatedBanner } from "./banners";
+import {
+  CustomerPrefilledBanner,
+  DraftRestoreBanner,
+  DuplicatedBanner,
+  StatusNoticeBanner,
+} from "./banners";
 import { CustomerSection } from "./customer-section";
 import { DetailsSection } from "./details-section";
 import { EditorProvider, createRevealBus, useMoney, type EditorContextValue } from "./editor-context";
+import { WrappingMoney } from "./field-bits";
 import {
   SECTION_IDS,
   collectErrorPaths,
@@ -209,6 +216,8 @@ export function QuoteForm({
   });
 
   const formRef = useRef<HTMLFormElement>(null);
+  const bannersRef = useRef<HTMLDivElement>(null);
+  const cancelReturnFocus = useRef<HTMLElement | null>(null);
   const allowLeave = useRef(false);
   const savingRef = useRef(false);
   const sheetFocus = useRef<string | null>(null);
@@ -233,6 +242,15 @@ export function QuoteForm({
     initialValues: defaults,
     prunePrefix: draftPrunePrefix,
   });
+
+  // A reload restores the scroll position, which can leave the restore
+  // prompt above the fold (and the user typing into stale values).
+  const offerRestore = draft.restorable !== null;
+  useEffect(() => {
+    if (!offerRestore) return;
+    const banners = bannersRef.current;
+    if (banners && banners.getBoundingClientRect().top < 0) window.scrollTo({ top: 0 });
+  }, [offerRestore]);
 
   const leaveTo = mode === "edit" && quoteId ? `/quotes/${quoteId}` : "/quotes";
   const isDirty = useCallback(() => draftDiffers(form.getValues(), defaults), [form, defaults]);
@@ -437,8 +455,11 @@ export function QuoteForm({
   };
 
   const requestCancel = () => {
-    if (isDirty()) setConfirmLeave(true);
-    else router.push(leaveTo);
+    if (!isDirty()) return router.push(leaveTo);
+    // The dialog has no trigger, so Radix can't restore focus by itself.
+    cancelReturnFocus.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setConfirmLeave(true);
   };
 
   const discardAndLeave = () => {
@@ -456,6 +477,12 @@ export function QuoteForm({
     setBodyKey((key) => key + 1);
     toast.success(t("banners.restored"));
   };
+
+  // The saved quote's state (not the live form): what the customer has seen.
+  const savedStatus = mode === "edit" ? displayStatus(status, defaults.validUntil, today) : null;
+
+  const showStatusNotice =
+    savedStatus === "sent" || savedStatus === "accepted" || savedStatus === "expired";
 
   const showPane = !previewHidden;
   const previewProps: Omit<QuotePreviewProps, "fit" | "className"> = {
@@ -493,12 +520,21 @@ export function QuoteForm({
                 <ChevronLeft aria-hidden="true" className="size-4" />
                 {backLabel}
               </button>
-              <h1
-                id={titleId}
-                className="mt-0.5 break-words text-2xl font-bold tracking-tight text-foreground md:text-3xl"
-              >
-                {title}
-              </h1>
+              <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                <h1
+                  id={titleId}
+                  className="min-w-0 break-words text-2xl font-bold tracking-tight text-foreground md:text-3xl"
+                >
+                  {title}
+                </h1>
+                {savedStatus && (
+                  // The badge tints are tuned for 4.5:1 over the card colour,
+                  // not over the darker page ground.
+                  <span className="rounded-full bg-card">
+                    <StatusBadge status={savedStatus} size="md" />
+                  </span>
+                )}
+              </div>
               <p className="mt-1 text-sm text-muted-foreground">
                 {mode === "edit" ? t("header.editDesc") : t("header.createDesc")}
               </p>
@@ -522,8 +558,8 @@ export function QuoteForm({
             </div>
           </header>
 
-          {(draft.restorable || duplicatedFrom || prefilledCustomer) && (
-            <div className="mt-4 space-y-3">
+          {(draft.restorable || duplicatedFrom || prefilledCustomer || showStatusNotice) && (
+            <div ref={bannersRef} className="mt-4 space-y-3">
               {draft.restorable && (
                 <DraftRestoreBanner
                   savedAt={draft.restorable.savedAt}
@@ -542,6 +578,14 @@ export function QuoteForm({
               )}
               {prefilledCustomer && !duplicatedFrom && (
                 <CustomerPrefilledBanner company={prefilledCustomer} />
+              )}
+              {showStatusNotice && quoteId !== null && savedStatus && (
+                <StatusNoticeBanner
+                  quoteId={quoteId}
+                  status={savedStatus}
+                  validUntil={String(defaults.validUntil ?? "")}
+                  onSetValidity={() => focusPath("validUntil")}
+                />
               )}
             </div>
           )}
@@ -628,7 +672,15 @@ export function QuoteForm({
         )}
 
         <AlertDialog open={confirmLeave} onOpenChange={setConfirmLeave}>
-          <AlertDialogContent>
+          <AlertDialogContent
+            onCloseAutoFocus={(event) => {
+              const target = cancelReturnFocus.current;
+              cancelReturnFocus.current = null;
+              if (!target?.isConnected) return;
+              event.preventDefault();
+              target.focus();
+            }}
+          >
             <AlertDialogHeader>
               <AlertDialogTitle>{t("cancelDialog.title")}</AlertDialogTitle>
               <AlertDialogDescription>{t("cancelDialog.description")}</AlertDialogDescription>
@@ -771,6 +823,23 @@ function TotalFigure({ className }: { className?: string }) {
   return <span className={cn("money", className)}>{money.format(totals.total)}</span>;
 }
 
+/** Shrinks for long figures instead of truncating money next to the buttons. */
+function PhoneTotal() {
+  const money = useMoney();
+  const text = money.format(useFormTotals().total);
+  const size =
+    text.length > 16
+      ? "text-[0.8125rem]"
+      : text.length > 14
+        ? "text-sm"
+        : text.length > 11
+          ? "text-base"
+          : "text-lg";
+  return (
+    <WrappingMoney value={text} className={cn("block font-bold leading-tight text-foreground", size)} />
+  );
+}
+
 function ActionBar({
   formId,
   store,
@@ -800,7 +869,7 @@ function ActionBar({
       <div className="flex items-center gap-2 md:hidden">
         <div className="min-w-0 flex-1">
           <p className="text-xs text-muted-foreground">{t("actions.total")}</p>
-          <TotalFigure className="block truncate text-lg font-bold leading-tight text-foreground" />
+          <PhoneTotal />
         </div>
         <Button type="button" variant="outline" onClick={onPreview} className="h-11 px-3">
           <Eye aria-hidden="true" />
@@ -852,28 +921,59 @@ function ActionBar({
   );
 }
 
-/** One-line recap of a collapsed section. */
+/** One-line recap of a collapsed section (each watches only what it shows). */
 function SectionSummary({ id }: { id: SectionId }) {
-  const t = useTranslations("QuoteForm");
-  const values = useWatch<QuoteFormValues>({
-    name: ["companyName", "contactPerson", "validUntil", "items", "paymentMethod"],
-  }) as [string | undefined, string | undefined, string | undefined, QuoteFormValues["items"] | undefined, string | undefined];
-  const [company, contact, validUntil, items, payment] = values;
-  const empty = t("sections.summaryEmpty");
   switch (id) {
     case "customer":
-      return <>{[company, contact].map((v) => String(v ?? "").trim()).filter(Boolean).join(" · ") || empty}</>;
+      return <CustomerSummary />;
     case "details":
-      return <>{isIsoDate(validUntil) ? `${t("fields.validUntil")} ${validUntil}` : empty}</>;
+      return <DetailsSummary />;
     case "items":
-      return <>{t("items.count", { count: items?.length ?? 0 })}</>;
+      return <ItemsSummary />;
     case "totals":
-      return (
-        <>
-          {t("actions.total")} <TotalFigure />
-        </>
-      );
+      return <TotalsSummary />;
     case "terms":
-      return <>{String(payment ?? "").trim() || empty}</>;
+      return <TermsSummary />;
   }
+}
+
+function useSummaryText(names: readonly FieldPath<QuoteFormValues>[]): string[] {
+  const values = useWatch<QuoteFormValues>({ name: [...names] }) as unknown[];
+  return values.map((value) => (typeof value === "string" ? value.trim() : ""));
+}
+
+function CustomerSummary() {
+  const t = useTranslations("QuoteForm.sections");
+  const parts = useSummaryText(["companyName", "contactPerson"]).filter(Boolean);
+  return <>{parts.join(" · ") || t("summaryEmpty")}</>;
+}
+
+function DetailsSummary() {
+  const t = useTranslations("QuoteForm");
+  const [validUntil] = useSummaryText(["validUntil"]);
+  return <>{isIsoDate(validUntil) ? `${t("fields.validUntil")} ${validUntil}` : t("sections.summaryEmpty")}</>;
+}
+
+function ItemsSummary() {
+  const t = useTranslations("QuoteForm.items");
+  const count = useWatch<QuoteFormValues, "items", QuoteFormValues, number>({
+    name: "items",
+    compute: (items) => (Array.isArray(items) ? items.length : 0),
+  });
+  return <>{t("count", { count })}</>;
+}
+
+function TotalsSummary() {
+  const t = useTranslations("QuoteForm.actions");
+  return (
+    <>
+      {t("total")} <TotalFigure />
+    </>
+  );
+}
+
+function TermsSummary() {
+  const t = useTranslations("QuoteForm.sections");
+  const [payment] = useSummaryText(["paymentMethod"]);
+  return <>{payment || t("summaryEmpty")}</>;
 }

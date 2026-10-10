@@ -65,11 +65,12 @@ main() {
 
   bundle_version=$(env_value QUOTE_VERSION .env.example)
   password_note=
+  fresh_install=
   if [ ! -f .env ]; then
     # The database volume keeps the password it was created with; a fresh .env
     # would lock the app out of it.
     if docker volume inspect quote-system_postgres_data >/dev/null 2>&1; then
-      die "Found an existing Quote System database (volume quote-system_postgres_data) but no .env in $dir. Put your previous .env back there, or delete the old data with: docker volume rm quote-system_postgres_data"
+      die "Found an existing Quote System database (volume quote-system_postgres_data) but no .env in $dir. Put your previous .env back there (coming from version 0.x: see \"Upgrading from 0.x\" in CHANGELOG.md), or delete the old data with: docker volume rm quote-system_postgres_data"
     fi
     create_env "${requested_version:+$version}"
   else
@@ -84,6 +85,11 @@ main() {
       say "QUOTE_VERSION: ${current:-unset} -> $target"
     fi
   fi
+
+  # Compose prefers the shell's variables to .env: drop the installer's own
+  # inputs so this run uses exactly what .env says (QUOTE_VERSION=v1.2.3 would
+  # otherwise ask for a "v1.2.3" image tag, APP_PORT would differ from .env).
+  unset QUOTE_VERSION APP_PORT APP_PASSWORD
 
   if [ "${QUOTE_SKIP_PULL:-}" = 1 ]; then
     say "Skipping image download (QUOTE_SKIP_PULL=1)"
@@ -143,6 +149,7 @@ create_env() {
   set_env APP_PORT "$port" .env
   [ -z "$pinned_version" ] || set_env QUOTE_VERSION "$pinned_version" .env
   say "Created $dir/.env (readable only by you) with random secrets"
+  fresh_install=1
   if [ -n "$app_password" ]; then
     password_note=$app_password
   fi
@@ -159,14 +166,17 @@ print_summary() {
     host=${host:-localhost}
   fi
   version=$(env_value QUOTE_VERSION .env)
+  # Running services, not COMPOSE_PROFILES: `--profile https up -d` also counts.
+  running=",$(docker compose ps --services --status running 2>/dev/null | tr '\n' ','),"
 
   printf '\n'
   say "Quote System ${version:-latest} is running: http://$host:$port"
-  case ",$(env_value COMPOSE_PROFILES .env)," in
-    *,https,*)
+  case $running in
+    *,caddy,*)
       https_port=$(env_value HTTPS_PORT .env)
       case ${https_port:-443} in 443) https_port= ;; *) https_port=":$https_port" ;; esac
-      say "HTTPS: https://$(env_value SITE_ADDRESS .env)$https_port" ;;
+      site=$(env_value SITE_ADDRESS .env)
+      say "HTTPS: https://${site:-localhost}$https_port" ;;
   esac
   if [ -n "$password_note" ]; then
     printf '\n  Sign-in password: \033[1m%s\033[0m\n' "$password_note"
@@ -174,19 +184,36 @@ print_summary() {
   elif [ -z "$(env_value APP_PASSWORD .env)" ]; then
     warn "Sign-in is off (APP_PASSWORD is empty): anyone who can reach port $port can use the app."
   fi
-  cat <<EOF
 
-  Next steps
-  1. Open the address above and fill in your company details on the Settings page.
-  2. To install the app on phones and computers, serve it over HTTPS:
-       set SITE_ADDRESS in $dir/.env, then: docker compose --profile https up -d
+  # Only the steps that are still open, so an upgrade does not repeat them.
+  steps=
+  n=0
+  if [ -n "$fresh_install" ]; then
+    n=$((n + 1))
+    steps="$steps  $n. Open the address above and fill in your company details on the Settings page.
+"
+  fi
+  case $running in
+    *,caddy,*) ;;
+    *)
+      n=$((n + 1))
+      steps="$steps  $n. To install the app on phones and computers, serve it over HTTPS: set
+     SITE_ADDRESS (and APP_BIND=127.0.0.1) in .env, then: docker compose --profile https up -d
      Guide: https://github.com/$REPO/blob/main/docs/deploy/https.md
-  3. Turn on daily backups: docker compose --profile backup up -d
+" ;;
+  esac
+  case $running in
+    *,backup,*) ;;
+    *)
+      n=$((n + 1))
+      steps="$steps  $n. Turn on daily backups: docker compose --profile backup up -d
      Guide: https://github.com/$REPO/blob/main/docs/deploy/backup.md
-
-  Upgrade later by running this installer again, or:
-    cd $dir && docker compose pull && docker compose up -d
-EOF
+" ;;
+  esac
+  if [ -n "$steps" ]; then
+    printf '\n  Next steps, in %s:\n%s' "$dir" "$steps"
+  fi
+  printf '\n  Upgrade later by running this installer again, or:\n    cd %s && docker compose pull && docker compose up -d\n' "$dir"
 }
 
 # KEY=value lines only; prints the value of the last match.

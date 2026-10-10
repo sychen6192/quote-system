@@ -8,14 +8,6 @@
   <img src="docs/images/dashboard.png" alt="Dashboard with open pipeline, acceptance rate, quotes expiring soon and recent quotes" width="860">
 </p>
 
-<p align="center">
-  <img src="docs/images/quote-editor.png" alt="Quote editor with a live A4 preview next to the form" width="860">
-</p>
-
-<p align="center">
-  <img src="docs/images/mobile.png" alt="The installed app on a phone: dashboard and quote list, light and dark" width="860">
-</p>
-
 ## Features
 
 - **Quotes that look professional.** Live A4 preview while you type (click any part to edit it), line items with descriptions, units and decimal quantities, taxable and tax-exempt lines, discount as amount or percentage, other fees, amount in words (新台幣壹萬貳仟元整).
@@ -28,6 +20,14 @@
 - **Installable app (PWA).** Add it to your phone's home screen or your computer's dock; it opens in its own window and shows a friendly offline page when the network is gone.
 - **Built for phones and desktops.** Bottom tab bar and sticky action bars on phones, keyboard shortcuts on desktop, light and dark themes, English and Traditional Chinese.
 - **Safe to run yourself.** Optional password sign-in, automatic database migrations, CSV export, scheduled backups, a multi-arch Docker image (amd64 and arm64) that runs as a non-root user.
+
+<p align="center">
+  <img src="docs/images/quote-editor.png" alt="Quote editor with a live A4 preview next to the form" width="860">
+</p>
+
+<p align="center">
+  <img src="docs/images/mobile.png" alt="On a phone: the dashboard, the quote list in the dark theme, and a quote with its PDF preview" width="860">
+</p>
 
 ## Install in 5 minutes
 
@@ -257,26 +257,33 @@ Translations live in `messages/<locale>/<Namespace>.json`; new namespaces are re
 `.github/workflows/pipeline.yml` runs on every push and pull request:
 
 - **ci**: checks that schema changes come with a migration, lint, typecheck, unit and integration tests against PostgreSQL, production build, then boots the standalone server twice against an empty database (migrations apply, then are a no-op).
-- **e2e**: the Playwright smoke tests (report uploaded on failure).
+- **e2e**: the Playwright smoke tests against the production build with sign-in on, desktop and 375 px mobile (report uploaded on failure).
 - **image**: multi-arch image (linux/amd64 and linux/arm64) with OCI labels, provenance and SBOM. Pushed to `ghcr.io/sychen6192/quote-system` only from `main` (`main`, `sha-<commit>`) and version tags (`1.2.3`, `1.2`, `1`, `latest`).
 - **release** (tags `v*.*.*`): GitHub release with the deploy bundle, `install.sh` and `SHA256SUMS`.
 
 ## Architecture
 
 ```mermaid
-flowchart LR
-  Browser["Browser or installed app<br/>(service worker, offline page)"] -->|HTTPS| Caddy["Caddy<br/>(optional)"]
-  Browser -->|HTTP| App
-  Caddy --> App
-  subgraph App["Next.js app (standalone Node.js server)"]
-    Proxy["proxy.ts<br/>sign-in + locale routing"] --> Pages["Server-rendered pages<br/>and Server Actions"]
-    Proxy --> Routes["Route handlers<br/>PDF, CSV, branding, PWA, health"]
-    Pages --> Services["services/ (queries)<br/>lib/ (money, numbering, settings)"]
-    Routes --> Services
+flowchart TB
+  Browser["Browser or installed app<br/>(service worker, offline page)"]
+  Caddy["Caddy, optional<br/>(HTTPS certificates)"]
+  Browser -->|HTTPS| Caddy
+  subgraph App["Next.js app in Docker"]
+    Proxy["proxy.ts<br/>sign-in and locale routing"]
+    Pages["Pages and Server Actions"]
+    Routes["Route handlers<br/>PDF, CSV, branding, PWA, health"]
+    Services["services/ and lib/<br/>queries, money, numbering, settings"]
+    Proxy --> Pages & Routes
+    Pages & Routes --> Services
   end
-  Services -->|Drizzle ORM| DB[("PostgreSQL 16<br/>quotes, settings, images")]
-  Routes -.->|"@react-pdf/renderer + Noto Sans TC"| PDF["A4 PDF"]
-  Pages -.->|"react-email"| Resend["Resend API"]
+  Caddy --> Proxy
+  Browser -->|"HTTP (LAN)"| Proxy
+  Resend["Resend API<br/>(email)"]
+  DB[("PostgreSQL 16<br/>quotes, settings, images")]
+  PDF["A4 PDF<br/>(react-pdf, Noto Sans TC)"]
+  Pages -.-> Resend
+  Services -->|Drizzle ORM| DB
+  Routes -.-> PDF
 ```
 
 - **Next.js 16 App Router** with React Server Components and Server Actions; every action and private route re-checks the session.

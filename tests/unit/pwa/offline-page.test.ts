@@ -1,16 +1,31 @@
-import { escapeHtml, renderOfflinePage, safeCssColor, type OfflinePageText } from "@/lib/pwa/offline-page";
+import { runInNewContext } from "node:vm";
+import {
+  SERVER_POLL_MS,
+  escapeHtml,
+  renderOfflinePage,
+  safeCssColor,
+  type OfflinePageText,
+} from "@/lib/pwa/offline-page";
 
-const text = (prefix: string): OfflinePageText => ({
-  title: `${prefix} title`,
-  description: `${prefix} description`,
-  retry: `${prefix} retry`,
-  checking: `${prefix} checking`,
-  stillOffline: `${prefix} still`,
-  autoReload: `${prefix} auto`,
-  whileOffline: `${prefix} while`,
-  tipDrafts: `${prefix} drafts`,
-  tipConnection: `${prefix} connection`,
-});
+const KEYS: (keyof OfflinePageText)[] = [
+  "title",
+  "description",
+  "retry",
+  "checking",
+  "stillOffline",
+  "autoReload",
+  "whileOffline",
+  "tipDrafts",
+  "tipConnection",
+  "serverTitle",
+  "serverDescription",
+  "serverStill",
+  "serverAutoRetry",
+  "serverWhile",
+];
+
+const text = (prefix: string) =>
+  Object.fromEntries(KEYS.map((key) => [key, `${prefix} ${key}`])) as OfflinePageText;
 
 const input = {
   text: { en: text("EN"), "zh-TW": text("ZH") },
@@ -27,11 +42,28 @@ describe("renderOfflinePage", () => {
 
   it("is a complete document with both languages", () => {
     expect(html.startsWith("<!doctype html>")).toBe(true);
-    for (const key of Object.keys(input.text.en) as (keyof OfflinePageText)[]) {
-      expect(html).toContain(`<span lang="en">EN ${key === "stillOffline" ? "still" : key === "autoReload" ? "auto" : key === "whileOffline" ? "while" : key === "tipDrafts" ? "drafts" : key === "tipConnection" ? "connection" : key}</span>`);
+    for (const key of KEYS) {
+      expect(html).toContain(`<span lang="en">EN ${key}</span>`);
+      expect(html).toContain(`<span lang="zh-TW">ZH ${key}</span>`);
     }
-    expect(html).toContain('<span lang="zh-TW">ZH title</span>');
     expect(html).toContain('id="retry"');
+  });
+
+  it("pairs every offline message with its server-unreachable wording", () => {
+    const pairs: [keyof OfflinePageText, keyof OfflinePageText][] = [
+      ["title", "serverTitle"],
+      ["description", "serverDescription"],
+      ["stillOffline", "serverStill"],
+      ["autoReload", "serverAutoRetry"],
+      ["whileOffline", "serverWhile"],
+    ];
+    for (const [offline, server] of pairs) {
+      expect(html).toMatch(
+        new RegExp(`<span class="v-offline"><span lang="en">EN ${offline}</span>.*?</span><span class="v-server"><span lang="en">EN ${server}</span>`)
+      );
+    }
+    expect(html).toContain('html[data-net="server"] .v-offline,html:not([data-net="server"]) .v-server{display:none}');
+    expect(html).toContain(`},${SERVER_POLL_MS});`);
   });
 
   it("escapes the company name", () => {
@@ -59,6 +91,76 @@ describe("renderOfflinePage", () => {
 
   it("omits the icon when there is none", () => {
     expect(renderOfflinePage({ ...input, iconDataUri: null })).not.toContain("<img");
+  });
+});
+
+describe("head script", () => {
+  const html = renderOfflinePage(input);
+  const source = /<script>([^<]*)<\/script>/.exec(html)?.[1] ?? "";
+
+  function run({ path = "/", cookie = "", language = "en-US", onLine = true } = {}) {
+    const attributes: Record<string, string> = {};
+    const documentElement = {
+      lang: "",
+      classList: { add: () => undefined },
+      setAttribute: (name: string, value: string) => {
+        attributes[name] = value;
+      },
+    };
+    const document = { documentElement, cookie, title: "" };
+    runInNewContext(source, {
+      document,
+      location: { pathname: path },
+      navigator: { language, languages: [language], onLine },
+      localStorage: { getItem: () => null },
+    });
+    return { lang: documentElement.lang, net: attributes["data-net"], title: document.title };
+  }
+
+  it("picks the language from the URL, then the cookie, then the browser", () => {
+    expect(run({ path: "/zh-TW/quotes" }).lang).toBe("zh-TW");
+    expect(run({ path: "/en/quotes", language: "zh-TW" }).lang).toBe("en");
+    expect(run({ cookie: "a=1; NEXT_LOCALE=zh-TW" }).lang).toBe("zh-TW");
+    expect(run({ language: "zh-HK" }).lang).toBe("zh-TW");
+    expect(run({ language: "fr" }).lang).toBe("en");
+  });
+
+  it("tells a lost connection from a server that does not answer", () => {
+    expect(run({ onLine: false })).toMatchObject({ net: "offline", title: "EN title · Acme <Inc>" });
+    expect(run({ onLine: true, path: "/zh-TW" })).toMatchObject({ net: "server", title: "ZH serverTitle · 宏達電子" });
+  });
+});
+
+describe("body script", () => {
+  const html = renderOfflinePage(input);
+  const scripts = html.match(/<script>([^<]*)<\/script>/g) ?? [];
+  const source = scripts[1]?.replace(/<\/?script>/g, "") ?? "";
+
+  function run(pathname: string) {
+    const handlers: Record<string, () => void> = {};
+    const location = { pathname, reload: jest.fn(), replace: jest.fn() };
+    const element = { addEventListener: () => undefined, hasAttribute: () => false };
+    runInNewContext(source, {
+      document: { documentElement: { getAttribute: () => "offline", lang: "en" }, getElementById: () => element },
+      window: { addEventListener: (type: string, fn: () => void) => (handlers[type] = fn) },
+      location,
+      setInterval: () => 0,
+    });
+    return { handlers, location };
+  }
+
+  it("reloads the page that failed once the connection is back", () => {
+    const { handlers, location } = run("/zh-TW/quotes");
+    handlers.online();
+    expect(location.reload).toHaveBeenCalled();
+    expect(location.replace).not.toHaveBeenCalled();
+  });
+
+  it("goes to the app instead of reloading /offline.html itself", () => {
+    const { handlers, location } = run("/offline.html");
+    handlers.online();
+    expect(location.replace).toHaveBeenCalledWith("/");
+    expect(location.reload).not.toHaveBeenCalled();
   });
 });
 

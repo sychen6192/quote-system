@@ -29,7 +29,7 @@ export default function DashboardLoading() {
             </div>
           ))}
         </div>
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
           <div className="order-2 overflow-hidden rounded-xl border bg-card shadow-card lg:order-1">
             <div className="flex items-center justify-between px-5 pb-3 pt-4">
               <Skeleton className="h-5 w-32" />

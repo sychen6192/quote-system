@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { createElement, useEffect, useRef, type CSSProperties } from "react";
 import { useTranslations } from "next-intl";
+import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import {
   UPDATE_CHECK_INTERVAL_MS,
@@ -11,6 +12,20 @@ import {
 
 const SW_URL = "/sw.js";
 const UPDATE_TOAST_ID = "pwa-update";
+// Inline: sonner's own [data-button] rule outranks the toaster's bg-primary
+// class, and its 24px button is too small a target for a finger.
+function actionButtonStyle(): CSSProperties {
+  const coarse = window.matchMedia("(pointer: coarse)").matches;
+  return {
+    background: "hsl(var(--primary))",
+    color: "hsl(var(--primary-foreground))",
+    fontWeight: 600,
+    fontSize: 13,
+    height: coarse ? 40 : 32,
+    padding: "0 14px",
+    borderRadius: "calc(var(--radius) - 2px)",
+  };
+}
 /** Set for this tab session when the kill-switch worker (PWA_DISABLE_SW) answers. */
 const DISABLED_KEY = "qs:sw-disabled";
 
@@ -101,7 +116,9 @@ export function useServiceWorker(): void {
       toast(tr("title"), {
         id: UPDATE_TOAST_ID,
         description: tr("description"),
+        icon: createElement(RefreshCw, { "aria-hidden": true, className: "size-4 text-primary" }),
         duration: Number.POSITIVE_INFINITY,
+        actionButtonStyle: actionButtonStyle(),
         action: {
           label: tr("reload"),
           onClick: () => {

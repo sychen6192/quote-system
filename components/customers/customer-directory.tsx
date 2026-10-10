@@ -64,16 +64,17 @@ function ContactLines({ row, compact = false }: { row: CustomerRowView; compact?
   if (!row.contactPerson && !row.email && !row.phone) {
     return <p className="text-sm text-muted-foreground">{t("noContact")}</p>;
   }
-  // Phones: every tappable line is a full 44px row.
-  const line = cn("flex min-w-0 items-center gap-2 text-sm", !compact && "min-h-11 gap-2.5");
+  // Table: every line as tall as its copy button. Cards: every line a full
+  // 44px touch row, the contact name too, so the rows keep one rhythm.
+  const line = cn("flex min-w-0 items-center text-sm", compact ? "min-h-7 gap-2" : "min-h-11 gap-2.5");
   const link = cn(
     "truncate text-muted-foreground underline-offset-4 hover:text-primary hover:underline",
     !compact && "min-w-0 flex-1 py-3 text-foreground/80"
   );
   return (
-    <div className={cn("min-w-0", compact && "space-y-0.5")}>
+    <div className={cn("min-w-0", compact && "max-w-[16rem]")}>
       {row.contactPerson ? (
-        <p className={cn(line, "min-h-0 font-medium text-foreground", !compact && "pb-0.5 pt-1")}>
+        <p className={cn(line, "font-medium text-foreground")}>
           <UserRound aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
           <span className="truncate">{row.contactPerson}</span>
         </p>
@@ -118,11 +119,11 @@ function ContactLines({ row, compact = false }: { row: CustomerRowView; compact?
   );
 }
 
-/** Desktop (md+) customer table. */
+/** Desktop (lg+) customer table. */
 export function CustomerTable({ rows }: { rows: CustomerRowView[] }) {
   const t = useTranslations("Customers");
   return (
-    <div className="hidden overflow-hidden rounded-xl border bg-card shadow-card md:block">
+    <div className="hidden overflow-hidden rounded-xl border bg-card shadow-card lg:block">
       <Table>
         <TableCaption className="sr-only">{t("table.caption")}</TableCaption>
         <TableHeader>
@@ -131,7 +132,7 @@ export function CustomerTable({ rows }: { rows: CustomerRowView[] }) {
             <TableHead className="h-11 text-xs font-medium">{t("table.contact")}</TableHead>
             <TableHead className="h-11 text-right text-xs font-medium">{t("table.quotes")}</TableHead>
             <TableHead className="h-11 text-right text-xs font-medium">{t("table.accepted")}</TableHead>
-            <TableHead className="hidden h-11 pl-8 text-xs font-medium lg:table-cell">
+            <TableHead className="hidden h-11 pl-8 text-xs font-medium xl:table-cell">
               {t("table.lastQuote")}
             </TableHead>
             <TableHead className="h-11 pr-3 text-right text-xs font-medium">
@@ -142,11 +143,14 @@ export function CustomerTable({ rows }: { rows: CustomerRowView[] }) {
         <TableBody>
           {rows.map((row) => (
             <TableRow key={row.key} className="align-top hover:bg-muted/40">
-              <TableCell className="py-4 pl-5">
+              {/* w-full + max-w-0: the company column takes the space left and truncates. */}
+              <TableCell className="w-full max-w-0 py-4 pl-5">
                 <div className="flex min-w-0 items-center gap-3">
                   <Avatar name={row.companyName} />
                   <div className="min-w-0">
-                    <p className="max-w-[18rem] truncate font-medium text-foreground">{row.companyName}</p>
+                    <p title={row.companyName} className="truncate font-medium text-foreground">
+                      {row.companyName}
+                    </p>
                     {row.vatNumber ? (
                       <p className="text-xs tabular-nums text-muted-foreground">
                         {t("vat", { vat: row.vatNumber })}
@@ -155,7 +159,7 @@ export function CustomerTable({ rows }: { rows: CustomerRowView[] }) {
                   </div>
                 </div>
               </TableCell>
-              <TableCell className="max-w-[18rem] py-4">
+              <TableCell className="py-4">
                 <ContactLines row={row} compact />
               </TableCell>
               <TableCell className="py-4 text-right tabular-nums">
@@ -167,10 +171,10 @@ export function CustomerTable({ rows }: { rows: CustomerRowView[] }) {
                   {row.quoteCount}
                 </Link>
               </TableCell>
-              <TableCell className="money py-4 text-right font-medium text-foreground">
+              <TableCell className="money whitespace-nowrap py-4 text-right font-medium text-foreground">
                 {row.acceptedTotal ?? <span className="text-muted-foreground">—</span>}
               </TableCell>
-              <TableCell className="hidden whitespace-nowrap py-4 pl-8 tabular-nums text-muted-foreground lg:table-cell">
+              <TableCell className="hidden whitespace-nowrap py-4 pl-8 tabular-nums text-muted-foreground xl:table-cell">
                 {row.lastQuoteId !== null ? (
                   <Link
                     href={`/quotes/${row.lastQuoteId}`}
@@ -202,13 +206,13 @@ export function CustomerTable({ rows }: { rows: CustomerRowView[] }) {
   );
 }
 
-/** Phone (< md) customer cards. */
+/** Phone and tablet (< lg) customer cards, two columns from md. */
 export function CustomerCards({ rows }: { rows: CustomerRowView[] }) {
   const t = useTranslations("Customers");
   return (
-    <ul className="space-y-3 md:hidden">
+    <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4 lg:hidden">
       {rows.map((row) => (
-        <li key={row.key} className="rounded-xl border bg-card p-4 shadow-card">
+        <li key={row.key} className="flex flex-col rounded-xl border bg-card p-4 shadow-card">
           <div className="flex items-center gap-3">
             <Avatar name={row.companyName} />
             <div className="min-w-0 flex-1">
@@ -229,10 +233,10 @@ export function CustomerCards({ rows }: { rows: CustomerRowView[] }) {
               className="-mr-2 self-start"
             />
           </div>
-          <div className="mt-2">
+          <div className="mb-3 mt-2">
             <ContactLines row={row} />
           </div>
-          <dl className="mt-2 grid grid-cols-3 gap-2 border-t pt-3 text-xs">
+          <dl className="mt-auto grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-5 border-t pt-3 text-xs">
             <div className="min-w-0">
               <dt className="text-muted-foreground">{t("table.quotes")}</dt>
               <dd className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">{row.quoteCount}</dd>

@@ -207,7 +207,7 @@
     "documentTitle": "Document",
     "documentDescription": "Extras printed on quotes and PDFs.",
     "showAmountInWords": "Show the total in words",
-    "showAmountInWordsHint": "Useful for formal quotes in Taiwan, e.g.",
+    "showAmountInWordsHint": "Printed under the total, as formal quotes in Taiwan often require, e.g. <b>{example}</b>",
     "footerText": "Footer",
     "footerTextHint": "A short line at the bottom of every page, e.g. a thank-you note.",
     "footerTextPlaceholder": "e.g. Thank you for your business!"

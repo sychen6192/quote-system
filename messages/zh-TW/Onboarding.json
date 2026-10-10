@@ -27,7 +27,7 @@
   "firstRun": {
     "eyebrow": "歡迎使用",
     "title": "建立第一張報價單",
-    "description": "填入客戶與品項，小計、稅額與可直接列印的 PDF 都會自動幫您算好。",
+    "description": "填入客戶與品項，系統會自動算好小計與稅額，並產生可直接列印的 PDF。",
     "cta": "建立第一張報價單",
     "secondary": "設定公司資料",
     "points": {

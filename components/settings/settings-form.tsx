@@ -96,6 +96,8 @@ export function useSettingsForm<TForm extends FieldValues, TOut>({
   initial,
   save,
   toForm,
+  pendingInput = false,
+  onDiscard,
 }: {
   tab: SettingsTab;
   schema: z.ZodType<TOut>;
@@ -104,6 +106,14 @@ export function useSettingsForm<TForm extends FieldValues, TOut>({
   save: SaveFn<TOut>;
   /** Validated output → form values (what the form shows once saved) */
   toForm: (output: TOut) => TForm;
+  /**
+   * Typed input that is not a form value yet (an address in the CC field
+   * before Enter): counts as an unsaved change, so Save is enabled and the
+   * leave guard asks.
+   */
+  pendingInput?: boolean;
+  /** Also clear such input on Discard. */
+  onDiscard?: () => void;
 }) {
   const t = useTranslations("Settings");
   const router = useRouter();
@@ -145,9 +155,13 @@ export function useSettingsForm<TForm extends FieldValues, TOut>({
 
   const saveRef = useRef(save);
   const toFormRef = useRef(toForm);
+  const onDiscardRef = useRef(onDiscard);
+  const pendingRef = useRef(pendingInput);
   useEffect(() => {
     saveRef.current = save;
     toFormRef.current = toForm;
+    onDiscardRef.current = onDiscard;
+    pendingRef.current = pendingInput;
   });
 
   const fail = useCallback(
@@ -235,16 +249,23 @@ export function useSettingsForm<TForm extends FieldValues, TOut>({
     [fail, form, router, sessionExpired, t]
   );
 
-  const { isDirty } = useFormState({ control: form.control });
+  const { isDirty: formDirty } = useFormState({ control: form.control });
+  const isDirty = formDirty || pendingInput;
   const { register, setDirty } = page;
   useEffect(() => {
     setDirty(tab, isDirty);
   }, [isDirty, setDirty, tab]);
 
+  const discard = useCallback(() => {
+    form.reset(baseline.current, EXPLICIT_RESET);
+    onDiscardRef.current?.();
+  }, [form]);
+
   useEffect(
     () =>
       register(tab, {
-        isDirty: () => changedKeys(baseline.current, form.getValues(), keys).length > 0,
+        isDirty: () =>
+          pendingRef.current || changedKeys(baseline.current, form.getValues(), keys).length > 0,
         save: () =>
           new Promise<boolean>((resolve) => {
             void form.handleSubmit(
@@ -255,9 +276,9 @@ export function useSettingsForm<TForm extends FieldValues, TOut>({
               }
             )();
           }),
-        discard: () => form.reset(baseline.current, EXPLICIT_RESET),
+        discard,
       }),
-    [form, keys, persist, register, revealFirstError, tab]
+    [discard, form, keys, persist, register, revealFirstError, tab]
   );
 
   const api = useMemo<SectionFormApi>(() => ({ resetToFallback }), [resetToFallback]);
@@ -268,7 +289,7 @@ export function useSettingsForm<TForm extends FieldValues, TOut>({
     submit,
     saving,
     isDirty,
-    discard: () => form.reset(baseline.current, EXPLICIT_RESET),
+    discard,
     api,
   };
 }

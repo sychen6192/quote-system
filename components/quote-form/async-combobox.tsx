@@ -45,8 +45,9 @@ export type AsyncComboboxProps<T> = Omit<
   onSessionError: () => void;
   debounceMs?: number;
   minChars?: number;
-  /** Extra content inside the input (right side), e.g. a lookup button */
   className?: string;
+  /** Classes for the suggestions popup (it matches the input's width by default). */
+  popupClassName?: string;
 };
 
 function isComposing(event: KeyboardEvent<HTMLInputElement>): boolean {
@@ -71,6 +72,7 @@ export function AsyncCombobox<T>({
   debounceMs = 200,
   minChars = 1,
   className,
+  popupClassName,
   onKeyDown,
   onBlur,
   onFocus,
@@ -269,6 +271,7 @@ export function AsyncCombobox<T>({
       <div
         className={cn(
           "absolute inset-x-0 top-full z-50 mt-1 overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-elevated",
+          popupClassName,
           !showPopup && "hidden"
         )}
       >

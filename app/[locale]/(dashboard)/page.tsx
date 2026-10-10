@@ -26,6 +26,8 @@ import { getBrandingStatus, getSettings } from "@/services/settings";
 
 export const dynamic = "force-dynamic";
 
+const EXPIRING_SHOWN = 6;
+
 type Params = Promise<{ locale: string }>;
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
@@ -44,7 +46,7 @@ export default async function DashboardPage({ params }: { params: Params }) {
   const money = settings.money;
   const [metrics, expiring, recent, branding, list, cookieStore] = await Promise.all([
     getDashboardMetrics({ today, timeZone: settings.region.timezone }),
-    getExpiringSoon(today, 7, 6),
+    getExpiringSoon(today, 7, 50),
     getRecentQuotes(6, today),
     getBrandingStatus(),
     // Status counts exactly as the quotes list filters them (drafts that have
@@ -86,7 +88,7 @@ export default async function DashboardPage({ params }: { params: Params }) {
     return (
       <PageContainer className="space-y-6">
         {header}
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
           <FirstRunHero showCompanyLink={!setupDone.company} />
           {checklist}
         </div>
@@ -145,12 +147,14 @@ export default async function DashboardPage({ params }: { params: Params }) {
         />
       </section>
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
-        <RecentQuotes rows={rows} className="order-2 lg:order-1" />
-        <div className="order-1 space-y-6 lg:order-2">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
+        {/* DOM order = phone order (to-dos first), so focus order matches what
+            is shown; on lg+ recent quotes move to the left column. */}
+        <div className="space-y-6 lg:col-start-2 lg:row-start-1">
           {checklist}
           <ExpiringList
-            items={expiring.map((q) => ({
+            total={expiring.length}
+            items={expiring.slice(0, EXPIRING_SHOWN).map((q) => ({
               id: q.id,
               number: q.quotationNumber,
               customerName: q.customer?.companyName?.trim() || null,
@@ -159,6 +163,7 @@ export default async function DashboardPage({ params }: { params: Params }) {
             }))}
           />
         </div>
+        <RecentQuotes rows={rows} className="lg:col-start-1 lg:row-start-1" />
       </div>
     </PageContainer>
   );

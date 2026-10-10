@@ -56,9 +56,13 @@ export function QuotesToolbar({
         >
           <SelectTrigger
             aria-label={t("sort.label")}
-            className="h-11 w-11 shrink-0 justify-center rounded-lg bg-card px-0 shadow-card sm:w-48 sm:justify-between sm:px-3 md:h-10 [&>svg:last-child]:hidden sm:[&>svg:last-child]:block"
+            className="relative h-11 w-11 shrink-0 justify-center rounded-lg bg-card px-0 shadow-card sm:w-48 sm:justify-between sm:px-3 md:h-10 [&>svg:last-child]:hidden sm:[&>svg:last-child]:block"
           >
             <ArrowUpDown aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+            {/* Phones show the icon only: mark a non-default order. */}
+            {sort !== "newest" ? (
+              <span aria-hidden="true" className="absolute right-2 top-2 size-2 rounded-full bg-primary sm:hidden" />
+            ) : null}
             <span className="sr-only sm:not-sr-only sm:flex-1 sm:truncate sm:text-left">
               <SelectValue />
             </span>
@@ -87,6 +91,7 @@ export function QuotesToolbar({
               <ToggleGroupItem
                 key={chip.value}
                 value={chip.value}
+                aria-label={t("statusChip", { label: chip.label, count: counts[chip.value] })}
                 className={cn(
                   "h-10 gap-2 rounded-full border bg-card px-3.5 text-sm font-medium text-muted-foreground shadow-card hover:bg-muted hover:text-foreground md:h-9",
                   "data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90"

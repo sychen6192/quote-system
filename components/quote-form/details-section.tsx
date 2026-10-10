@@ -151,14 +151,16 @@ function ValidityPresets() {
   const base = isIsoDate(issuedDate) ? issuedDate : null;
 
   return (
-    <div className="md:self-start md:pt-[1.625rem]">
+    <div className="-mt-2 md:mt-0 md:self-start md:pt-[1.625rem]">
       <p id="validity-presets-label" className="sr-only">
         {t("presets")}
       </p>
+      {/* Four equal cells: one tidy row from a 320px phone to the narrow
+          column beside the live preview, where free-flowing chips wrapped. */}
       <div
         role="group"
         aria-labelledby="validity-presets-label"
-        className="flex flex-wrap items-center gap-2"
+        className="grid max-w-sm grid-cols-4 gap-1.5"
       >
         {VALIDITY_PRESET_DAYS.map((days) => {
           const target = base ? addDaysIso(base, days) : null;
@@ -176,7 +178,7 @@ function ValidityPresets() {
                   shouldValidate: true,
                 });
               }}
-              className="tabular-nums"
+              className="w-full justify-center whitespace-nowrap px-1 tabular-nums"
             >
               {t("preset", { days })}
             </PresetChip>

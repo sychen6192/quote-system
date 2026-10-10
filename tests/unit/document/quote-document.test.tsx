@@ -74,4 +74,13 @@ describe("QuoteDocument", () => {
       expect(out).toMatch(new RegExp(`data-edit-field="${field.replace(/\./g, "\\.")}" role="button" tabindex="0"`));
     }
   });
+
+  it("keeps description lists valid when regions become buttons", () => {
+    const out = html(true);
+    // a <dd>/<dt> cannot take role=button, and a button inside a <dl> cannot hold them
+    expect(out).not.toMatch(/<d[dt][^>]*role="button"/);
+    expect(out).not.toMatch(/role="button"[^>]*><dt/);
+    // the totals still read as a list on the (non-interactive) detail page
+    expect(html(false)).toMatch(/<dt[^>]*>小計<\/dt>/);
+  });
 });

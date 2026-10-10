@@ -55,5 +55,6 @@
     "notFound": "This quote had already been deleted.",
     "error": "Couldn't delete the quote. Please try again."
   },
-  "results": "{count, plural, =0 {No matching quotes} one {# matching quote} other {# matching quotes}}"
+  "results": "{count, plural, =0 {No matching quotes} one {# matching quote} other {# matching quotes}}",
+  "statusChip": "{label} ({count})"
 }
