@@ -126,6 +126,28 @@ test.describe("quote editor", () => {
     await page.keyboard.press("Control+s");
     await page.waitForURL(/\/en\/quotes\/\d+$/, { timeout: 20_000 });
   });
+
+  // react-hook-form >= 7.81 re-validates the list on append while it holds a
+  // list-wide error, which flagged the new blank row "required" at once.
+  test("Add item after a list-wide error leaves the new row clean", async ({ page }) => {
+    await page.goto("/en/quotes/new");
+    await fillQuote(page, `E2E too large ${Date.now()}`, "Everything", "999999999999");
+    await page.locator('[name="items.0.quantity"]').fill("999999999");
+    await page.keyboard.press("Control+s");
+    const tooLarge = page.getByText("The quote total is too large.");
+    await expect(tooLarge).toBeVisible();
+
+    await page.getByRole("button", { name: "Add item" }).click();
+    const newName = page.locator('[name="items.1.productName"]');
+    await expect(newName).toBeVisible();
+    await expect(newName).not.toHaveAttribute("aria-invalid", "true");
+    await expect(page.locator('[name="items.1.unitPrice"]')).not.toHaveAttribute("aria-invalid", "true");
+
+    // Save drops the blank row and reports the total again.
+    await page.keyboard.press("Control+s");
+    await expect(tooLarge).toBeVisible();
+    await expect(newName).toHaveCount(0);
+  });
 });
 
 test.describe("quotes list", () => {

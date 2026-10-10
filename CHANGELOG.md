@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Changed
+
+- **Dependencies updated** (the open Dependabot updates): React 19.3, zod 4.6, react-hook-form 7.89, @react-pdf/renderer 4.9, Radix UI, lucide-react 1.x, Playwright 1.63, Jest 30, dotenv 18, and actions/checkout and actions/setup-node v7 in CI. `npm audit` reports nothing for the packages the app ships; the remaining advisories are in build and test tools.
+
 ### Fixed
 
 - **Date fields no longer stick out of their card on iPhone.** Safari gave the issue date, valid-until and delivery date fields its own native frame and a minimum width, so on phones they ran past the right edge of the form card, came out taller than the other fields and centred the date. They now size and align like every other input; tapping still opens the iOS date picker.

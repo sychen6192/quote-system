@@ -1,8 +1,9 @@
 import { defineConfig } from "drizzle-kit";
 import * as dotenv from "dotenv";
 
-// Real environment variables win over .env (dotenv never overrides them).
-dotenv.config({ path: ".env", quiet: true });
+// Real environment variables win over .env. override is pinned because
+// dotenv 18 would otherwise take it from a DOTENV_OVERRIDE shell variable.
+dotenv.config({ path: ".env", quiet: true, override: false });
 
 // docker --env-file keeps quotes literally; strip one layer like db/index.ts.
 // Not required here: `drizzle-kit generate` works without a database.
