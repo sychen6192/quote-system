@@ -36,6 +36,8 @@ AUTH_SECRET=<至少 32 個隨機字元>
 APP_PASSWORD=<大家共用的登入密碼>
 ```
 
+填寫時不要加引號。`APP_PASSWORD` 可使用英文字母、數字與 `. _ ~ ! @ % ^ * + = : , -`；若要用其他字元，請用單引號把整組密碼括起來，例如 `APP_PASSWORD='Acme$ecure #2026'`。否則 Docker Compose 會改掉含有 `$` 或「空格加 `#`」的密碼，用你輸入的密碼就登入不了。
+
 以下 PowerShell 指令每次執行都會產生一組合適的隨機字串：
 
 ```powershell
@@ -66,8 +68,17 @@ docker compose up -d
 
 ## 升級
 
-```sh
-cd ~/quote-system           # PowerShell：cd $HOME\quote-system
+在 macOS（以及 WSL）上，到家目錄再執行一次安裝程式即可：`sh install.sh`。它會下載新版本、把 `.env` 中的 `QUOTE_VERSION` 改成新版本，並重新啟動 App。
+
+在 PowerShell 中，`.env` 的 `QUOTE_VERSION` 指定了要執行的確切版本，所以只執行 `docker compose pull` 不會有任何變化。請把新的發行套件下載並解壓縮到原本的資料夾（`.env` 會保留），再到 [Releases 頁面](https://github.com/sychen6192/quote-system/releases)查看新版本號，把 `QUOTE_VERSION` 改成該版本號（例如 `1.1.0`；設為 `1` 則會跟著所有 1.x 版本更新），然後啟動：
+
+```powershell
+cd $HOME\quote-system
+curl.exe -fsSLO https://github.com/sychen6192/quote-system/releases/latest/download/quote-system-deploy.tar.gz
+tar -xzf quote-system-deploy.tar.gz
+notepad .env                # 把 QUOTE_VERSION 改成新版本後存檔
 docker compose pull
 docker compose up -d
 ```
+
+新版本啟動時會自動升級資料庫。新的發行套件會覆蓋 `docker-compose.yml`，自訂設定請寫在 `docker-compose.override.yml`。

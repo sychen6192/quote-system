@@ -26,6 +26,8 @@ export function QuoteCards({
         return (
           <li
             key={row.id}
+            data-quote-row=""
+            data-quote-id={row.id}
             className="relative rounded-xl border bg-card p-4 shadow-card transition-colors active:bg-muted/60 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring"
           >
             <div className="flex items-start gap-3">

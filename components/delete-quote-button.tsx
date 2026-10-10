@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, type ReactNode, type RefObject } from "react";
+import { useRef, useState, type RefObject } from "react";
 import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/navigation";
 import { deleteQuote } from "@/actions/delete-quote";
-import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,10 +15,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { reloadForSignIn } from "@/components/app-shell/session";
-import { cn } from "@/lib/utils";
 
 export type DeleteQuoteDialogProps = {
   id: number;
@@ -31,8 +28,6 @@ export type DeleteQuoteDialogProps = {
    * except on the deleted quote's own detail/edit page, which goes to /quotes.
    */
   redirectTo?: string;
-  /** Rendered as the dialog trigger (uncontrolled use). */
-  trigger?: ReactNode;
   /**
    * Where focus goes when the dialog closes. Needed when it was opened from a
    * menu item, which no longer exists by then.
@@ -40,14 +35,54 @@ export type DeleteQuoteDialogProps = {
   returnFocusRef?: RefObject<HTMLElement | null>;
 };
 
-/** Confirmation dialog that deletes a quote (controlled, or with a `trigger`). */
+const ROW = "[data-quote-row]";
+
+function isVisible(element: Element): boolean {
+  return element.getClientRects().length > 0;
+}
+
+function adjacentRow(row: Element, direction: "next" | "previous"): Element | null {
+  let sibling = direction === "next" ? row.nextElementSibling : row.previousElementSibling;
+  while (sibling && !sibling.matches(ROW)) {
+    sibling = direction === "next" ? sibling.nextElementSibling : sibling.previousElementSibling;
+  }
+  return sibling;
+}
+
+/**
+ * Where keyboard focus goes once the deleted quote's row is gone, decided
+ * while that row still exists: the next row's (else the previous row's)
+ * actions menu, found again by quote id after the list refreshes; else the
+ * main landmark. Never <body>, which sends keyboard and screen-reader users
+ * back to the top of the page.
+ */
+function planFocusAfterDelete(from: HTMLElement | null | undefined): () => void {
+  const row = from?.closest(ROW);
+  const neighbour = row ? (adjacentRow(row, "next") ?? adjacentRow(row, "previous")) : null;
+  const id = neighbour?.getAttribute("data-quote-id") ?? null;
+  return () => {
+    const rows = id
+      ? [...document.querySelectorAll<HTMLElement>(`${ROW}[data-quote-id="${CSS.escape(id)}"]`)]
+      : [];
+    const target = rows
+      .filter(isVisible)
+      .map(
+        (match) =>
+          match.querySelector<HTMLElement>("[data-row-actions]") ??
+          match.querySelector<HTMLElement>("a[href], button:not([disabled])")
+      )
+      .find((element): element is HTMLElement => element !== null);
+    (target ?? document.getElementById("main"))?.focus();
+  };
+}
+
+/** Confirmation dialog that deletes a quote (controlled by `open` / `onOpenChange`). */
 export function DeleteQuoteDialog({
   id,
   quotationNumber,
   open: openProp,
   onOpenChange,
   redirectTo,
-  trigger,
   returnFocusRef,
 }: DeleteQuoteDialogProps) {
   const t = useTranslations("QuotesList.delete");
@@ -56,6 +91,8 @@ export function DeleteQuoteDialog({
   const pathname = usePathname();
   const [openState, setOpenState] = useState(false);
   const [pending, setPending] = useState(false);
+  // Set once the quote is gone and we stay on this page (the list).
+  const focusAfterDelete = useRef<(() => void) | null>(null);
   const open = openProp ?? openState;
 
   const setOpen = (next: boolean) => {
@@ -68,8 +105,13 @@ export function DeleteQuoteDialog({
     const onOwnPage = new RegExp(`^/quotes/${id}(/edit)?/?$`).test(pathname);
     const target = redirectTo ?? (onOwnPage ? "/quotes" : null);
     // Refreshing as well would re-render the deleted quote's page (a 404) first.
-    if (target) router.push(target);
-    else router.refresh();
+    if (target) {
+      router.push(target);
+    } else {
+      // The row (and the menu that opened this dialog) disappears with the refresh.
+      focusAfterDelete.current = planFocusAfterDelete(returnFocusRef?.current);
+      router.refresh();
+    }
   };
 
   const confirm = async () => {
@@ -104,10 +146,16 @@ export function DeleteQuoteDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
-      {trigger ? <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger> : null}
       <AlertDialogContent
         className="rounded-xl sm:max-w-md"
         onCloseAutoFocus={(event) => {
+          const afterDelete = focusAfterDelete.current;
+          if (afterDelete) {
+            focusAfterDelete.current = null;
+            event.preventDefault();
+            afterDelete();
+            return;
+          }
           if (!returnFocusRef?.current?.isConnected) return;
           event.preventDefault();
           returnFocusRef.current.focus();
@@ -143,55 +191,5 @@ export function DeleteQuoteDialog({
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-  );
-}
-
-interface Props {
-  id: number;
-  quotationNumber: string;
-  variant?: "icon" | "button";
-  /** See DeleteQuoteDialogProps.redirectTo */
-  redirectTo?: string;
-  className?: string;
-}
-
-/** A delete button (icon or outlined) with its confirmation dialog. */
-export function DeleteQuoteButton({
-  id,
-  quotationNumber,
-  variant = "icon",
-  redirectTo,
-  className,
-}: Props) {
-  const t = useTranslations("QuotesList.delete");
-  const trigger =
-    variant === "icon" ? (
-      <Button
-        variant="ghost"
-        size="icon"
-        aria-label={t("trigger")}
-        title={t("trigger")}
-        className={cn("text-muted-foreground hover:bg-destructive/10 hover:text-destructive", className)}
-      >
-        <Trash2 aria-hidden="true" />
-      </Button>
-    ) : (
-      <Button
-        variant="outline"
-        size="sm"
-        className={cn("text-destructive hover:bg-destructive/10 hover:text-destructive", className)}
-      >
-        <Trash2 aria-hidden="true" />
-        {t("trigger")}
-      </Button>
-    );
-
-  return (
-    <DeleteQuoteDialog
-      id={id}
-      quotationNumber={quotationNumber}
-      redirectTo={redirectTo}
-      trigger={trigger}
-    />
   );
 }

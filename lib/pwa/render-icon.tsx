@@ -47,9 +47,14 @@ function describe(asset: BrandingAsset): Source {
   };
 }
 
-async function loadSource(): Promise<{ source: Source | null; brandColor: string }> {
+async function loadSource(): Promise<{ source: Source | null; brandColor: string; version: string }> {
   const [asset, config] = await Promise.all([getBrandingAsset("icon"), getPublicConfig()]);
-  return { source: asset ? describe(asset) : null, brandColor: brandHex(config.brandColor) };
+  const brandColor = brandHex(config.brandColor);
+  return {
+    source: asset ? describe(asset) : null,
+    brandColor,
+    version: iconVersionToken(asset?.version ?? "none", brandColor),
+  };
 }
 
 /** The `?v=` token for icon URLs: changes with the icon image and the brand colour. */
@@ -138,17 +143,26 @@ function brandElement(spec: Extract<IconSpec, { kind: "brand" }>, source: Source
  * the quotes glyph on the brand colour, so installing never breaks.
  */
 export async function renderIcon(file: string): Promise<Uint8Array | null> {
+  return (await renderVersionedIcon(file))?.png ?? null;
+}
+
+/**
+ * renderIcon plus the getIconVersion() token of the image it drew, read in
+ * the same pass: /icons/* only caches a `?v=` URL forever when they match.
+ */
+export async function renderVersionedIcon(file: string): Promise<{ png: Uint8Array; version: string } | null> {
   const spec = iconSpec(file);
   if (!spec) return null;
-  const { source, brandColor } = await loadSource();
-  const version = source?.asset.version ?? "none";
-  return remember(`${file as IconFile}:${version}:${brandColor}`, () => {
+  const { source, brandColor, version } = await loadSource();
+  const assetVersion = source?.asset.version ?? "none";
+  const png = await remember(`${file as IconFile}:${assetVersion}:${brandColor}`, () => {
     if (spec.kind === "glyph") return toPng(glyphElement(spec, brandColor), spec.size);
     if (!source) {
       return toPng(glyphElement({ kind: "glyph", size: spec.size, glyph: "quotes" }, brandColor), spec.size);
     }
     return toPng(brandElement(spec, source, brandColor), spec.size);
   });
+  return { png, version };
 }
 
 /** The icon as a data URI (for pages that must work offline). */

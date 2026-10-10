@@ -1,6 +1,14 @@
 "use client";
 
-import { Fragment, type ComponentProps, type FocusEvent, type ReactNode } from "react";
+import {
+  Fragment,
+  useCallback,
+  useState,
+  type ComponentProps,
+  type CSSProperties,
+  type FocusEvent,
+  type ReactNode,
+} from "react";
 import type { ControllerRenderProps, FieldPath, FieldValues } from "react-hook-form";
 import { cn } from "@/lib/utils";
 import { moneyBreakParts, normalizeDecimalInput } from "./form-model";
@@ -36,6 +44,25 @@ export function RequiredMark() {
   );
 }
 
+// The prefix sits at left-3 (12px); the text starts a small gap after it.
+const PREFIX_INSET_PX = 12;
+const PREFIX_GAP_PX = 6;
+const MIN_PREFIX_PADDING_PX = 32;
+
+/**
+ * Left padding for an input with a `prefix` this wide: at least the old
+ * pl-8, and enough for wide symbols ("IDR", "CHF", "NT$") not to run into
+ * the value. Before it is measured (server render), estimated from its length.
+ */
+export function prefixPadding(prefix: ReactNode, measuredPx: number | null): string {
+  if (measuredPx !== null && measuredPx > 0) {
+    const px = Math.ceil(PREFIX_INSET_PX + measuredPx + PREFIX_GAP_PX);
+    return `${Math.max(MIN_PREFIX_PADDING_PX, px)}px`;
+  }
+  const length = typeof prefix === "string" || typeof prefix === "number" ? String(prefix).length : 1;
+  return `max(${MIN_PREFIX_PADDING_PX}px, calc(${length}ch + ${PREFIX_INSET_PX + PREFIX_GAP_PX}px))`;
+}
+
 /**
  * Input with an inline prefix/suffix (currency symbol, %). The adornments are
  * decorative: the label says what the number is.
@@ -53,12 +80,29 @@ export function AdornedInput({
   inputClassName?: string;
   children: (className: string) => ReactNode;
 }) {
+  const [prefixWidth, setPrefixWidth] = useState<number | null>(null);
+  // Measured, and re-measured when the font loads or the symbol changes.
+  const prefixRef = useCallback((node: HTMLSpanElement | null) => {
+    if (!node) return;
+    const measure = () => setPrefixWidth(node.getBoundingClientRect().width);
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+  const style =
+    prefix != null
+      ? ({ "--adorn-start": prefixPadding(prefix, prefixWidth) } as CSSProperties)
+      : undefined;
+
   return (
-    <div className={cn("relative", className)}>
+    <div className={cn("relative", className)} style={style}>
       {prefix != null && (
         <span
+          ref={prefixRef}
           aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground"
+          className="pointer-events-none absolute inset-y-0 left-3 flex items-center whitespace-nowrap text-sm text-muted-foreground"
         >
           {prefix}
         </span>
@@ -66,7 +110,7 @@ export function AdornedInput({
       {children(
         cn(
           "tabular-nums",
-          prefix != null && "pl-8",
+          prefix != null && "pl-[var(--adorn-start)]",
           suffix != null && "pr-8",
           inputClassName
         )

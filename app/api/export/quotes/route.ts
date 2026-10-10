@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { DEFAULT_LOCALE, LOCALES, type AppLocale } from "@/i18n/locales";
 import { assertAuthenticated, isUnauthenticatedError } from "@/lib/auth/guard";
 import { todayInTimeZone } from "@/lib/dates";
-import { buildQuotesCsv, exportFilename } from "@/services/export";
+import { exportFilename, quotesCsvStream } from "@/services/export";
 import { getSettings } from "@/services/settings";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +14,10 @@ function pickLocale(...candidates: (string | null | undefined)[]): AppLocale {
   return DEFAULT_LOCALE;
 }
 
-/** GET /api/export/quotes?q=&status=&sort=&lang= → CSV of every matching quote. */
+/**
+ * GET /api/export/quotes?q=&customer=&status=&sort=&lang= → CSV of every
+ * matching quote (streamed in batches, never truncated).
+ */
 export async function GET(request: NextRequest) {
   try {
     await assertAuthenticated();
@@ -32,9 +35,10 @@ export async function GET(request: NextRequest) {
   try {
     const settings = await getSettings();
     const today = todayInTimeZone(settings.region.timezone);
-    const csv = await buildQuotesCsv(
+    const csv = await quotesCsvStream(
       {
         q: params.get("q"),
+        customer: params.get("customer"),
         status: params.get("status"),
         sort: params.get("sort"),
         today,
@@ -51,6 +55,7 @@ export async function GET(request: NextRequest) {
         "Content-Disposition": `attachment; filename="${exportFilename(today)}"`,
         "Cache-Control": "no-store",
         "X-Content-Type-Options": "nosniff",
+        "X-Robots-Tag": "noindex, nofollow",
       },
     });
   } catch (error) {

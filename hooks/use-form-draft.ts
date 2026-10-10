@@ -73,19 +73,79 @@ export function removeDraft(storage: DraftStorage | null, key: string): void {
   }
 }
 
-/** Removes every key starting with `prefix` except `keep` (stale edit drafts). */
-export function pruneDrafts(storage: DraftStorage | null, prefix: string, keep: string): void {
+/**
+ * Removes every key starting with `prefix` except `keep` (stale edit drafts).
+ * With `savedBefore`, only drafts saved before that time (and unreadable
+ * ones) go: newer drafts of other sources are kept.
+ */
+export function pruneDrafts(
+  storage: DraftStorage | null,
+  prefix: string,
+  keep: string,
+  { savedBefore }: { savedBefore?: number } = {}
+): void {
   if (!storage || typeof storage.key !== "function") return
   try {
     const stale: string[] = []
     const length = storage.length ?? 0
     for (let i = 0; i < length; i++) {
       const key = storage.key(i)
-      if (key && key.startsWith(prefix) && key !== keep) stale.push(key)
+      if (!key || !key.startsWith(prefix) || key === keep) continue
+      if (savedBefore !== undefined) {
+        const draft = readDraft(storage, key)
+        if (draft && draft.savedAt >= savedBefore) continue
+      }
+      stale.push(key)
     }
     stale.forEach((key) => removeDraft(storage, key))
   } catch {
     // Enumeration can throw when storage is blocked mid-session.
+  }
+}
+
+/**
+ * What a form offers to restore on mount: the draft stored under its key, or
+ * a seed handed over in memory (edits carried across "Reload latest"),
+ * whichever is newer.
+ */
+export function draftToOffer<T>(
+  stored: StoredDraft<T> | null,
+  seed: StoredDraft<T> | null | undefined
+): StoredDraft<T> | null {
+  if (!seed) return stored
+  if (!stored) return seed
+  return seed.savedAt > stored.savedAt ? seed : stored
+}
+
+export type DraftWriter<T> = {
+  /** writeDraft under this form's key; a successful write makes the draft this form's. */
+  write(values: T, savedAt: number): boolean
+  /** The stored draft was restored into this form: it is this form's now. */
+  adopt(): void
+  /**
+   * Removes the stored draft only if it is this form's. A draft that was
+   * merely offered (a different, half-finished quote) survives a save.
+   */
+  clear(): void
+}
+
+export function createDraftWriter<T>(
+  key: string,
+  getStorage: () => DraftStorage | null = getDraftStorage
+): DraftWriter<T> {
+  let owns = false
+  return {
+    write(values, savedAt) {
+      const ok = writeDraft(getStorage(), key, values, savedAt)
+      if (ok) owns = true
+      return ok
+    },
+    adopt() {
+      owns = true
+    },
+    clear() {
+      if (owns) removeDraft(getStorage(), key)
+    },
   }
 }
 
@@ -164,6 +224,13 @@ export type UseFormDraftOptions<T> = {
   debounceMs?: number
   /** Drafts with this prefix other than `key` are deleted on mount (older versions of the same record). */
   prunePrefix?: string
+  /** Only prune drafts under `prunePrefix` older than this (other records' drafts). */
+  pruneMaxAgeMs?: number
+  /**
+   * A draft to offer as if it were stored under `key` (see draftToOffer). It
+   * is written there on mount, so it survives a reload. Must be stable.
+   */
+  seed?: StoredDraft<T> | null
 }
 
 export type UseFormDraftResult<T> = {
@@ -173,7 +240,11 @@ export type UseFormDraftResult<T> = {
   /** Returns the draft's values (the caller resets the form with them). */
   restore(): T | null
   discard(): void
-  /** After a successful save: drop the draft and stop autosaving. */
+  /**
+   * After a successful save: stop autosaving and drop the draft, if it is
+   * this form's (written or restored here; an unrelated draft that was only
+   * offered stays).
+   */
   clear(): void
   /** Write any pending change now (before a reload). */
   flush(): void
@@ -185,18 +256,21 @@ export function useFormDraft<T>({
   initialValues,
   debounceMs = 600,
   prunePrefix,
+  pruneMaxAgeMs,
+  seed = null,
 }: UseFormDraftOptions<T>): UseFormDraftResult<T> {
   const [statusStore] = useState(createDraftStatusStore)
   const pendingRef = useRef<{ values: T } | null>(null)
   const stoppedRef = useRef(false)
+  const writer = useMemo(() => createDraftWriter<T>(key), [key])
   const [decided, setDecided] = useState(false)
 
   // Read once after hydration, before any autosave can overwrite it; the
   // server render and the hydration pass both see "no draft".
   const mounted = useMounted()
   const found = useMemo(
-    () => (mounted ? readDraft<T>(getDraftStorage(), key) : null),
-    [mounted, key]
+    () => (mounted ? draftToOffer(readDraft<T>(getDraftStorage(), key), seed) : null),
+    [mounted, key, seed]
   )
   const [initialFingerprint] = useState(() => draftFingerprint(initialValues))
   const restorable =
@@ -207,15 +281,22 @@ export function useFormDraft<T>({
     if (!pending || stoppedRef.current) return
     pendingRef.current = null
     const savedAt = Date.now()
-    const ok = writeDraft(getDraftStorage(), key, pending.values, savedAt)
+    const ok = writer.write(pending.values, savedAt)
     statusStore.set(ok ? { status: "saved", savedAt } : { status: "error", savedAt: null })
-  }, [key, statusStore])
+  }, [writer, statusStore])
 
   const schedule = useDebouncedCallback(flush, debounceMs)
 
+  // A seed lives only in memory until it is stored as this form's draft.
   useEffect(() => {
-    if (prunePrefix) pruneDrafts(getDraftStorage(), prunePrefix, key)
-  }, [prunePrefix, key])
+    if (seed && found === seed) writeDraft(getDraftStorage(), key, seed.values, seed.savedAt)
+  }, [seed, found, key])
+
+  useEffect(() => {
+    if (!prunePrefix) return
+    const savedBefore = pruneMaxAgeMs === undefined ? undefined : Date.now() - pruneMaxAgeMs
+    pruneDrafts(getDraftStorage(), prunePrefix, key, { savedBefore })
+  }, [prunePrefix, pruneMaxAgeMs, key])
 
   useEffect(() => {
     const unsubscribe = subscribe((values) => {
@@ -241,8 +322,9 @@ export function useFormDraft<T>({
 
   const restore = useCallback((): T | null => {
     setDecided(true)
+    if (found) writer.adopt()
     return found ? found.values : null
-  }, [found])
+  }, [found, writer])
 
   const discard = useCallback(() => {
     setDecided(true)
@@ -255,9 +337,9 @@ export function useFormDraft<T>({
     stoppedRef.current = true
     pendingRef.current = null
     schedule.cancel()
-    removeDraft(getDraftStorage(), key)
+    writer.clear()
     statusStore.set(IDLE)
-  }, [key, schedule, statusStore])
+  }, [writer, schedule, statusStore])
 
   return useMemo(
     () => ({ statusStore, restorable, restore, discard, clear, flush }),

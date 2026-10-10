@@ -131,6 +131,61 @@ export async function passwordMatches(input: string, env: Env = process.env): Pr
   return crypto.subtle.verify("HMAC", key, mac, enc.encode(expected));
 }
 
+// --- Known-device cookie -------------------------------------------------
+//
+// Set on every successful sign-in and kept long after the session ends. A
+// sign-in attempt that carries a valid one is limited per device instead of
+// by the (spoofable) client address and the shared cap, so junk attempts
+// from elsewhere cannot lock out browsers that have signed in before (OWASP
+// "device cookies"). Signed with the session key: a password change forgets
+// every device, and it cannot be minted without having signed in.
+
+export const DEVICE_COOKIE = "qs_device";
+/** Browsers cap cookie lifetimes at 400 days. */
+export const DEVICE_TTL_SECONDS = 60 * 60 * 24 * 400;
+
+const DEVICE_RE = /^(d1\.([A-Za-z0-9_-]{22}))\.([A-Za-z0-9_-]{43})$/;
+
+function randomDeviceId(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return toBase64Url(bytes.buffer);
+}
+
+/** `d1.<id>.<base64url(HMAC-SHA256(key, "d1.<id>"))>`; a new id when none is given. */
+export async function createDeviceToken(id?: string, env: Env = process.env): Promise<string> {
+  const payload = `d1.${id ?? randomDeviceId()}`;
+  const sig = await crypto.subtle.sign("HMAC", await hmacKey(env), enc.encode(payload));
+  return `${payload}.${toBase64Url(sig)}`;
+}
+
+/** The device id of a valid token, else null. */
+export async function verifyDeviceToken(
+  token: string | undefined | null,
+  env: Env = process.env
+): Promise<string | null> {
+  if (!token) return null;
+  const m = DEVICE_RE.exec(token);
+  if (!m) return null;
+  const sig = fromBase64Url(m[3]);
+  if (toBase64Url(sig.buffer) !== m[3]) return null;
+  const ok = await crypto.subtle.verify("HMAC", await hmacKey(env), sig, enc.encode(m[1]));
+  return ok ? m[2] : null;
+}
+
+export type DeviceCookieOptions = {
+  httpOnly: true;
+  sameSite: "lax";
+  secure: boolean;
+  path: "/api/auth";
+  maxAge: number;
+};
+
+/** Only the auth routes ever need it, so no other request carries it. */
+export function deviceCookieOptions(isHttps: boolean): DeviceCookieOptions {
+  return { httpOnly: true, sameSite: "lax", secure: isHttps, path: "/api/auth", maxAge: DEVICE_TTL_SECONDS };
+}
+
 export type SessionCookieOptions = {
   httpOnly: true;
   sameSite: "lax";

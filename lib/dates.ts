@@ -1,6 +1,7 @@
 // Calendar dates are plain "YYYY-MM-DD" strings in the business timezone
-// (settings.region.timezone). Containers and Postgres run in UTC, so "today"
-// must never come from new Date().toISOString() directly.
+// (settings.region.timezone). Containers run in UTC and the app pins its
+// Postgres sessions to UTC (db/index.ts), so "today" must never come from
+// new Date().toISOString() directly.
 
 const ISO_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 const DAY_MS = 86_400_000;

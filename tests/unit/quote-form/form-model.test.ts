@@ -14,6 +14,8 @@ import {
   sectionForPath,
   sectionStates,
   toNumberOrNaN,
+  trailingBlankItemIndexes,
+  SEEDED_DRAFT_PREFIX,
 } from "@/components/quote-form/form-model";
 import { quoteRecordValues } from "@/lib/quote-view";
 import { quoteFormSchema, type QuoteFormValues } from "@/lib/schemas/quote";
@@ -237,6 +239,67 @@ describe("draft keys", () => {
       `qs:draft:edit:7:${Date.parse("2026-10-09T00:00:00Z")}`
     );
     expect(quoteDraftKey({ id: 7, updatedAt: 5 }).startsWith(quoteDraftPrefix(7))).toBe(true);
+  });
+});
+
+describe("draft keys of create forms", () => {
+  // A blank quote, a duplicate and a customer-prefilled quote must never
+  // autosave over each other's unsaved draft.
+  it("gives a blank form, a duplicate and a customer-prefilled form distinct keys", () => {
+    const keys = [
+      quoteDraftKey(),
+      quoteDraftKey({ from: 4 }),
+      quoteDraftKey({ from: 5 }),
+      quoteDraftKey({ customer: "Globex" }),
+      quoteDraftKey({ customer: "Initech" }),
+    ];
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(quoteDraftKey({ from: 4 })).toBe("qs:draft:new:from:4");
+  });
+
+  it("keys a customer by its directory identity (case and spaces ignored)", () => {
+    expect(quoteDraftKey({ customer: " Globex " })).toBe(quoteDraftKey({ customer: "globex" }));
+    expect(quoteDraftKey({ customer: "台積電" })).toBe(
+      `qs:draft:new:customer:${encodeURIComponent("台積電")}`
+    );
+    expect(quoteDraftKey({ customer: "   " })).toBe(quoteDraftKey());
+  });
+
+  it("puts seeded drafts under their own prefix, never the blank draft or edit drafts", () => {
+    expect(quoteDraftKey({ from: 4 }).startsWith(SEEDED_DRAFT_PREFIX)).toBe(true);
+    expect(quoteDraftKey({ customer: "x" }).startsWith(SEEDED_DRAFT_PREFIX)).toBe(true);
+    expect(quoteDraftKey().startsWith(SEEDED_DRAFT_PREFIX)).toBe(false);
+    expect(quoteDraftKey({ id: 4, updatedAt: 1 }).startsWith(SEEDED_DRAFT_PREFIX)).toBe(false);
+  });
+});
+
+describe("trailingBlankItemIndexes", () => {
+  const blank = emptyItem();
+  const filled = { ...emptyItem(), productName: "免費安裝", unitPrice: "0" };
+
+  it("finds untouched rows at the end, highest index first", () => {
+    expect(trailingBlankItemIndexes([filled, blank])).toEqual([1]);
+    expect(trailingBlankItemIndexes([filled, blank, { ...blank, quantity: "1" }])).toEqual([2, 1]);
+  });
+
+  it("keeps a partly filled last row (it gets validation errors instead)", () => {
+    expect(trailingBlankItemIndexes([filled, { ...blank, unitPrice: "100" }])).toEqual([]);
+    expect(trailingBlankItemIndexes([filled, { ...blank, productName: "x" }])).toEqual([]);
+    expect(trailingBlankItemIndexes([filled, { ...blank, quantity: 2 }])).toEqual([]);
+    expect(trailingBlankItemIndexes([filled, { ...blank, description: "說明" }])).toEqual([]);
+  });
+
+  it("keeps blank rows in the middle and a single blank row", () => {
+    expect(trailingBlankItemIndexes([filled, blank, filled])).toEqual([]);
+    // "at least one item" still reports on an empty quote.
+    expect(trailingBlankItemIndexes([blank])).toEqual([]);
+    expect(trailingBlankItemIndexes([blank, blank])).toEqual([1]);
+    expect(trailingBlankItemIndexes([])).toEqual([]);
+    expect(trailingBlankItemIndexes(undefined)).toEqual([]);
+  });
+
+  it("treats whitespace as blank", () => {
+    expect(trailingBlankItemIndexes([filled, { ...blank, productName: "  ", unitPrice: " " }])).toEqual([1]);
   });
 });
 

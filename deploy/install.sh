@@ -8,23 +8,32 @@
 #
 # Re-running it upgrades to the newest release and never touches your data or .env
 # secrets. Options (environment variables):
-#   QUOTE_DIR=/opt/quote-system   install directory (default: ~/quote-system)
+#   QUOTE_DIR=/opt/quote-system   install directory (default: the current directory
+#                                 when it holds an install, else ~/quote-system)
 #   QUOTE_VERSION=1.2.3           install or switch to a specific release
 #   APP_PASSWORD=...              sign-in password for a new install (default: random;
 #                                 APP_PASSWORD= with an empty value turns sign-in off)
 #   APP_PORT=8080                 host port for a new install (default: 3000)
+#   COMPOSE_PROFILES=https,backup also start Caddy (HTTPS) and/or daily backups; saved
+#                                 in .env unless .env already names profiles. With
+#                                 https, an empty APP_BIND becomes 127.0.0.1 so only
+#                                 Caddy is reachable from other machines.
+#   APP_BIND=0.0.0.0              host address of plain HTTP, saved in .env unless
+#                                 .env already sets one (default: every interface)
 #   QUOTE_BASE_URL=...            download the bundle from elsewhere (mirror, file://)
 #   QUOTE_SKIP_PULL=1             use images already present locally (offline, testing)
 set -eu
 
 REPO="sychen6192/quote-system"
 BUNDLE="quote-system-deploy.tar.gz"
+# The bundle's compose project is always "quote-system" (docker-compose.yml: name).
+VOLUME="quote-system_postgres_data"
 
 main() {
   requested_version="${QUOTE_VERSION:-}"
   version="${requested_version:-latest}"
   version="${version#v}"
-  dir="${QUOTE_DIR:-$HOME/quote-system}"
+  dir=$(install_dir)
   if [ "$version" = latest ]; then
     base="https://github.com/$REPO/releases/latest/download"
   else
@@ -32,7 +41,10 @@ main() {
   fi
   base="${QUOTE_BASE_URL:-$base}"
 
+  check_inputs
   check_requirements
+  # Before anything is written: never scatter files into a second directory.
+  check_existing_data
 
   mkdir -p "$dir"
   cd "$dir"
@@ -62,16 +74,14 @@ main() {
   done
   cp "$tmp/bundle/.env.example" .env.example
   mkdir -p branding backups
+  # Dumps hold every customer and quote (and the company stamp): owner only,
+  # like .env. Also fixes folders made by older installers.
+  chmod 700 backups 2>/dev/null || warn "Could not make $dir/backups private (chmod 700 backups)."
 
   bundle_version=$(env_value QUOTE_VERSION .env.example)
   password_note=
   fresh_install=
   if [ ! -f .env ]; then
-    # The database volume keeps the password it was created with; a fresh .env
-    # would lock the app out of it.
-    if docker volume inspect quote-system_postgres_data >/dev/null 2>&1; then
-      die "Found an existing Quote System database (volume quote-system_postgres_data) but no .env in $dir. Put your previous .env back there (coming from version 0.x: see \"Upgrading from 0.x\" in CHANGELOG.md), or delete the old data with: docker volume rm quote-system_postgres_data"
-    fi
     create_env "${requested_version:+$version}"
   else
     say "Keeping your existing $dir/.env"
@@ -86,10 +96,14 @@ main() {
     fi
   fi
 
+  fill_env_from_shell COMPOSE_PROFILES
+  fill_env_from_shell APP_BIND
+  secure_app_bind
+
   # Compose prefers the shell's variables to .env: drop the installer's own
   # inputs so this run uses exactly what .env says (QUOTE_VERSION=v1.2.3 would
   # otherwise ask for a "v1.2.3" image tag, APP_PORT would differ from .env).
-  unset QUOTE_VERSION APP_PORT APP_PASSWORD
+  unset QUOTE_VERSION APP_PORT APP_PASSWORD APP_BIND COMPOSE_PROFILES
 
   if [ "${QUOTE_SKIP_PULL:-}" = 1 ]; then
     say "Skipping image download (QUOTE_SKIP_PULL=1)"
@@ -107,6 +121,51 @@ main() {
     || die "Quote System did not become healthy. See: cd $dir && docker compose logs app db"
 
   print_summary
+}
+
+# QUOTE_DIR, else the current directory when it already holds an install (so
+# "run the installer again in your install directory" works), else ~/quote-system.
+install_dir() {
+  if [ -n "${QUOTE_DIR:-}" ]; then
+    case $QUOTE_DIR in
+      /*) printf '%s\n' "$QUOTE_DIR" ;;
+      *) printf '%s\n' "$PWD/$QUOTE_DIR" ;;
+    esac
+  elif [ -f .env ] && [ -f docker-compose.yml ] && grep -q '^name: quote-system[[:space:]]*$' docker-compose.yml; then
+    printf '%s\n' "$PWD"
+  else
+    printf '%s\n' "$HOME/quote-system"
+  fi
+}
+
+# The database volume keeps the password it was created with: a new .env would
+# lock the app out of it. So with the volume present and no .env in $dir, stop
+# and say where the data belongs.
+check_existing_data() {
+  [ ! -f "$dir/.env" ] || return 0
+  docker volume inspect "$VOLUME" >/dev/null 2>&1 || return 0
+  owner=$(volume_users db)
+  if [ -n "$owner" ] && [ "$owner" != "$dir" ]; then
+    die "Quote System is already installed in $owner. To upgrade it, run the installer in that directory or with QUOTE_DIR=$owner"
+  fi
+  restore="Put your previous .env back in $dir (coming from version 0.x: see \"Upgrading from 0.x\" in CHANGELOG.md)"
+  if [ -n "$(docker ps -aq --filter "volume=$VOLUME" 2>/dev/null || true)" ]; then
+    # In use: never suggest deleting it.
+    users=$(volume_users)
+    die "Found an existing Quote System database (volume $VOLUME, used by ${users:+the containers in }${users:-other containers}) but no .env in $dir. $restore."
+  fi
+  die "Found an existing Quote System database (volume $VOLUME) but no .env in $dir. $restore, or, if you no longer need that data, delete it with: docker volume rm $VOLUME"
+}
+
+# Compose working directory of the containers that use the database volume
+# (only those of compose service $1, when given); empty when there are none.
+volume_users() {
+  if [ -n "${1:-}" ]; then
+    set -- --filter "label=com.docker.compose.service=$1"
+  fi
+  docker ps -a --filter "volume=$VOLUME" "$@" \
+    --format '{{.Label "com.docker.compose.project.working_dir"}}' 2>/dev/null \
+    | awk 'NF && !seen[$0]++' | paste -s -d ' ' -
 }
 
 check_requirements() {
@@ -155,6 +214,59 @@ create_env() {
   fi
 }
 
+# Values that end up in .env: one line each, nothing Compose would expand.
+check_inputs() {
+  case ${COMPOSE_PROFILES:-} in
+    *[!A-Za-z0-9_,*-]*) die "COMPOSE_PROFILES is a comma-separated list of profiles, such as https,backup." ;;
+  esac
+  case ${APP_BIND:-} in
+    *[!][0-9A-Fa-f.:]*) die "APP_BIND must be an IP address, such as 127.0.0.1 or 0.0.0.0." ;;
+  esac
+}
+
+# fill_env_from_shell KEY: a value given to the installer fills KEY in .env
+# while .env leaves it empty (a new install, or a key the user never set), and
+# never replaces one the user chose there.
+fill_env_from_shell() {
+  eval "shell_value=\${$1:-}"
+  [ -n "$shell_value" ] || return 0
+  env_file_value=$(env_value "$1" .env)
+  if [ -z "$env_file_value" ]; then
+    set_env "$1" "$shell_value" .env
+    say "Saved $1=$shell_value in $dir/.env"
+  elif [ "$env_file_value" != "$shell_value" ]; then
+    say "Keeping $1=$env_file_value from $dir/.env (edit it there to change it)"
+  fi
+}
+
+# The https profile is on when .env names it in COMPOSE_PROFILES, or when
+# Caddy was started by hand (docker compose --profile https up -d).
+https_profile_on() {
+  case ",$(env_value COMPOSE_PROFILES .env | tr -d ' ')," in
+    *,https,*|*,\*,*) return 0 ;;
+  esac
+  [ -n "$(docker ps -aq --filter label=com.docker.compose.project=quote-system \
+    --filter label=com.docker.compose.service=caddy 2>/dev/null || true)" ]
+}
+
+# Behind Caddy, plain HTTP on APP_PORT only needs to reach this machine, and
+# Docker publishes ports past host firewalls such as ufw. So with the https
+# profile an empty APP_BIND becomes 127.0.0.1; an address the user set stays,
+# with a warning when it is reachable from other machines.
+secure_app_bind() {
+  https_profile_on || return 0
+  bind=$(env_value APP_BIND .env)
+  app_port=$(env_value APP_PORT .env)
+  case $bind in
+    '')
+      set_env APP_BIND 127.0.0.1 .env
+      say "HTTPS is on: set APP_BIND=127.0.0.1 in $dir/.env so only Caddy is reachable from other machines" ;;
+    127.*|::1|'[::1]') ;;
+    *)
+      warn "HTTPS is on, but APP_BIND=$bind also serves plain HTTP on port ${app_port:-3000} to other machines, around Caddy. To close it, set APP_BIND=127.0.0.1 in $dir/.env and run: docker compose up -d" ;;
+  esac
+}
+
 print_summary() {
   port=$(env_value APP_PORT .env)
   port=${port:-3000}
@@ -197,8 +309,8 @@ print_summary() {
     *,caddy,*) ;;
     *)
       n=$((n + 1))
-      steps="$steps  $n. To install the app on phones and computers, serve it over HTTPS: set
-     SITE_ADDRESS (and APP_BIND=127.0.0.1) in .env, then: docker compose --profile https up -d
+      steps="$steps  $n. To install the app on phones and computers, serve it over HTTPS: in .env set
+     SITE_ADDRESS, COMPOSE_PROFILES=https and APP_BIND=127.0.0.1, then: docker compose up -d
      Guide: https://github.com/$REPO/blob/main/docs/deploy/https.md
 " ;;
   esac
@@ -213,7 +325,8 @@ print_summary() {
   if [ -n "$steps" ]; then
     printf '\n  Next steps, in %s:\n%s' "$dir" "$steps"
   fi
-  printf '\n  Upgrade later by running this installer again, or:\n    cd %s && docker compose pull && docker compose up -d\n' "$dir"
+  printf '\n  Upgrade later: run this installer again in %s (or with QUOTE_DIR=%s),\n' "$dir" "$dir"
+  printf '  or set QUOTE_VERSION in .env to the new release, then:\n    cd %s && docker compose pull && docker compose up -d\n' "$dir"
 }
 
 # KEY=value lines only; prints the value of the last match.

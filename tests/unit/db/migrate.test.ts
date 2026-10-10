@@ -56,7 +56,7 @@ describe("runMigrations", () => {
 
     expect(postgresMock).toHaveBeenCalledWith(
       "postgres://u:p@db:5432/app",
-      expect.objectContaining({ max: 1 })
+      expect.objectContaining({ max: 1, connection: expect.objectContaining({ TimeZone: "UTC" }) })
     );
     expect(calls).toEqual([
       "select 1",

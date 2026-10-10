@@ -216,9 +216,15 @@ export function pngHasAlpha(b: Uint8Array): boolean {
   return false;
 }
 
-/** Cache-Control for an icon: `?v=` URLs never change, plain ones may. */
-export function iconCacheControl(versioned: boolean): string {
-  return versioned ? "public, max-age=31536000, immutable" : "public, max-age=3600";
+/**
+ * Cache-Control for an icon. A `?v=` URL is cached forever only when `v` is
+ * the token of the image actually drawn (`current`): while the database is
+ * unreachable the default logo is drawn, but pages may still link the
+ * branded version, and pinning the placeholder there would stick for a year.
+ */
+export function iconCacheControl(requested: string | null, current: string): string {
+  if (requested === null) return "public, max-age=3600";
+  return requested === current ? "public, max-age=31536000, immutable" : "public, max-age=300";
 }
 
 /**

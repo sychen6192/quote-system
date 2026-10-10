@@ -45,7 +45,11 @@ export function QuotesTable({ rows }: { rows: QuoteRowView[] }) {
             const primary = row.title ?? row.customerName ?? t("unknownCustomer");
             const secondary = row.title ? row.customerName : row.contactPerson;
             return (
-              <TableRow key={row.id} className="group relative hover:bg-muted/40 has-[a:focus-visible]:bg-muted/60">
+              <TableRow
+                key={row.id}
+                data-quote-row=""
+                data-quote-id={row.id}
+                className="group relative hover:bg-muted/40 has-[a:focus-visible]:bg-muted/60">
                 <TableCell className="py-3 pl-5">
                   {/* The ::after overlay makes the whole row open the quote. */}
                   <Link

@@ -27,6 +27,8 @@ docker compose --profile backup up -d
 
 備份檔和資料放在同一顆硬碟上，硬碟壞了就一起不見了。請定期把 `backups/` 與 `.env` 複製到其他地方，例如使用 `rsync`、`rclone`、Synology Hyper Backup 或 QNAP Hybrid Backup Sync。
 
+每份備份檔都包含所有客戶、報價單與設定（含公司大小章），因此和 `.env` 一樣，只有 `backups` 資料夾的擁有者（執行安裝程式的使用者）能讀取：資料夾權限為 700，備份檔為 600。若資料夾是你手動建立的，請以 `chmod 700 backups` 限制權限。
+
 確認備份檔可以讀取：
 
 ```sh
@@ -41,21 +43,24 @@ docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -
 
 ## 還原
 
-此操作會以備份檔的內容取代資料庫中的所有資料。
+此操作會刪除整個資料庫，再以備份檔的內容重建。請先停止 App（若有使用備份服務，也一併停止），重新建立空白資料庫並還原，最後再啟動 App：
 
 ```sh
-docker compose stop app
-docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists --no-owner' < quote-2026-10-09.dump
+docker compose stop app backup
+docker compose exec -T db sh -c 'dropdb -U "$POSTGRES_USER" --force "$POSTGRES_DB" && createdb -U "$POSTGRES_USER" "$POSTGRES_DB"'
+docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --exit-on-error' < quote-2026-10-09.dump
 docker compose start app
 ```
 
-可以還原舊版本產生的備份檔：App 啟動時會自動套用較新的 migration。但不支援把*較新*版本的備份檔還原到舊版 App。
+`pg_restore` 必須在沒有任何錯誤訊息的情況下完成。若中途出現錯誤而停止，請先排除原因（通常是檔名打錯，或檔案不是 `pg_dump -Fc` 產生的備份檔），再從 `dropdb` 那一行重新執行；不要讓 App 在只還原一半的資料庫上啟動。若有使用 backup profile，最後再以 `docker compose start backup` 重新啟動備份服務。
+
+因為是還原到空白資料庫，跨版本還原才安全：可以還原舊版本產生的備份檔，App 啟動時會自動套用較新的 migration。但不支援把*較新*版本的備份檔還原到舊版 App。
 
 ## 搬移到新伺服器
 
 1. 在舊伺服器手動備份（見上方），並停止 App：`docker compose stop app`。
 2. 在新伺服器照常安裝（`sh install.sh`）。使用新產生的 `.env` 即可，備份檔中不含任何密碼。若想沿用舊的 `APP_PASSWORD` 與 `RESEND_API_KEY`，請從舊的 `.env` 複製過來。
-3. 將備份檔複製到新伺服器並還原（見上方）。
+3. 將備份檔複製到新伺服器，依照〈[還原](#還原)〉的指令還原。新伺服器的版本比舊伺服器新也沒關係。
 4. 若使用 Caddy 自有憑證，請一併複製 `caddy_data` volume，或在每台裝置上信任新伺服器的憑證。
 
 ## 更換資料庫密碼
@@ -96,7 +101,7 @@ docker compose exec db psql -U postgres -d quote-system -c "ALTER USER postgres 
 
    ```sh
    docker compose up -d db
-   docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner' < quote-2026-10-09.dump
+   docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --exit-on-error' < quote-2026-10-09.dump
    docker compose up -d
    ```
 

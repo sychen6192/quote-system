@@ -44,6 +44,13 @@ describe.each([
     expect(service).toHaveBeenCalledWith("a".repeat(100), 8);
   });
 
+  it("drops NUL and control characters (Postgres rejects NUL)", async () => {
+    await expect(action("\u0000")).resolves.toEqual({ success: true, data: [] });
+    expect(service).not.toHaveBeenCalled();
+    await action("ac\u0000me");
+    expect(service).toHaveBeenCalledWith("acme", 8);
+  });
+
   it("searches with a single character", async () => {
     await action(" 台 ");
     expect(service).toHaveBeenCalledWith("台", 8);

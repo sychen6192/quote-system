@@ -10,7 +10,19 @@ import { db } from "@/db";
 import { appSettings, brandingAssets } from "@/db/schema";
 import { brandingCandidates, getAppNameOverride, getEnvSettings } from "@/lib/config";
 import { sniffImageMime } from "@/lib/settings/branding";
-import { SETTINGS_DEFAULTS, hashString, mergeSettings } from "@/lib/settings/merge";
+import {
+  SETTINGS_DEFAULTS,
+  hashString,
+  mergeSettings,
+  settingSource,
+  type SettingSource,
+} from "@/lib/settings/merge";
+import {
+  SETTINGS_SECTIONS,
+  parseSettingsLayer,
+  type SettingsLayer,
+  type SettingsSection,
+} from "@/lib/settings/schema";
 import type {
   BrandingAsset,
   BrandingKind,
@@ -35,6 +47,8 @@ type Store = {
   pending: Promise<EffectiveSettings> | null;
   assets: Map<BrandingKind, AssetLoad<Cached<BrandingAsset | null>>>;
   pendingAssets: Map<BrandingKind, AssetLoad<{ promise: Promise<BrandingAsset | null> }>>;
+  /** What the last successful branding_assets read per kind returned (null: no upload). */
+  lastDbAssets: Map<BrandingKind, BrandingAsset | null>;
   warnedAt: number;
 };
 
@@ -50,6 +64,7 @@ function store(): Store {
     pending: null,
     assets: new Map(),
     pendingAssets: new Map(),
+    lastDbAssets: new Map(),
     warnedAt: -Infinity,
   });
 }
@@ -62,6 +77,9 @@ export function invalidateSettingsCache(): void {
   s.pending = null;
   s.assets.clear();
   s.pendingAssets.clear();
+  // A write may have replaced or removed an upload: like the settings, the
+  // last good images are no longer known to be good.
+  s.lastDbAssets.clear();
 }
 
 // `next build` imports pages without a reachable database; never try (and
@@ -163,6 +181,36 @@ async function settingsWithTtl(): Promise<EffectiveSettings> {
 /** Per request (React cache) on top of a 15 s in-process TTL. */
 export const getSettings: () => Promise<EffectiveSettings> = cache(settingsWithTtl);
 
+export type SettingsProvenance = {
+  /** What env vars set (valid, non-empty fields only). */
+  env: SettingsLayer;
+  /** What the Settings page saved (validated field by field); {} when unreadable. */
+  stored: SettingsLayer;
+  /** The database could not be read: `stored` is empty and saving will fail. */
+  storeUnavailable: boolean;
+  /** Where each field's effective value comes from, as getSettings() resolves it. */
+  sources: { [S in SettingsSection]: Record<string, SettingSource> };
+};
+
+/**
+ * Which fields come from the Settings page, from env vars or from the
+ * defaults, for the Settings page. Always reads the database (no cache), so
+ * it reflects a save immediately.
+ */
+export async function getSettingsProvenance(): Promise<SettingsProvenance> {
+  const stored = await readStoredSettings();
+  const env = getEnvSettings().layer;
+  const db = parseSettingsLayer(stored?.data ?? {});
+  const sources = {} as SettingsProvenance["sources"];
+  for (const section of SETTINGS_SECTIONS) {
+    const keys = Object.keys(SETTINGS_DEFAULTS[section]);
+    // Not in SETTINGS_DEFAULTS: its default depends on the currency.
+    if (section === "quote") keys.push("showAmountInWords");
+    sources[section] = Object.fromEntries(keys.map((key) => [key, settingSource(section, key, env, db)]));
+  }
+  return { env, stored: db, storeUnavailable: stored === null, sources };
+}
+
 export async function getPublicConfig(): Promise<PublicAppConfig> {
   const s = await getSettings();
   return {
@@ -230,6 +278,22 @@ async function dbAsset(kind: BrandingKind): Promise<BrandingAsset | null | undef
   }
 }
 
+/**
+ * The DB upload for `kind`. When the read fails after an earlier one in this
+ * process succeeded, the last good result is kept (as loadSettings keeps the
+ * last good settings), so a database blip does not swap a branded logo or
+ * app icon for the disk/default one and back. Only a cold start, with no
+ * successful read yet, gives undefined and falls through to the files.
+ */
+async function dbAssetOrLastGood(kind: BrandingKind): Promise<BrandingAsset | null | undefined> {
+  const s = store();
+  const generation = s.generation;
+  const asset = await dbAsset(kind);
+  if (asset === undefined) return s.lastDbAssets.get(kind);
+  if (s.generation === generation) s.lastDbAssets.set(kind, asset);
+  return asset;
+}
+
 async function fileAsset(file: string): Promise<BrandingAsset | null> {
   let data: Buffer;
   try {
@@ -248,7 +312,7 @@ async function fileAsset(file: string): Promise<BrandingAsset | null> {
 
 async function loadAsset(kind: BrandingKind): Promise<BrandingAsset | null> {
   for (const source of assetSources(kind)) {
-    const asset = "db" in source ? await dbAsset(source.db) : await fileAsset(source.file);
+    const asset = "db" in source ? await dbAssetOrLastGood(source.db) : await fileAsset(source.file);
     if (asset) return asset;
   }
   return null;
@@ -294,7 +358,7 @@ export async function getBrandingStatus(): Promise<Record<BrandingKind, Branding
   const kinds: BrandingKind[] = ["logo", "stamp", "icon"];
   const entries = await Promise.all(
     kinds.map(async (kind): Promise<[BrandingKind, BrandingSource]> => {
-      if ((await dbAsset(kind)) != null) return [kind, "db"];
+      if ((await dbAssetOrLastGood(kind)) != null) return [kind, "db"];
       const [ownFile] = brandingCandidates(kind);
       if (ownFile && (await fileAsset(ownFile))) return [kind, "file"];
       return [kind, kind === "stamp" ? "none" : "default"];

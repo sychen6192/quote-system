@@ -4,45 +4,10 @@ import {
   STATUS_TRANSITIONS,
   canTransition,
   displayStatus,
-  expiredStyle,
   isDisplayStatus,
   isQuoteStatus,
   normalizeStatus,
-  statusStyle,
 } from "@/lib/status";
-
-describe("statusStyle", () => {
-  it("maps each known status to its own class set", () => {
-    const draft = statusStyle("draft");
-    const sent = statusStyle("sent");
-    const accepted = statusStyle("accepted");
-    const rejected = statusStyle("rejected");
-    expect(draft).toContain("slate");
-    expect(sent).toContain("blue");
-    expect(accepted).toContain("green");
-    expect(rejected).toContain("red");
-    // all include a dark: variant
-    for (const c of [draft, sent, accepted, rejected]) {
-      expect(c).toContain("dark:");
-    }
-  });
-
-  it("falls back to draft styling for unknown/empty status", () => {
-    expect(statusStyle("weird")).toBe(statusStyle("draft"));
-    expect(statusStyle("")).toBe(statusStyle("draft"));
-  });
-
-  it("omits dark: variants when forceLight is set", () => {
-    const light = statusStyle("sent", true);
-    expect(light).toContain("blue");
-    expect(light).not.toContain("dark:");
-  });
-
-  it("styles the derived expired status", () => {
-    expect(statusStyle("expired")).toBe(expiredStyle());
-    expect(statusStyle("expired", true)).toBe(expiredStyle(true));
-  });
-});
 
 describe("status helpers", () => {
   it("stays in sync with the DB enum", () => {

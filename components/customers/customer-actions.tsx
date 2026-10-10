@@ -50,7 +50,7 @@ export function CustomerActionsMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuItem asChild className={ITEM}>
-          <Link href={{ pathname: "/quotes", query: { q: name } }}>
+          <Link href={{ pathname: "/quotes", query: { customer: name } }}>
             <FileText aria-hidden="true" className="text-muted-foreground" />
             {t("viewQuotes")}
           </Link>

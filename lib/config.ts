@@ -1,4 +1,3 @@
-import * as fs from "node:fs";
 import * as path from "node:path";
 import { authEnabled } from "@/lib/auth/session";
 import {
@@ -65,23 +64,6 @@ export type AppConfig = {
   features: {
     twVatLookup: boolean;
   };
-};
-
-export type PublicAppConfig = {
-  companyName: string;
-  companyNameLocal: string;
-  currency: string;
-  currencyLocale: string;
-  defaultTaxRate: number;
-  twVatLookup: boolean;
-};
-
-export type QuoteBranding = {
-  company: AppConfig["company"];
-  logoDataUri: string;
-  stampDataUri: string | null;
-  payment: AppConfig["payment"];
-  money: AppConfig["money"];
 };
 
 type Env = Record<string, string | undefined>;
@@ -215,6 +197,10 @@ export function getAppNameOverride(env: Env = process.env): string {
   return clean(env.APP_NAME);
 }
 
+/**
+ * Env-only view of the settings. Kept for backward compatibility and as the
+ * tests' parity oracle (spec §3); runtime code uses getSettings().
+ */
 export function getAppConfig(env: Env = process.env): AppConfig {
   const s = mergeSettings(SETTINGS_DEFAULTS, getEnvSettings(env), {});
   return {
@@ -255,22 +241,18 @@ export function getAppConfig(env: Env = process.env): AppConfig {
   };
 }
 
-export function toPublicConfig(config: AppConfig): PublicAppConfig {
-  return {
-    companyName: config.company.name,
-    companyNameLocal: config.company.nameLocal,
-    currency: config.money.currency,
-    currencyLocale: config.money.currencyLocale,
-    defaultTaxRate: config.money.defaultTaxRate,
-    twVatLookup: config.features.twVatLookup,
-  };
-}
-
-/** On-disk branding files in fallback order (branding/ is the legacy mount). */
+/**
+ * On-disk branding files in fallback order (branding/ is the legacy runtime
+ * mount; branding-defaults/ ships via outputFileTracingIncludes).
+ *
+ * turbopackIgnore: the build cannot know these paths (a Docker volume), and
+ * without the hint Turbopack treats the joins as a broad pattern and copies
+ * every source and test file named *branding* into .next/standalone.
+ */
 export function brandingCandidates(kind: BrandingKind, baseDir: string = process.cwd()): string[] {
-  const user = (file: string) => path.join(baseDir, "branding", file);
+  const user = (file: string) => path.join(/* turbopackIgnore: true */ baseDir, "branding", file);
   const fallback = (file: string) =>
-    path.join(baseDir, "branding-defaults", file);
+    path.join(/* turbopackIgnore: true */ baseDir, "branding-defaults", file);
   switch (kind) {
     case "logo":
       return [user("logo.png"), fallback("logo.png")];
@@ -279,40 +261,4 @@ export function brandingCandidates(kind: BrandingKind, baseDir: string = process
     case "icon":
       return [user("icon.png"), user("logo.png"), fallback("logo.png")];
   }
-}
-
-export function getBrandingFile(
-  kind: BrandingKind,
-  baseDir: string = process.cwd()
-): Buffer | null {
-  for (const candidate of brandingCandidates(kind, baseDir)) {
-    try {
-      return fs.readFileSync(candidate);
-    } catch {
-      // try next candidate
-    }
-  }
-  return null;
-}
-
-export function getBrandingDataUri(
-  kind: BrandingKind,
-  baseDir: string = process.cwd()
-): string | null {
-  const file = getBrandingFile(kind, baseDir);
-  if (!file) return null;
-  return `data:image/png;base64,${file.toString("base64")}`;
-}
-
-/** Env/disk-only branding; prefer services/settings getDocumentBranding("pdf"). */
-export function getQuoteBranding(): QuoteBranding {
-  const config = getAppConfig();
-  return {
-    company: config.company,
-    // logo 永遠有值:branding-defaults/logo.png 是 committed 檔案
-    logoDataUri: getBrandingDataUri("logo") ?? "",
-    stampDataUri: getBrandingDataUri("stamp"),
-    payment: config.payment,
-    money: config.money,
-  };
 }

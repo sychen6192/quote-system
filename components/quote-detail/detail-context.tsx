@@ -16,8 +16,10 @@ import {
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { setQuoteStatus } from "@/actions/quote-status";
+import { downloadFile } from "@/components/app-shell/download";
 import { reloadForSignIn } from "@/components/app-shell/session";
 import { DeleteQuoteDialog } from "@/components/delete-quote-button";
+import { ACTION_TOAST_DURATION_MS } from "@/components/ui/toast-layer";
 import type { AppLocale } from "@/i18n/locales";
 import { displayStatus as toDisplayStatus, type DisplayStatus, type QuoteStatus } from "@/lib/status";
 import { useRouter } from "@/navigation";
@@ -120,6 +122,8 @@ async function withSlowToast<T>(work: Promise<T>, message: string): Promise<T> {
   }
 }
 
+const SESSION_EXPIRED = "SessionExpired";
+
 function errorName(error: unknown): string {
   return error instanceof Error || error instanceof DOMException ? error.name : "";
 }
@@ -162,7 +166,7 @@ export function QuoteDetailProvider({ quote, children }: { quote: QuoteDetailInf
             action: undoable
               ? { label: t("status.undo"), onClick: () => changeStatusRef.current(previous, false) }
               : undefined,
-            duration: undoable ? 8_000 : undefined,
+            duration: undoable ? ACTION_TOAST_DURATION_MS : undefined,
           });
         } else if (result.code === "UNAUTHORIZED") {
           reloadForSignIn(tCommon("sessionExpired"));
@@ -183,16 +187,25 @@ export function QuoteDetailProvider({ quote, children }: { quote: QuoteDetailInf
   const pdfUrl = `/api/quotes/${quote.id}/pdf?lang=${encodeURIComponent(quote.locale)}`;
 
   const loadPdfFile = useCallback(() => {
-    pdfFile.current ??= fetch(pdfUrl, { credentials: "same-origin" })
-      .then((response) => {
-        if (!response.ok) throw new Error(`PDF request failed: ${response.status}`);
-        return response.blob();
-      })
-      .then((blob) => new File([blob], quote.pdfFilename, { type: "application/pdf" }))
-      .catch((error: unknown) => {
-        pdfFile.current = null;
-        throw error;
+    pdfFile.current ??= (async () => {
+      const saved: { file?: File } = {};
+      const outcome = await downloadFile(pdfUrl, {
+        fetch: (input, init) => window.fetch(input, init),
+        save: (blob) => {
+          saved.file = new File([blob], quote.pdfFilename, { type: "application/pdf" });
+        },
       });
+      if (outcome === "unauthorized") {
+        const error = new Error("The session has expired");
+        error.name = SESSION_EXPIRED;
+        throw error;
+      }
+      if (!saved.file) throw new Error("PDF request failed");
+      return saved.file;
+    })().catch((error: unknown) => {
+      pdfFile.current = null;
+      throw error;
+    });
     return pdfFile.current;
   }, [pdfUrl, quote.pdfFilename]);
 
@@ -220,6 +233,10 @@ export function QuoteDetailProvider({ quote, children }: { quote: QuoteDetailInf
         try {
           file = await withSlowToast(loadPdfFile(), t("shareSheet.preparing"));
         } catch (error) {
+          if (errorName(error) === SESSION_EXPIRED) {
+            reloadForSignIn(tCommon("sessionExpired"));
+            return;
+          }
           console.error(error);
         }
         if (file && navigator.canShare({ files: [file] })) {
@@ -238,6 +255,7 @@ export function QuoteDetailProvider({ quote, children }: { quote: QuoteDetailInf
             if (name === "NotAllowedError") {
               toast(t("shareSheet.title", { number: quote.quotationNumber }), {
                 action: { label: t("share"), onClick: () => void shareQuote() },
+                duration: ACTION_TOAST_DURATION_MS,
               });
               return;
             }
@@ -247,7 +265,7 @@ export function QuoteDetailProvider({ quote, children }: { quote: QuoteDetailInf
       }
       await copyLink();
     },
-    [copyLink, loadPdfFile, quote.companyName, quote.quotationNumber, t]
+    [copyLink, loadPdfFile, quote.companyName, quote.quotationNumber, t, tCommon]
   );
 
   const value = useMemo<QuoteDetailContextValue>(

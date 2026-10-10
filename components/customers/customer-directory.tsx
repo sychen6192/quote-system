@@ -164,7 +164,7 @@ export function CustomerTable({ rows }: { rows: CustomerRowView[] }) {
               </TableCell>
               <TableCell className="py-4 text-right tabular-nums">
                 <Link
-                  href={{ pathname: "/quotes", query: { q: row.companyName } }}
+                  href={{ pathname: "/quotes", query: { customer: row.companyName } }}
                   className="rounded font-medium text-foreground underline-offset-4 hover:text-primary hover:underline"
                   title={t("viewQuotes")}
                 >
@@ -257,7 +257,7 @@ export function CustomerCards({ rows }: { rows: CustomerRowView[] }) {
           <div className="mt-3 grid grid-cols-2 gap-2">
             <NewQuoteButton name={row.companyName} className="h-11" />
             <Button asChild variant="secondary" size="sm" className="h-11 rounded-lg">
-              <Link href={{ pathname: "/quotes", query: { q: row.companyName } }}>
+              <Link href={{ pathname: "/quotes", query: { customer: row.companyName } }}>
                 {t("viewQuotes")}
               </Link>
             </Button>

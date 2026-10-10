@@ -164,8 +164,32 @@ describe("quoteFormSchema", () => {
   });
 
   it("rejects totals beyond Number.MAX_SAFE_INTEGER cents", () => {
-    const items = [{ productName: "x", quantity: 1e9, unitPrice: 1e12 }];
+    const items = [{ productName: "x", quantity: 999_999_999, unitPrice: 1e12 }];
     expect(errorsOf(valid({ items }))["items"]).toContain("totalTooLarge");
+  });
+
+  // quotation_items.quantity is numeric(12,3): absolute values below 10^9.
+  it("rejects quantity 1e9 with tooLarge (it would overflow the column)", () => {
+    for (const quantity of [1e9, "1000000000"]) {
+      const items = [{ productName: "x", quantity, unitPrice: 0.01 }];
+      expect(errorsOf(valid({ items } as Partial<QuoteFormValues>))["items.0.quantity"]).toContain("tooLarge");
+    }
+  });
+
+  it("accepts the largest quantity the column holds", () => {
+    const items = [{ productName: "x", quantity: 999_999_999.999, unitPrice: 0.01 }];
+    expect(errorsOf(valid({ items }))).toEqual({});
+  });
+
+  // Postgres rejects text containing NUL; it must be a field error, not INTERNAL.
+  it.each([
+    ["companyName", { companyName: "Acme\u0000" }],
+    ["salesperson", { salesperson: "\u0000" }],
+    ["notes", { notes: "a\u0000b" }],
+    ["items.0.productName", { items: [{ productName: "Wid\u0000get", quantity: 1, unitPrice: 1 }] }],
+    ["items.0.description", { items: [{ productName: "W", description: "\u0000", quantity: 1, unitPrice: 1 }] }],
+  ])("rejects a NUL character in %s with invalidText", (field, overrides) => {
+    expect(errorsOf(valid(overrides as Partial<QuoteFormValues>))[field]).toContain("invalidText");
   });
 
   it("reports every problem at once, including cross-field ones", () => {

@@ -39,14 +39,18 @@
     "description": "建立第一張報價單吧！客戶、品項與金額都在同一頁完成。",
     "cta": "建立第一張報價單"
   },
+  "customerFilter": {
+    "label": "客戶：{name}",
+    "clear": "移除客戶篩選「{name}」"
+  },
   "noResults": {
     "title": "找不到符合的報價單",
     "description": "請換個關鍵字或狀態試試。",
     "withQuery": "找不到符合「{query}」的報價單，請換個關鍵字或狀態試試。",
+    "withCustomer": "「{name}」沒有符合這些條件的報價單。",
     "clear": "清除篩選"
   },
   "delete": {
-    "trigger": "刪除",
     "title": "確定要刪除報價單 {number} 嗎？",
     "description": "報價單、品項明細與異動紀錄都會永久刪除，且無法復原。",
     "confirm": "刪除報價單",

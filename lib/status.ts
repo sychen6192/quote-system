@@ -52,35 +52,3 @@ export const STATUS_TRANSITIONS: Readonly<Record<QuoteStatus, readonly QuoteStat
 export function canTransition(from: QuoteStatus, to: QuoteStatus): boolean {
   return STATUS_TRANSITIONS[from].includes(to);
 }
-
-const LIGHT: Record<QuoteStatus, string> = {
-  draft: "bg-slate-100 text-slate-600",
-  sent: "bg-blue-100 text-blue-700",
-  accepted: "bg-green-100 text-green-700",
-  rejected: "bg-red-100 text-red-700",
-};
-
-const DARK: Record<QuoteStatus, string> = {
-  draft: "dark:bg-slate-400/20 dark:text-slate-200",
-  sent: "dark:bg-blue-400/20 dark:text-blue-200",
-  accepted: "dark:bg-green-400/20 dark:text-green-200",
-  rejected: "dark:bg-red-400/20 dark:text-red-200",
-};
-
-const EXPIRED_LIGHT = "bg-amber-100 text-amber-700";
-const EXPIRED_DARK = "dark:bg-amber-400/20 dark:text-amber-200";
-
-/**
- * Tailwind pill classes for a quote status.
- * @param forceLight omit dark: variants — use inside always-light surfaces
- *   (e.g. the printable invoice document, which stays white in dark mode).
- */
-export function statusStyle(status: string, forceLight = false): string {
-  if (status === "expired") return expiredStyle(forceLight);
-  const s = normalizeStatus(status);
-  return forceLight ? LIGHT[s] : `${LIGHT[s]} ${DARK[s]}`;
-}
-
-export function expiredStyle(forceLight = false): string {
-  return forceLight ? EXPIRED_LIGHT : `${EXPIRED_LIGHT} ${EXPIRED_DARK}`;
-}

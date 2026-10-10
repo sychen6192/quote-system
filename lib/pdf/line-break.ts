@@ -8,6 +8,9 @@
 // hyphen. So CJK characters are separated by "" (respecting the basic
 // kinsoku rules for punctuation), and Latin words are never hyphenated,
 // which would mangle emails, model numbers and quote numbers.
+// A Latin run longer than any real word (a SKU, hash or URL) would be drawn
+// straight past its box, so it may break between any two characters, again
+// without a hyphen. This callback is registered for every PDF <Text>.
 
 const CJK_RE =
   /[⺀-⿿　-〿぀-ヿ㄀-ㇿ㈀-㏿㐀-䶿一-鿿ꥠ-꥿가-힯豈-﫿︰-﹏＀-￯]|[\u{20000}-\u{3134F}]/u;
@@ -20,6 +23,30 @@ const NO_BREAK_BEFORE = new Set(
 const NO_BREAK_AFTER = new Set(Array.from("（「『【〔〈《｛［〖〘〚〝([{＄￥$"));
 
 const isCjk = (char: string) => CJK_RE.test(char);
+
+/** Longer than any dictionary word, shorter than a typical SKU or hash. */
+export const LONG_RUN_CHARS = 24;
+
+const canBreakBetween = (before: string, after: string) =>
+  !NO_BREAK_BEFORE.has(after) && !NO_BREAK_AFTER.has(before);
+
+/** A long run as single characters (kinsoku pairs kept together) with "" between. */
+function splitLongRun(segment: string): string[] {
+  const chars = Array.from(segment);
+  if (chars.length <= LONG_RUN_CHARS) return [segment];
+  const out: string[] = [];
+  let current = chars[0];
+  for (let i = 1; i < chars.length; i++) {
+    if (canBreakBetween(chars[i - 1], chars[i])) {
+      out.push(current, "");
+      current = chars[i];
+    } else {
+      current += chars[i];
+    }
+  }
+  out.push(current);
+  return out;
+}
 
 /** Break after "-" or "/" when a letter follows (not in "QT-001" or "1/2"). */
 function latinUnits(run: string): string[] {
@@ -66,16 +93,14 @@ export function pdfLineBreakSyllables(word: string): string[] {
     const prevLast = Array.from(prev).pop() ?? "";
     const first = Array.from(unit)[0];
     const breakable =
-      (isCjk(prevLast) || isCjk(first) || /[-/]$/.test(prev)) &&
-      !NO_BREAK_BEFORE.has(first) &&
-      !NO_BREAK_AFTER.has(prevLast);
+      (isCjk(prevLast) || isCjk(first) || /[-/]$/.test(prev)) && canBreakBetween(prevLast, first);
     if (breakable) {
-      syllables.push(segment, "");
+      syllables.push(...splitLongRun(segment), "");
       segment = unit;
     } else {
       segment += unit;
     }
   }
-  syllables.push(segment);
+  syllables.push(...splitLongRun(segment));
   return syllables;
 }

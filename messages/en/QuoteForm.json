@@ -200,6 +200,13 @@
     "keep": "Keep editing",
     "discard": "Discard changes"
   },
+  "conflictDialog": {
+    "title": "This quote was changed elsewhere",
+    "description": "Someone saved this quote after you opened it, perhaps in another tab or on another device. Reload to see the latest version: your changes stay on this device as a draft you can restore. Or save anyway to replace their changes with yours.",
+    "reload": "Reload latest",
+    "overwrite": "Save anyway",
+    "reloaded": "Showing the latest version. Your changes are kept as a draft."
+  },
   "messages": {
     "created": "Quote created",
     "updated": "Changes saved",

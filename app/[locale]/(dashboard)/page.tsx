@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { CircleCheckBig, FilePen, Plus, Send, TrendingUp } from "lucide-react";
+import { notFound } from "next/navigation";
+import { hasLocale } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { Link } from "@/navigation";
+import { Link, routing } from "@/navigation";
 import { Button } from "@/components/ui/button";
 import { PageContainer, PageHeader } from "@/components/app-shell/page-header";
+import { pagePath, requireSession } from "@/components/app-shell/require-session";
 import { formatIsoDate, formatPercent } from "@/components/app-shell/format";
 import { KpiCard, Meter } from "@/components/dashboard/kpi-card";
 import { ExpiringList } from "@/components/dashboard/expiring-list";
@@ -38,6 +41,8 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 
 export default async function DashboardPage({ params }: { params: Params }) {
   const { locale } = await params;
+  if (!hasLocale(routing.locales, locale)) notFound();
+  await requireSession(locale, pagePath(locale, ""));
   setRequestLocale(locale);
   const t = await getTranslations("Dashboard");
 

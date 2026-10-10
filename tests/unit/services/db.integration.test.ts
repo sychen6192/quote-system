@@ -15,12 +15,21 @@ import { deleteQuote } from "@/actions/delete-quote";
 import { setQuoteStatus } from "@/actions/quote-status";
 import { updateQuote } from "@/actions/update-quote";
 import { closeDb, db } from "@/db";
+import { quotations } from "@/db/schema";
 import { quoteViewFromRecord } from "@/lib/quote-view";
 import { getCustomerDirectory, getLatestCustomerByName, searchCustomerOptions } from "@/services/customers";
 import { getDashboardMetrics, getExpiringSoon, getRecentQuotes } from "@/services/dashboard";
 import { quotesToCsv } from "@/services/export";
 import { searchProductOptions } from "@/services/products";
-import { getQuoteById, getQuotesList, listQuotesForExport, rowsOf } from "@/services/quotes";
+import {
+  getQuoteById,
+  getQuotesList,
+  quoteExportBatches,
+  quoteListOrder,
+  rowsOf,
+  type QuoteListItem,
+  type QuoteListParams,
+} from "@/services/quotes";
 import { getSettings } from "@/services/settings";
 import { testSettings } from "../actions/helpers";
 
@@ -73,6 +82,12 @@ async function create(overrides: Record<string, unknown> = {}): Promise<number> 
 
 async function query(text: ReturnType<typeof sql>) {
   return rowsOf(await db.execute(text));
+}
+
+async function exportAll(params: QuoteListParams, batchSize?: number) {
+  const batches: QuoteListItem[][] = [];
+  for await (const batch of quoteExportBatches(params, { batchSize })) batches.push(batch);
+  return batches;
 }
 
 async function reset() {
@@ -129,8 +144,8 @@ describeDb("quotes against Postgres", () => {
       expect(a?.customer).toMatchObject({ companyName: "Acme Corp", phone: null });
       expect(a?.events.map((e) => e.type)).toEqual(["created"]);
 
-      // stored totals equal the shared view model's totals
-      const view = quoteViewFromRecord(a!, { today: TODAY });
+      // stored totals equal the shared view model's totals (TWD: whole NT$)
+      const view = quoteViewFromRecord(a!, { today: TODAY, minorUnitStep: 100 });
       expect([a?.subtotal, a?.discountAmount, a?.taxAmount, a?.totalAmount]).toEqual([
         view.totals.subtotal,
         view.totals.discount,
@@ -412,12 +427,144 @@ describeDb("quotes against Postgres", () => {
     });
 
     it("exports the filtered list as CSV", async () => {
-      const rows = await listQuotesForExport({ status: "expired", today: TODAY });
+      const rows = (await exportAll({ status: "expired", today: TODAY })).flat();
       const csv = quotesToCsv(rows, { locale: "en", currency: "TWD", fractionDigits: 0 });
       const lines = csv.split("\r\n").filter(Boolean);
       expect(lines).toHaveLength(2);
       // numbered from its own issue date
       expect(lines[1]).toMatch(/^QT-20260901-001,,Expired,2026-09-01,2026-10-08,acme corp,Jane,.*,TWD,50,0,3,0,53,,,$/);
+    });
+
+    it("filters by exact customer (case and spaces ignored), unlike the search", async () => {
+      const byName = await getQuotesList({ customer: "ACME CORP", today: TODAY });
+      expect(byName.data.map((q) => q.id).sort()).toEqual([ids.sent, ids.expired].sort());
+      expect(byName.statusCounts.all).toBe(2);
+      // "500 Off Inc" contains "Off" but is not "50%_Off Ltd"
+      const exact = await getQuotesList({ customer: "50%_off ltd", today: TODAY });
+      expect(exact.data.map((q) => q.id)).toEqual([ids.draft]);
+      const search = await getQuotesList({ q: "Acme", today: TODAY });
+      expect(search.metadata.total).toBe(2);
+      await create({ companyName: "Acme Corp Holdings" });
+      expect((await getQuotesList({ q: "Acme Corp", today: TODAY })).metadata.total).toBe(3);
+      expect((await getQuotesList({ customer: "Acme Corp", today: TODAY })).metadata.total).toBe(2);
+      const exported = (await exportAll({ customer: "acme corp", today: TODAY })).flat();
+      expect(exported.map((q) => q.id).sort()).toEqual([ids.sent, ids.expired].sort());
+    });
+
+    // ?q=%00 used to reach Postgres and fail the whole page.
+    it("ignores NUL in search input instead of failing", async () => {
+      await expect(getQuotesList({ q: "\u0000", today: TODAY })).resolves.toMatchObject({ metadata: { total: 5 } });
+      await expect(getQuotesList({ q: "Ac\u0000me", customer: "\u0000", today: TODAY })).resolves.toMatchObject({
+        metadata: { total: 2 },
+      });
+      await expect(exportAll({ q: "a\u0000", today: TODAY })).resolves.toBeDefined();
+      await expect(getCustomerDirectory({ q: "\u0000" })).resolves.toMatchObject({ metadata: { total: 4 } });
+      await expect(searchCustomerOptions("\u0000")).resolves.toEqual([]);
+      await expect(searchProductOptions("wid\u0000")).resolves.toHaveLength(2);
+      await expect(getLatestCustomerByName("\u0000")).resolves.toBeNull();
+    });
+  });
+
+  // The CSV used to stop silently at 10 000 rows; it now pages by keyset.
+  describe("CSV export batches", () => {
+    it.each(["newest", "oldest", "amount_desc", "amount_asc", "valid_until"])(
+      "returns every row exactly once, in list order (%s)",
+      async (sort) => {
+        for (let i = 0; i < 5; i++) {
+          // ties on the sort column (same total / valid-until) must not skip rows
+          await create({ items: [{ productName: "W", quantity: 1, unitPrice: 100 * (i % 2) + 100 }], validUntil: "2026-11-08" });
+        }
+        // equal created_at down to the millisecond, distinct only in microseconds
+        await db.execute(sql`update quotations set created_at = ('2026-10-09 01:02:03.123' || (id % 3)::text)::timestamp`);
+        const batches = await exportAll({ sort, today: TODAY }, 2);
+        expect(batches.map((b) => b.length)).toEqual([2, 2, 1]);
+        const exported = batches.flat().map((q) => q.id);
+        const listed = (await getQuotesList({ sort, today: TODAY, pageSize: 100 })).data.map((q) => q.id);
+        expect(exported).toEqual(listed);
+        expect(new Set(exported).size).toBe(5);
+      }
+    );
+
+    it("handles an exact multiple of the batch size and an empty result", async () => {
+      for (let i = 0; i < 4; i++) await create();
+      expect((await exportAll({ today: TODAY }, 2)).map((b) => b.length)).toEqual([2, 2]);
+      expect(await exportAll({ q: "no such quote", today: TODAY }, 2)).toEqual([]);
+    });
+  });
+
+  // Plans: the newest-first list and the dashboard must read the created_at
+  // index instead of sorting every quote (and joining its customer).
+  describe("query plans", () => {
+    async function plan(text: ReturnType<typeof sql>): Promise<string> {
+      return db.transaction(async (tx) => {
+        await tx.execute(sql`set local enable_seqscan = off`);
+        const rows = rowsOf(await tx.execute(sql`explain ${text}`));
+        return rows.map((r) => String(Object.values(r)[0])).join("\n");
+      });
+    }
+
+    it("serves newest/oldest from quotations_created_at_idx", async () => {
+      for (let i = 0; i < 3; i++) await create();
+      for (const sort of ["newest", "oldest"] as const) {
+        const q = db.select({ id: quotations.id }).from(quotations).orderBy(...quoteListOrder(sort)).limit(20).toSQL();
+        const text = sql.raw(q.sql.replace(/\$(\d+)/g, (_m, n) => String(q.params[Number(n) - 1])));
+        expect(await plan(text)).toMatch(/quotations_created_at_idx/);
+      }
+      const recent = db.query.quotations.findMany({
+        with: { customer: true },
+        orderBy: (t, { desc }) => [desc(t.createdAt), desc(t.id)],
+        limit: 6,
+      }).toSQL();
+      const text = sql.raw(recent.sql.replace(/\$(\d+)/g, (_m, n) => String(recent.params[Number(n) - 1])));
+      expect(await plan(text)).toMatch(/quotations_created_at_idx/);
+      // ordering itself is unchanged
+      expect((await getRecentQuotes(6, TODAY)).map((q) => q.id)).toEqual(
+        (await getQuotesList({ today: TODAY })).data.map((q) => q.id).slice(0, 6)
+      );
+    });
+  });
+
+  // Two open editors must not silently overwrite each other.
+  describe("updateQuote version check", () => {
+    it("saves with the loaded version and refuses a stale one", async () => {
+      const id = await create();
+      const loaded = (await getQuoteById(id))!.updatedAt;
+      await expect(updateQuote(id, input({ title: "first" }), loaded?.toISOString() ?? null)).resolves.toEqual({
+        success: true,
+        id,
+      });
+      await expect(updateQuote(id, input({ title: "second" }), loaded?.toISOString() ?? null)).resolves.toMatchObject({
+        code: "CONFLICT",
+      });
+      expect((await getQuoteById(id))?.title).toBe("first");
+      const current = (await getQuoteById(id))!.updatedAt!;
+      await expect(updateQuote(id, input({ title: "third" }), current.getTime())).resolves.toMatchObject({
+        success: true,
+      });
+    });
+  });
+
+  // Columns are timestamp without time zone, read as UTC: a server whose
+  // TimeZone is Asia/Taipei must not put database-written times 8 h ahead.
+  describe("session time zone", () => {
+    const dbName = () => new URL(TEST_DATABASE_URL!).pathname.slice(1);
+
+    afterEach(async () => {
+      await db.execute(sql.raw(`alter database "${dbName()}" reset timezone`));
+      await closeDb();
+    });
+
+    it("writes created_at and event times in UTC whatever the server zone", async () => {
+      await db.execute(sql.raw(`alter database "${dbName()}" set timezone = 'Asia/Taipei'`));
+      await closeDb(); // new sessions pick the database setting up
+      const id = await create();
+      const q = await getQuoteById(id);
+      const now = Date.now();
+      expect(Math.abs(q!.createdAt.getTime() - now)).toBeLessThan(60_000);
+      expect(Math.abs(q!.updatedAt!.getTime() - now)).toBeLessThan(60_000);
+      expect(Math.abs(q!.events[0].createdAt.getTime() - now)).toBeLessThan(60_000);
+      const [{ tz }] = await query(sql`show timezone`);
+      expect(tz ?? Object.values((await query(sql`show timezone`))[0])[0]).toBe("UTC");
     });
   });
 });

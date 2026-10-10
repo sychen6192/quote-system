@@ -29,7 +29,7 @@ type CustomerField = "companyName" | "contactPerson" | "email" | "phone" | "vatN
 export function CustomerSection() {
   const t = useTranslations("QuoteForm");
   const form = useFormContext<QuoteFormValues>();
-  const { onSessionExpired } = useEditor();
+  const { onSessionExpired, submitting } = useEditor();
   const { twVatLookup } = useAppConfig();
   const [lookingUp, setLookingUp] = useState(false);
   const [announcement, setAnnouncement] = useState("");
@@ -115,6 +115,7 @@ export function CustomerSection() {
                 search={searchCustomers}
                 getKey={(option) => option.companyName.toLowerCase()}
                 onSessionError={onSessionExpired}
+                cancelOn={submitting}
                 aria-required="true"
                 placeholder={t("placeholders.companyName")}
                 className={fieldClass}

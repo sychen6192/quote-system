@@ -25,7 +25,8 @@ function hasUnsafeChar(s: string): boolean {
 /**
  * Only same-site absolute paths survive; anything that a browser could
  * resolve to another origin (`//evil`, `/\evil`, `/<TAB>/evil`, `https:…`)
- * falls back.
+ * falls back. The check runs on the raw value AND on the normalised result:
+ * dot segments collapse, so `/.//evil` or `/a/..//evil` parse to `//evil`.
  */
 export function safeNextPath(raw: unknown, fallback = `/${DEFAULT_LOCALE}`): string {
   if (typeof raw !== "string" || raw.length > 2048) return fallback;
@@ -34,7 +35,9 @@ export function safeNextPath(raw: unknown, fallback = `/${DEFAULT_LOCALE}`): str
   try {
     const url = new URL(raw, PROBE_ORIGIN);
     if (url.origin !== PROBE_ORIGIN) return fallback;
-    return `${url.pathname}${url.search}${url.hash}`;
+    const out = `${url.pathname}${url.search}${url.hash}`;
+    if (!out.startsWith("/") || out.startsWith("//") || hasUnsafeChar(out)) return fallback;
+    return out;
   } catch {
     return fallback;
   }

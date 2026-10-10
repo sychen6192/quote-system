@@ -38,14 +38,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { ACTION_TOAST_DURATION_MS } from "@/components/ui/toast-layer";
 import { fromCents, lineAmount, toCents } from "@/lib/money";
 import type { QuoteFormValues, QuoteItemFormValues } from "@/lib/schemas/quote";
 import { cn } from "@/lib/utils";
 import type { ProductOption } from "@/services/products";
 import { AsyncCombobox, Highlight } from "./async-combobox";
-import { useEditor, useMoney, useRevealListener } from "./editor-context";
+import { useEditor, useMoney, useRevealListener, useSubmittingListener } from "./editor-context";
 import { AdornedInput, RequiredMark, WrappingMoney, decimalInputProps, fieldClass } from "./field-bits";
-import { emptyItem, lenientNumber } from "./form-model";
+import { emptyItem, lenientNumber, trailingBlankItemIndexes } from "./form-model";
 
 type RowActions = {
   moveUp(index: number): void;
@@ -81,6 +82,13 @@ export function ItemsSection() {
     .filter(Boolean);
   const count = fields.length;
 
+  // Save drops untouched rows at the end (Enter in the last price adds one),
+  // so they don't block saving with "required" on fields nobody filled in.
+  useSubmittingListener(() => {
+    const blank = trailingBlankItemIndexes(form.getValues("items"));
+    if (blank.length) remove(blank);
+  });
+
   const focusName = useCallback(
     (index: number) =>
       requestAnimationFrame(() =>
@@ -113,6 +121,7 @@ export function ItemsSection() {
           label: t("items.undo"),
           onClick: () => insert(index, removed, { shouldFocus: false }),
         },
+        duration: ACTION_TOAST_DURATION_MS,
       });
     },
     next: (index) => {
@@ -195,7 +204,7 @@ function ItemRow({
   const t = useTranslations("QuoteForm");
   const form = useFormContext<QuoteFormValues>();
   const money = useMoney();
-  const { onSessionExpired } = useEditor();
+  const { onSessionExpired, submitting } = useEditor();
   const n = index + 1;
   const suffix = <span className="sr-only">{t("items.labelSuffix", { n })}</span>;
   const [showDescription, setShowDescription] = useState(
@@ -276,6 +285,7 @@ function ItemRow({
                 search={searchProducts}
                 getKey={(option) => option.productName.toLowerCase()}
                 onSessionError={onSessionExpired}
+                cancelOn={submitting}
                 aria-required="true"
                 placeholder={t("placeholders.productName")}
                 className={fieldClass}
@@ -436,7 +446,6 @@ function ItemRow({
                     aria-required="true"
                     enterKeyHint={index === count - 1 ? "done" : "next"}
                     onKeyDown={onPriceKeyDown}
-                    placeholder="0"
                     className={cn(fieldClass, adorned, "bg-background @[40rem]:text-right")}
                   />
                 </FormControl>
@@ -534,6 +543,6 @@ function LineAmount({ index }: { index: number }) {
   const [quantity, unitPrice] = useWatch<QuoteFormValues>({
     name: [`items.${index}.quantity`, `items.${index}.unitPrice`],
   }) as [unknown, unknown];
-  const amount = lineAmount(lenientNumber(quantity), toCents(lenientNumber(unitPrice)));
+  const amount = lineAmount(lenientNumber(quantity), toCents(lenientNumber(unitPrice)), money.step);
   return <WrappingMoney value={money.format(amount)} className="min-w-0 text-sm font-semibold" />;
 }

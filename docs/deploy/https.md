@@ -74,6 +74,8 @@ With a domain name, Caddy gets free, publicly trusted certificates (Let's Encryp
    APP_PASSWORD=<a strong password>
    ```
 
+   (Letters, digits and `. _ ~ ! @ % ^ * + = : , -`, or the whole password in single quotes: see `.env.example`.)
+
 4. `docker compose up -d`, wait a minute, then open `https://quote.example.com`. If it fails, `docker compose logs caddy` explains why (usually DNS not pointing at you yet, or port 80 blocked).
 
 The app is now reachable from the whole internet: keep `APP_PASSWORD` set and the image up to date. To add a second login in front of it, use Cloudflare Access (option 3).
@@ -94,7 +96,7 @@ Both give you a valid `https://` address without opening ports on your router. Y
 
 4. Open `https://<machine-name>.<tailnet-name>.ts.net` (shown by `tailscale serve status`) on any device in your tailnet.
 
-Keep `APP_BIND=0.0.0.0` (the default) or `127.0.0.1`; Tailscale connects to the app locally.
+Keep `APP_BIND=0.0.0.0` (the default) or `127.0.0.1`; Tailscale connects to the app locally. Keep `APP_PASSWORD` set. If you turn sign-in off, the app still answers under the `*.ts.net` name (and logs a one-time warning about it); add that name to `.env`, for example `APP_HOSTS=<machine-name>.<tailnet-name>.ts.net`, and run `docker compose up -d`, so the app refuses every other domain name (protection against DNS rebinding).
 
 ### Cloudflare Tunnel (public, with an optional login in front)
 
@@ -112,8 +114,19 @@ Keep `APP_BIND=0.0.0.0` (the default) or `127.0.0.1`; Tailscale connects to the 
    ```
 
    and put `CLOUDFLARE_TUNNEL_TOKEN=<token>` in `.env`, then `docker compose up -d`.
-3. In the tunnel's **Public hostname** tab, add `quote.example.com` with service `http://app:3000`.
+3. In the tunnel's **Public hostname** tab, add `quote.example.com` with service `http://app:3000`. Keep `APP_PASSWORD` set; if you turn sign-in off anyway (behind Access, step 4), add `APP_HOSTS=quote.example.com` to `.env` so the app refuses other names.
+
+   Do not also publish port 3000 to your network: the connector reaches the app inside Docker, and anyone who can open `http://<server-ip>:3000` goes around the tunnel and Cloudflare Access. Set `APP_BIND=127.0.0.1` in `.env` and run `docker compose up -d`; port 3000 then only answers on the server itself (a connector installed on the host instead of in Docker uses `http://localhost:3000`, which keeps working).
 4. Optional: in **Zero Trust → Access → Applications**, protect `quote.example.com` with a one-time PIN sent to your team's email addresses.
+
+   Browsers fetch some of the files they need to install the app without the Access cookie, and Access answers those requests with its login page. Add a second Access application for the same hostname with these paths and a **Bypass** policy (Everyone), or the install option never appears:
+
+   - `/manifest.webmanifest`
+   - `/icons/*`
+   - `/sw.js`
+   - `/offline.html`
+
+   They hold no quotes or customer data (the app keeps them public even with `APP_PASSWORD` set), and the more specific paths take precedence over the hostname-wide application. Any other login in front of the app (basic auth on a reverse proxy, Authelia, Authentik) needs the same exception.
 
 ## Installing the app
 
@@ -127,7 +140,8 @@ The installed app opens in its own window, keeps you signed in for 30 days and s
 
 ## Troubleshooting
 
-- **No install option.** The address bar must show a padlock without warnings. A certificate warning (even if you clicked through) means the device does not trust the certificate yet; repeat step 4 of option 1. On iPhone, use Safari.
+- **No install option.** The address bar must show a padlock without warnings. A certificate warning (even if you clicked through) means the device does not trust the certificate yet; repeat step 4 of option 1. On iPhone, use Safari. Behind Cloudflare Access or another login in front of the app, let the install files through (option 3, step 4).
 - **"Your connection is not private" after moving the server.** The certificate is issued for `SITE_ADDRESS`; open exactly that address, or change `SITE_ADDRESS` and run `docker compose up -d`.
 - **Caddy does not start.** `docker compose logs caddy`. "address already in use" means another program owns port 80 or 443: set `HTTP_PORT` and `HTTPS_PORT`.
+- **"Unknown host".** Sign-in is off and `APP_HOSTS` is set, but the address you opened is not in it. Add that host name to `APP_HOSTS` (comma-separated; also any name a reverse proxy sends in `X-Forwarded-Host`) and run `docker compose up -d`.
 - **Sign-in loops behind your own reverse proxy.** The app marks its session cookie `Secure` when the proxy sends `X-Forwarded-Proto: https`. If the proxy sends that header while the browser actually uses `http://`, the browser drops the cookie. Send the header only for HTTPS traffic, as the bundled Caddy does.

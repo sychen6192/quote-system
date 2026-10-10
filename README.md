@@ -50,7 +50,7 @@ The installer:
 
 Open the address it prints (for example `http://192.168.1.20:3000`) and sign in.
 
-Options are environment variables, for example `QUOTE_DIR=/opt/quote-system QUOTE_VERSION=1.0.0 APP_PORT=8080 sh install.sh`. `APP_PASSWORD=` (empty) turns sign-in off. Running the installer again upgrades to the latest release and keeps your `.env` and data.
+Options are environment variables, for example `QUOTE_DIR=/opt/quote-system QUOTE_VERSION=1.0.0 APP_PORT=8080 sh install.sh`. `APP_PASSWORD=` (empty) turns sign-in off. `COMPOSE_PROFILES=https` also starts Caddy for HTTPS (see below). Running the installer again upgrades to the latest release and keeps your `.env` and data. Whenever the `https` profile is on (in `COMPOSE_PROFILES`, or Caddy started by hand) and `APP_BIND` is empty, it sets `APP_BIND=127.0.0.1`, so only Caddy is reachable from other machines; an `APP_BIND` you set yourself is kept.
 
 ### By hand with Docker Compose
 
@@ -68,13 +68,15 @@ AUTH_SECRET=<at least 32 random characters>
 APP_PASSWORD=<the password everyone signs in with>
 ```
 
+`APP_PASSWORD` may contain letters, digits and `. _ ~ ! @ % ^ * + = : , -`. For other characters, wrap the whole password in single quotes (`APP_PASSWORD='Acme$ecure #2026'`): Docker Compose reads `.env` and would otherwise turn `$name` into an empty variable and cut the value at ` #`, so nobody could sign in with the password you typed.
+
 Then start it:
 
 ```sh
 docker compose up -d
 ```
 
-The app is on port 3000 (`APP_PORT`). The database is not published on any port. On Windows, the same commands work in PowerShell (Windows 10 and later include `curl` and `tar`); see [Docker Desktop on Windows and macOS](docs/deploy/docker-desktop.md). For Synology and QNAP see [NAS notes](docs/deploy/nas.md).
+The app is on port 3000 (`APP_PORT`). The database is not published on any port. On Windows, use the PowerShell steps in [Docker Desktop on Windows and macOS](docs/deploy/docker-desktop.md) instead (they use `curl.exe` and one command per line). For Synology and QNAP see [NAS notes](docs/deploy/nas.md).
 
 ## First-run setup
 
@@ -97,7 +99,7 @@ Everything saved here is stored in the database, takes precedence over `.env`, a
 Browsers only install web apps from a secure address: `https://…`, or `http://localhost` on the same computer. Plain `http://192.168.1.20:3000` works for everything else, but the install option will not appear on phones. Pick one of these:
 
 1. **Caddy with its own certificate authority (home or office network).** In `.env` set `SITE_ADDRESS` to the server's IP or a name such as `quote.local`, and `APP_BIND=127.0.0.1`. Then run `docker compose --profile https up -d` and open `https://<SITE_ADDRESS>`. Each device must trust Caddy's root certificate once (iPhone, iPad, Android, Windows and macOS steps are in the [HTTPS guide](docs/deploy/https.md)).
-2. **A real domain.** Point a DNS record such as `quote.example.com` at the server, make ports 80 and 443 reachable from the internet, set `SITE_ADDRESS=quote.example.com` and run `docker compose --profile https up -d`. Caddy gets and renews a free certificate. Keep `APP_PASSWORD` set.
+2. **A real domain.** Point a DNS record such as `quote.example.com` at the server, make ports 80 and 443 reachable from the internet, set `SITE_ADDRESS=quote.example.com` and `APP_BIND=127.0.0.1`, and run `docker compose --profile https up -d`. Caddy gets and renews a free certificate. Keep `APP_PASSWORD` set.
 3. **Tailscale or Cloudflare Tunnel (no open ports).** `tailscale serve --bg 3000` gives you `https://<machine>.<tailnet>.ts.net` with a valid certificate on every device in your tailnet; a Cloudflare Tunnel publishes the app on your domain, and Cloudflare Access can add a login in front of it.
 
 Then install it:
@@ -120,6 +122,8 @@ Set values on the Settings page where you can; environment variables in `.env` p
 | `POSTGRES_PASSWORD` | none, required | Database password for the bundled PostgreSQL (letters and digits). Only used when the database is first created |
 | `APP_PASSWORD` | empty (sign-in off) | Shared sign-in password. Changing it signs everyone out |
 | `AUTH_SECRET` | derived from `APP_PASSWORD`, with a warning | Random string of at least 32 characters that signs session cookies |
+| `APP_HOSTS` | empty (any host name) | Only used with sign-in off. Empty, the app answers under any name and logs a warning, once per start, the first time it is reached under a name that is not local. Set it to the names you use, comma-separated (`quote.example.com`, `*.example.com`), and every other name gets "Unknown host" (HTTP 421), which protects against DNS rebinding. IP addresses, `localhost`, single-label names, names ending in `.local`, `.lan`, `.home`, `.home.arpa`, `.internal`, `.localdomain` or `.localhost`, and `SITE_ADDRESS` always work; `*` allows every name and silences the warning |
+| `TRUST_PROXY_HOPS` | `1` | Reverse proxies in front of the app that each append to `X-Forwarded-For`. Only tells clients apart for the sign-in, email and VAT-number lookup rate limits; set `2` for e.g. Cloudflare in front of a NAS reverse proxy |
 | `APP_NAME` | company name, then "Quote System" | Name of the installed app |
 | `APP_TIMEZONE` | `TZ`, then `Asia/Taipei` | IANA time zone that decides "today" for dates, numbering and expiry |
 | `RESEND_API_KEY` | empty (email off) | [Resend](https://resend.com) API key. Only read from the environment |
@@ -156,7 +160,7 @@ Set values on the Settings page where you can; environment variables in `.env` p
 |---|---|---|
 | `QUOTE_VERSION` | the release you installed | Image tag: `1.0.0`, `1.0`, `1` or `latest` |
 | `QUOTE_IMAGE` | `ghcr.io/sychen6192/quote-system` | Image repository (for mirrors or your own builds) |
-| `APP_PORT` / `APP_BIND` | `3000` / `0.0.0.0` | Host port and address of the app. Use `APP_BIND=127.0.0.1` behind Caddy |
+| `APP_PORT` / `APP_BIND` | `3000` / `0.0.0.0` (empty) | Host port and address of the app. Use `APP_BIND=127.0.0.1` behind Caddy (the installer sets it while `APP_BIND` is empty) |
 | `SITE_ADDRESS` | `localhost` | Domain, IP or local name Caddy serves (https profile) |
 | `CADDY_TLS` | empty | `tls internal` forces Caddy's own CA for private names such as `quote.office` |
 | `HTTP_PORT` / `HTTPS_PORT` | `80` / `443` | Host ports for Caddy |
@@ -165,18 +169,21 @@ Set values on the Settings page where you can; environment variables in `.env` p
 | `BACKUP_INTERVAL_SECONDS` | `86400` | Time between backups (backup profile) |
 | `POSTGRES_USER` / `POSTGRES_DB` | `postgres` / `quote-system` | Database user and name |
 
-Write `KEY=value` without quotes. Branding images can still be mounted the old way, as `branding/logo.png`, `branding/stamp.png` and `branding/icon.png` next to `docker-compose.yml`; uploads on the Settings page take precedence.
+Write `KEY=value` without quotes; the one exception is an `APP_PASSWORD` with characters other than letters, digits and `. _ ~ ! @ % ^ * + = : , -`, which goes in single quotes (see [Install](#by-hand-with-docker-compose)). Branding images can still be mounted the old way, as `branding/logo.png`, `branding/stamp.png` and `branding/icon.png` next to `docker-compose.yml`; uploads on the Settings page take precedence.
 
 ## Password protection
 
 Sign-in is on when `APP_PASSWORD` is set (the installer sets a random one). Everyone shares that password; a session lasts 30 days.
 
-- Change the password in `.env` and run `docker compose up -d`: everyone is signed out.
-- After 5 wrong passwords from one address, sign-in pauses for 15 minutes.
+- Change the password in `.env` and run `docker compose up -d`: everyone is signed out. Use letters, digits and `. _ ~ ! @ % ^ * + = : , -`, or put the whole password in single quotes.
+- Wrong passwords are throttled. The counts are kept in memory (a restart clears them); a successful sign-in resets the count of that browser or address and does not count toward the shared limit.
+  - A browser that has signed in here before keeps a device cookie (`qs_device`, 400 days, sent only to the sign-in API) and is limited on its own: after 5 wrong passwords it waits up to 15 minutes. The limits below never apply to it, so wrong guesses from elsewhere cannot lock it out. Changing `APP_PASSWORD` or `AUTH_SECRET` forgets every device.
+  - Any other browser: after 5 wrong passwords from one client address, sign-in pauses for up to 15 minutes for that address. On top of that, all such browsers together get at most 30 failed attempts a minute, because a client that talks to the app directly can make up its address. While that shared limit is reached, browsers that never signed in here wait up to a minute; browsers that have, and everyone already signed in, are not affected.
+  - The client address is the `X-Forwarded-For` entry written by the nearest proxy (the bundled Caddy sets it). If several proxies in front of the app each add one, set `TRUST_PROXY_HOPS` to their number.
 - Session cookies are `HttpOnly` and `SameSite=Lax`, and `Secure` when the request came over HTTPS (Caddy tells the app).
 - `/api/health` and the app's icons and manifest stay public so health checks and installs work.
 
-Without a password, anyone who can reach the port can read and change your quotes. Never expose an instance without `APP_PASSWORD` to the internet, and prefer HTTPS when you do. Docker publishes ports past host firewalls such as ufw, so use `APP_BIND=127.0.0.1` when only Caddy should be reachable.
+Without a password, anyone who can reach the port can read and change your quotes, so keep the one the installer set. Never expose an instance without `APP_PASSWORD` to the internet, and prefer HTTPS when you do. If you turn sign-in off on a trusted network and reach the app by a domain name (a NAS reverse proxy, Tailscale's `*.ts.net`, a tunnel), also list those names in `APP_HOSTS`: every other name is then refused with "Unknown host", so a web page cannot reach the app through DNS rebinding. Without `APP_HOSTS` the app answers under any name and logs a warning the first time it is reached under one that is not local (an IP address, `localhost`, a single-label or `.local`-style name, or `SITE_ADDRESS`). Docker publishes ports past host firewalls such as ufw, so use `APP_BIND=127.0.0.1` when only Caddy should be reachable.
 
 ## Backup and restore
 
@@ -190,17 +197,31 @@ The database holds everything: quotes, customers, settings and uploaded images. 
 docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > quote-$(date +%F).dump
 ```
 
-**Restore** (replaces the current data):
+**Restore** (deletes the current data, then restores the dump into an empty database):
 
 ```sh
-docker compose stop app
-docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists --no-owner' < quote-2026-10-09.dump
+docker compose stop app backup
+docker compose exec -T db sh -c 'dropdb -U "$POSTGRES_USER" --force "$POSTGRES_DB" && createdb -U "$POSTGRES_USER" "$POSTGRES_DB"'
+docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --exit-on-error' < quote-2026-10-09.dump
 docker compose start app
 ```
+
+`pg_restore` must finish without an error; if it stops with one, run the commands again from `dropdb`. A dump from an older version is fine: the app applies newer migrations when it starts.
 
 Moving to a new server, rotating the database password and upgrading PostgreSQL are covered in the [backup guide](docs/deploy/backup.md).
 
 ## Upgrading
+
+Take a backup first. The simplest way is to run the installer again, from the install directory or with the same `QUOTE_DIR`:
+
+```sh
+curl -fsSLO https://github.com/sychen6192/quote-system/releases/latest/download/install.sh
+sh install.sh
+```
+
+It downloads the new bundle, moves `QUOTE_VERSION` in `.env` to the newest release, keeps `.env` and your data, and saves a copy of any `docker-compose.yml` you changed (keep local changes in `docker-compose.override.yml`).
+
+By hand: `.env` pins the release you installed (`QUOTE_VERSION=1.0.0`), so `docker compose pull` alone changes nothing. Set `QUOTE_VERSION` to the new release (or to `1` to follow every 1.x release), then:
 
 ```sh
 cd ~/quote-system
@@ -208,9 +229,7 @@ docker compose pull
 docker compose up -d
 ```
 
-Database migrations run automatically when the new version starts. With `QUOTE_VERSION` pinned (the installer pins the release you installed), change it first, or simply run the installer again: it moves `QUOTE_VERSION` to the newest release, keeps `.env` and your data, and saves a copy of any `docker-compose.yml` you changed (keep local changes in `docker-compose.override.yml`).
-
-Take a backup before upgrading. Migrations only go forward: to roll back across one, restore the backup taken before the upgrade and set `QUOTE_VERSION` back. Release notes are on the [releases page](https://github.com/sychen6192/quote-system/releases) and in [CHANGELOG.md](CHANGELOG.md).
+Database migrations run automatically when the new version starts. They only go forward: to roll back across one, set `QUOTE_VERSION` back, restore the backup taken before the upgrade with the [restore commands](#backup-and-restore) (they empty the database first, so no table of the newer version is left behind), and finish with `docker compose up -d` instead of `docker compose start app`, so the app container is recreated from the older image. Release notes are on the [releases page](https://github.com/sychen6192/quote-system/releases) and in [CHANGELOG.md](CHANGELOG.md).
 
 ## Development
 
@@ -224,6 +243,8 @@ cp .env.example .env              # DATABASE_URL points at the compose database
 docker compose up -d postgres     # PostgreSQL 16 on 127.0.0.1:5432
 npm run dev                       # http://localhost:3000; migrations run on start
 ```
+
+The contributor stack is the compose project `quote-system-dev` (volume `quote-system-dev_postgres_data`), so it never touches the database of a Quote System installed with the deploy bundle on the same machine.
 
 | Command | Purpose |
 |---|---|

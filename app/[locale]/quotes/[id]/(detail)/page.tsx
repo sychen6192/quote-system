@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { hasLocale } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { PageContainer } from "@/components/app-shell/page-header";
+import { pagePath, requireSession } from "@/components/app-shell/require-session";
 import { QuoteDocument } from "@/components/quote-document/quote-document";
-import { formatDocumentDate } from "@/components/quote-document/format";
+import { documentMoney, formatDocumentDate, formatTotal } from "@/components/quote-document/format";
 import { getQuoteDocumentLabels } from "@/components/quote-document/labels";
 import { ActivityTimeline } from "@/components/quote-detail/activity-timeline";
 import { QuoteDetailProvider, type QuoteDetailInfo } from "@/components/quote-detail/detail-context";
@@ -12,14 +14,14 @@ import { DocumentViewer } from "@/components/quote-detail/document-viewer";
 import type { QuoteEventRecord } from "@/components/quote-detail/model";
 import { MobileActionBar } from "@/components/quote-detail/quote-actions";
 import { ActivityCard, CustomerCard, DetailsCard } from "@/components/quote-detail/side-cards";
-import { DEFAULT_LOCALE } from "@/i18n/locales";
-import { isAppLocale } from "@/lib/auth/paths";
+import { isAuthenticated } from "@/lib/auth/guard";
 import { pickCompanyName } from "@/lib/company-name";
 import { todayInTimeZone } from "@/lib/dates";
-import { formatMoney } from "@/lib/money";
+import { minorUnitStep } from "@/lib/money";
 import { localizedPdfFilename } from "@/lib/pdf/labels";
 import { quoteViewFromRecord } from "@/lib/quote-view";
 import { parseQuoteId } from "@/lib/schemas/quote";
+import { routing } from "@/navigation";
 import { getDocumentBranding, getSettings } from "@/services/settings";
 import { loadQuote } from "./load-quote";
 
@@ -37,6 +39,8 @@ const PRINT_CSS =
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { locale, id } = await params;
+  // Runs alongside the layout: never read the quote for a signed-out request.
+  if (!(await isAuthenticated())) return {};
   const quoteId = parseQuoteId(id);
   const quote = quoteId === null ? null : await loadQuote(quoteId);
   if (!quote) return {};
@@ -61,8 +65,10 @@ function timestampFormatter(locale: string, timeZone: string): (value: Date | nu
 
 export default async function QuoteDetailPage({ params }: { params: Params }) {
   const { locale, id } = await params;
+  if (!hasLocale(routing.locales, locale)) notFound();
+  await requireSession(locale, pagePath(locale, `/quotes/${encodeURIComponent(id)}`));
   setRequestLocale(locale);
-  const lang = isAppLocale(locale) ? locale : DEFAULT_LOCALE;
+  const lang = locale;
 
   const quoteId = parseQuoteId(id);
   if (quoteId === null) notFound();
@@ -78,12 +84,13 @@ export default async function QuoteDetailPage({ params }: { params: Params }) {
 
   const timeZone = settings.region.timezone;
   const today = todayInTimeZone(timeZone);
-  const view = quoteViewFromRecord(quote, { today });
-  const money = {
+  // Rounded like the PDF and the saved totals (whole NT$ per line and for the tax).
+  const view = quoteViewFromRecord(quote, { today, minorUnitStep: minorUnitStep(branding.fractionDigits) });
+  const money = documentMoney(view, {
     currency: branding.currency,
     currencyLocale: branding.currencyLocale,
     fractionDigits: branding.fractionDigits,
-  };
+  });
   const date = (iso: string | null) => formatDocumentDate(iso, lang);
   const timestamp = timestampFormatter(lang, timeZone);
 
@@ -121,7 +128,7 @@ export default async function QuoteDetailPage({ params }: { params: Params }) {
       <style>{PRINT_CSS}</style>
       <PageContainer className="space-y-5 pb-28 md:space-y-6 md:pb-10 print:max-w-none print:p-0">
         <DetailHeader
-          total={formatMoney(view.totals.total, money)}
+          total={formatTotal(view.totals.total, money)}
           issuedDateLabel={date(view.issuedDate)}
           validUntilLabel={validUntilLabel}
         />

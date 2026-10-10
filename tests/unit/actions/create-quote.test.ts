@@ -143,7 +143,8 @@ describe("createQuote", () => {
         vatNumber: "12345678",
       });
       // subtotal 25_000; discount 2_000 (taxable share 2_000 × 25_000/25_000)
-      // tax = 23_000 × 5% = 1_150; fees 1_000
+      // tax = 23_000 × 5% = 1_150 → NT$11.5 rounds to whole NT$12 (TWD
+      // settings); fees 1_000
       expect(quote).toMatchObject({
         quotationNumber: "QT-20260401-001",
         customerId: 11,
@@ -162,9 +163,9 @@ describe("createQuote", () => {
         discountValue: 2_000,
         discountAmount: 2_000,
         taxRate: 500,
-        taxAmount: 1_150,
+        taxAmount: 1_200,
         otherFees: 1_000,
-        totalAmount: 25_000 - 2_000 + 1_150 + 1_000,
+        totalAmount: 25_000 - 2_000 + 1_200 + 1_000,
       });
       expect(items).toEqual([
         { position: 0, productName: "Widget", description: "Blue", unit: "個", quantity: 2, unitPrice: 10_000, isTaxable: true, quotationId: 5 },
@@ -239,6 +240,32 @@ describe("createQuote", () => {
       mockSettings.mockRejectedValueOnce(new Error("db down"));
       await expect(createQuote(validInput())).resolves.toMatchObject({ code: "INTERNAL" });
       expect(mockTransaction).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("minor-unit rounding", () => {
+    const input = () =>
+      validInput({
+        discountType: "percent",
+        discountValue: 5,
+        taxRate: 5,
+        otherFees: 0,
+        items: [{ productName: "Widget", quantity: 1, unitPrice: 1003, isTaxable: true }],
+      });
+    const storedQuote = () =>
+      txMock.argsOf("insert", "values").find((v) => (v as Record<string, unknown>).totalAmount !== undefined) as
+        | Record<string, unknown>
+        | undefined;
+
+    it("stores whole NT$ for TWD so 1,003 − 50 + 48 = 1,001", async () => {
+      await expect(createQuote(input())).resolves.toMatchObject({ success: true });
+      expect(storedQuote()).toMatchObject({ subtotal: 100_300, discountAmount: 5_000, taxAmount: 4_800, totalAmount: 100_100 });
+    });
+
+    it("keeps cents for a two-decimal currency", async () => {
+      mockSettings.mockResolvedValue(testSettings({ money: { currency: "USD", currencyLocale: "en-US", fractionDigits: 2 } }));
+      await expect(createQuote(input())).resolves.toMatchObject({ success: true });
+      expect(storedQuote()).toMatchObject({ discountAmount: 5_015, taxAmount: 4_764, totalAmount: 100_049 });
     });
   });
 });

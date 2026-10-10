@@ -73,29 +73,48 @@ export type SettingsMeta = {
   brandingStamps?: Record<string, string>;
 };
 
-// Text fields where a saved "" means "hide it" rather than "not set".
-// The others (name, pattern, currency, …) fall back when blank.
-const BLANK_IS_A_VALUE: { [S in SettingsSection]?: readonly string[] } = {
+/**
+ * Text fields where a saved "" means "hide it" rather than "not set".
+ * The others (name, pattern, currency, …) fall back when blank.
+ */
+export const BLANK_IS_A_VALUE: { readonly [S in SettingsSection]?: readonly string[] } = {
   company: ["nameLocal", "address", "vatNumber", "email", "phone", "website"],
   payment: ["bankName", "bankCode", "accountName", "accountNumber"],
   quote: ["defaultNotes", "defaultTerms", "defaultSalesperson", "footerText"],
   mail: ["ccEmails", "replyTo"],
 };
 
-const isBlank = (value: unknown) =>
-  value === "" || (Array.isArray(value) && value.length === 0);
+export function blankIsAValue(section: SettingsSection, key: string): boolean {
+  return BLANK_IS_A_VALUE[section]?.includes(key) ?? false;
+}
 
-type Source = "db" | "env" | "default";
+export function isBlankSetting(value: unknown): boolean {
+  return value === "" || (Array.isArray(value) && value.length === 0);
+}
+
+/** Where a field's effective value comes from. */
+export type SettingSource = "db" | "env" | "default";
+
+/**
+ * The layer a field's value comes from, by the precedence of mergeSettings:
+ * a saved value wins unless it is blank where blank means "unset"; then a
+ * non-blank env value; then the default.
+ */
+export function settingSource(
+  section: SettingsSection,
+  key: string,
+  env: SettingsLayer,
+  db: SettingsLayer
+): SettingSource {
+  const dbValue = (db[section] as Record<string, unknown> | undefined)?.[key];
+  if (dbValue !== undefined && (blankIsAValue(section, key) || !isBlankSetting(dbValue))) return "db";
+  const envValue = (env[section] as Record<string, unknown> | undefined)?.[key];
+  if (envValue !== undefined && !isBlankSetting(envValue)) return "env";
+  return "default";
+}
 
 function resolver(defaults: SettingsDefaults, env: SettingsLayer, db: SettingsLayer) {
-  function source<S extends SettingsSection>(section: S, key: string): Source {
-    const blankOk = BLANK_IS_A_VALUE[section]?.includes(key) ?? false;
-    const dbValue = (db[section] as Record<string, unknown> | undefined)?.[key];
-    if (dbValue !== undefined && (blankOk || !isBlank(dbValue))) return "db";
-    const envValue = (env[section] as Record<string, unknown> | undefined)?.[key];
-    if (envValue !== undefined && !isBlank(envValue)) return "env";
-    return "default";
-  }
+  const source = (section: SettingsSection, key: string) => settingSource(section, key, env, db);
 
   function pick<S extends SettingsSection, K extends keyof SettingsValues[S] & string>(
     section: S,

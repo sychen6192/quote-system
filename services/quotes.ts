@@ -4,6 +4,7 @@ import { customers, quotationItems, quotations, quoteEvents } from "@/db/schema"
 import { and, asc, desc, eq, sql, type SQL } from "drizzle-orm";
 import { isIsoDate, todayInTimeZone } from "@/lib/dates";
 import { parseQuoteId } from "@/lib/schemas/quote";
+import { MAX_SEARCH_QUERY_LENGTH, firstParam, normalizeSearchQuery } from "@/lib/search-query";
 import {
   DISPLAY_STATUS_VALUES,
   displayStatus,
@@ -23,14 +24,21 @@ export type QuoteListSort = (typeof QUOTE_LIST_SORTS)[number];
 
 export const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 100;
-const MAX_QUERY_LENGTH = 100;
-const MAX_EXPORT_ROWS = 10_000;
+/** Company names are up to 200 characters (lib/schemas/quote.ts). */
+const MAX_CUSTOMER_LENGTH = 200;
+export const EXPORT_BATCH_SIZE = 1000;
 
 type SearchParamValue = string | string[] | null | undefined;
 
 /** Raw list params, e.g. straight from searchParams. */
 export type QuoteListParams = {
   q?: SearchParamValue;
+  /**
+   * Exact customer: quotes whose bill-to company name equals this, ignoring
+   * case and surrounding spaces (the customer directory's identity), unlike
+   * `q`, where "Acme" also finds "Acme Holdings".
+   */
+  customer?: SearchParamValue;
   status?: SearchParamValue;
   sort?: SearchParamValue;
   page?: number | SearchParamValue;
@@ -41,6 +49,8 @@ export type QuoteListParams = {
 
 export type QuoteListFilters = {
   q: string;
+  /** "" = any customer */
+  customer: string;
   status: DisplayStatus | null;
   sort: QuoteListSort;
   page: number;
@@ -63,16 +73,14 @@ export type QuotesResponse = {
   statusCounts: StatusCounts;
 };
 
-function firstString(value: unknown): string {
-  if (Array.isArray(value)) return firstString(value[0]);
-  return typeof value === "string" ? value : "";
-}
+const firstString = firstParam;
 
 /** Tolerant parsing of user-supplied list params (unknown values → defaults). */
 export function normalizeQuoteListParams(
   params: Omit<QuoteListParams, "today">
 ): QuoteListFilters {
-  const q = firstString(params.q).trim().slice(0, MAX_QUERY_LENGTH);
+  const q = normalizeSearchQuery(params.q, MAX_SEARCH_QUERY_LENGTH);
+  const customer = normalizeSearchQuery(params.customer, MAX_CUSTOMER_LENGTH);
   const status = firstString(params.status);
   const sort = firstString(params.sort);
   const page = Math.trunc(
@@ -81,6 +89,7 @@ export function normalizeQuoteListParams(
   const pageSize = Math.trunc(Number(params.pageSize));
   return {
     q,
+    customer,
     status: isDisplayStatus(status) ? status : null,
     sort: (QUOTE_LIST_SORTS as readonly string[]).includes(sort)
       ? (sort as QuoteListSort)
@@ -143,20 +152,45 @@ export function quoteSearchCondition(q: string): SQL | undefined {
     or ${customers.contactPerson} ilike ${pattern})`;
 }
 
-function orderFor(sort: QuoteListSort): SQL[] {
-  switch (sort) {
-    case "oldest":
-      return [sql`${quotations.createdAt} asc nulls first`, asc(quotations.id)];
-    case "amount_desc":
-      return [desc(quotations.totalAmount), desc(quotations.id)];
-    case "amount_asc":
-      return [asc(quotations.totalAmount), asc(quotations.id)];
-    case "valid_until":
-      return [asc(quotations.validUntil), asc(quotations.id)];
-    case "newest":
-    default:
-      return [sql`${quotations.createdAt} desc nulls last`, desc(quotations.id)];
-  }
+/** Quotes billed to exactly this company (case and outer spaces ignored). */
+export function quoteCustomerCondition(customer: string): SQL | undefined {
+  if (!customer) return undefined;
+  return sql`lower(btrim(${customers.companyName})) = lower(btrim(${customer}))`;
+}
+
+// Every sort is (column, id) in one direction over NOT NULL columns, so it
+// matches a plain btree index (scanned backwards for desc: the newest-first
+// list and dashboard stop after LIMIT rows instead of sorting the table) and
+// keyset pagination can resume after any row.
+type SortSpec = {
+  column: typeof quotations.createdAt | typeof quotations.totalAmount | typeof quotations.validUntil;
+  /** SQL type to cast a cursor's text value back to */
+  type: "timestamp" | "bigint" | "date";
+  dir: "asc" | "desc";
+};
+
+const SORTS: Record<QuoteListSort, SortSpec> = {
+  newest: { column: quotations.createdAt, type: "timestamp", dir: "desc" },
+  oldest: { column: quotations.createdAt, type: "timestamp", dir: "asc" },
+  amount_desc: { column: quotations.totalAmount, type: "bigint", dir: "desc" },
+  amount_asc: { column: quotations.totalAmount, type: "bigint", dir: "asc" },
+  valid_until: { column: quotations.validUntil, type: "date", dir: "asc" },
+};
+
+export function quoteListOrder(sort: QuoteListSort): SQL[] {
+  const spec = SORTS[sort] ?? SORTS.newest;
+  const by = spec.dir === "asc" ? asc : desc;
+  return [by(spec.column), by(quotations.id)];
+}
+
+type JoinedRow = { quote: QuoteRow; customer: CustomerRow | null };
+
+function toListItem({ quote, customer }: JoinedRow, today: string): QuoteListItem {
+  return {
+    ...quote,
+    customer,
+    displayStatus: displayStatus(quote.status, quote.validUntil, today),
+  };
 }
 
 async function selectQuotes(
@@ -171,14 +205,10 @@ async function selectQuotes(
     .from(quotations)
     .leftJoin(customers, eq(quotations.customerId, customers.id))
     .where(where)
-    .orderBy(...orderFor(sort))
+    .orderBy(...quoteListOrder(sort))
     .limit(limit)
     .offset(offset);
-  return rows.map(({ quote, customer }) => ({
-    ...quote,
-    customer,
-    displayStatus: displayStatus(quote.status, quote.validUntil, today),
-  }));
+  return rows.map((row) => toListItem(row, today));
 }
 
 async function countByStatus(search: SQL | undefined, today: string): Promise<StatusCounts> {
@@ -211,7 +241,7 @@ async function countByStatus(search: SQL | undefined, today: string): Promise<St
 export async function getQuotesList(params: QuoteListParams = {}): Promise<QuotesResponse> {
   const filters = normalizeQuoteListParams(params);
   const today = await resolveToday(params.today);
-  const search = quoteSearchCondition(filters.q);
+  const search = and(quoteSearchCondition(filters.q), quoteCustomerCondition(filters.customer));
 
   const statusCounts = await countByStatus(search, today);
   const total = filters.status ? statusCounts[filters.status] : statusCounts.all;
@@ -235,22 +265,47 @@ export async function getQuotesList(params: QuoteListParams = {}): Promise<Quote
   };
 }
 
-/** Every quote matching the list filters (no paging), for CSV export. */
-export async function listQuotesForExport(
-  params: QuoteListParams = {}
-): Promise<QuoteListItem[]> {
+/**
+ * Every quote matching the list filters (search, customer, status) in list
+ * order, `batchSize` rows at a time, for the CSV export. Keyset pages (after
+ * the last row's sort value and id): no cap, and each page is an index range
+ * rather than an ever-growing OFFSET.
+ */
+export async function* quoteExportBatches(
+  params: QuoteListParams = {},
+  { batchSize = EXPORT_BATCH_SIZE }: { batchSize?: number } = {}
+): AsyncGenerator<QuoteListItem[], void, undefined> {
   const filters = normalizeQuoteListParams(params);
   const today = await resolveToday(params.today);
-  return selectQuotes(
-    and(
-      quoteSearchCondition(filters.q),
-      filters.status ? quoteStatusCondition(filters.status, today) : undefined
-    ),
-    filters.sort,
-    MAX_EXPORT_ROWS,
-    0,
-    today
+  const where = and(
+    quoteSearchCondition(filters.q),
+    quoteCustomerCondition(filters.customer),
+    filters.status ? quoteStatusCondition(filters.status, today) : undefined
   );
+  const spec = SORTS[filters.sort];
+  const size = Math.min(Math.max(Math.trunc(batchSize) || EXPORT_BATCH_SIZE, 1), 10_000);
+  const op = sql.raw(spec.dir === "desc" ? "<" : ">");
+
+  let cursor: { key: string; id: number } | null = null;
+  for (;;) {
+    // The cursor travels as text and is cast back in SQL: a JS Date would
+    // drop the microseconds of created_at and skip rows.
+    const after: SQL | undefined = cursor
+      ? sql`(${spec.column}, ${quotations.id}) ${op} (cast(${cursor.key} as ${sql.raw(spec.type)}), ${cursor.id})`
+      : undefined;
+    const rows: (JoinedRow & { sortKey: string })[] = await db
+      .select({ quote: quotations, customer: customers, sortKey: sql<string>`${spec.column}::text` })
+      .from(quotations)
+      .leftJoin(customers, eq(quotations.customerId, customers.id))
+      .where(and(where, after))
+      .orderBy(...quoteListOrder(filters.sort))
+      .limit(size);
+    if (rows.length === 0) return;
+    yield rows.map((row) => toListItem(row, today));
+    if (rows.length < size) return;
+    const last = rows[rows.length - 1];
+    cursor = { key: last.sortKey, id: last.quote.id };
+  }
 }
 
 function findQuote(id: number) {

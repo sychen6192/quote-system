@@ -27,8 +27,8 @@
 ### 方式 B：只用 Container Manager
 
 1. 在電腦上從[最新版本](https://github.com/sychen6192/quote-system/releases/latest)下載 `quote-system-deploy.tar.gz` 並解壓縮（Windows 可用 7-Zip，macOS 直接雙擊）。
-2. 將 `.env.example` 複製一份並命名為 `.env`，設定 `POSTGRES_PASSWORD`（只用英文字母與數字）、`AUTH_SECRET`（32 個以上的隨機字元）與 `APP_PASSWORD`。
-3. 在 File Station 建立 `docker/quote-system` 資料夾，上傳 `docker-compose.yml`、`Caddyfile` 與 `.env`，並在其中建立空的 `branding` 與 `backups` 資料夾。
+2. 將 `.env.example` 複製一份並命名為 `.env`，設定 `POSTGRES_PASSWORD`（只用英文字母與數字）、`AUTH_SECRET`（32 個以上的隨機字元）與 `APP_PASSWORD`（英文字母、數字與 `. _ ~ ! @ % ^ * + = : , -`，或用單引號把整組密碼括起來，詳見 `.env.example` 中的說明）。
+3. 在 File Station 建立 `docker/quote-system` 資料夾，上傳 `docker-compose.yml`、`Caddyfile` 與 `.env`，並在其中建立空的 `branding` 與 `backups` 資料夾。`backups` 中的備份檔包含所有資料，請在該資料夾的「**內容 → 權限**」中只開放給管理員存取。
 4. 「**Container Manager → 專案 → 新增**」：專案名稱填 `quote-system`，路徑選 `docker/quote-system`，選擇「**使用現有的 docker-compose.yml**」，再按「**下一步 → 完成**」。
 
 ### 在 Synology 上設定 HTTPS
@@ -41,7 +41,7 @@ DSM 本身會使用 80 與 443 埠，因此請改用 DSM 內建的反向代理�
    - 目的地：通訊協定 **HTTP**、主機名稱 `localhost`、連接埠 **3000**
    - 自訂標頭：新增 `X-Forwarded-Proto`，值為 `https`
 3. 「**控制台 → 安全性 → 憑證 → 設定**」：為新的反向代理項目指定該憑證。
-4. 開啟 `https://quote.yourname.synology.me`，接著[安裝 App](https.zh-TW.md#安裝-app)。
+4. 開啟 `https://quote.yourname.synology.me`，接著[安裝 App](https.zh-TW.md#安裝-app)。請保持啟用登入（`APP_PASSWORD`）。若要關閉登入，請在 `.env` 加上 `APP_HOSTS=quote.yourname.synology.me`（並重新建置專案），讓 App 拒絕其他主機名稱；沒有設定時，App 會接受任何名稱，並記錄一則警告。
 
 若要從外部網路連線，還需要把 443 埠轉發到 NAS。若只想讓自己的裝置連線，也可以使用 DSM 的 Tailscale 套件搭配 `tailscale serve`（見〈[HTTPS 設定指南](https.zh-TW.md#tailscale私人網路只有你的裝置能連)〉）。
 
@@ -67,10 +67,17 @@ QTS 的管理介面使用 8080 與 443 埠。若要設定 HTTPS，可使用「**
 
 ## 在 NAS 上升級
 
-透過 SSH 在安裝目錄中執行：
+透過 SSH 下載最新的安裝程式，並以相同的 `QUOTE_DIR` 再執行一次（或直接在安裝目錄中執行）。它會把 `.env` 中的 `QUOTE_VERSION` 改成新版本，並重新啟動 App：
+
+```sh
+curl -fsSLO https://github.com/sychen6192/quote-system/releases/latest/download/install.sh
+sudo QUOTE_DIR=/volume1/docker/quote-system sh install.sh      # QNAP：/share/Container/quote-system
+```
+
+沒有使用安裝程式（方式 B）時：請先把 `.env` 中的 `QUOTE_VERSION` 改成新版本（安裝時的版本固定在這裡，只下載映像檔不會有任何變化），再於安裝目錄中執行：
 
 ```sh
 sudo docker compose pull && sudo docker compose up -d
 ```
 
-或以相同的 `QUOTE_DIR` 再執行一次安裝程式。資料庫會自動升級。
+不使用 SSH 時，也可以用 File Station 修改 `.env` 的 `QUOTE_VERSION`，再到 Container Manager 重新建置專案。資料庫會自動升級。

@@ -1,10 +1,9 @@
 "use client";
 
 import {
-  useCallback,
   useEffect,
   useId,
-  useRef,
+  useLayoutEffect,
   useState,
   type ComponentProps,
   type KeyboardEvent,
@@ -16,6 +15,7 @@ import type { SearchResult } from "@/actions/search";
 import { Input } from "@/components/ui/input";
 import { useDebouncedCallback } from "@/hooks/use-debounced-value";
 import { cn } from "@/lib/utils";
+import { createSearchRunner, type SearchRunnerOptions, type SearchUpdate } from "./search-runner";
 
 type Status = "idle" | "loading" | "done" | "error" | "offline";
 
@@ -41,8 +41,10 @@ export type AsyncComboboxProps<T> = Omit<
   getKey: (option: T) => string;
   renderOption: (option: T, query: string) => ReactNode;
   labels: AsyncComboboxLabels;
-  /** UNAUTHORIZED, or a thrown request while online. */
+  /** UNAUTHORIZED, or a thrown request while online (never after unmount). */
   onSessionError: () => void;
+  /** Cancels pending and in-flight searches when it fires (e.g. the form is being saved). */
+  cancelOn?: { on(listener: () => void): () => void };
   debounceMs?: number;
   minChars?: number;
   className?: string;
@@ -69,6 +71,7 @@ export function AsyncCombobox<T>({
   renderOption,
   labels,
   onSessionError,
+  cancelOn,
   debounceMs = 200,
   minChars = 1,
   className,
@@ -89,63 +92,63 @@ export function AsyncCombobox<T>({
   const [results, setResults] = useState<T[]>([]);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(-1);
-  const cache = useRef(new Map<string, T[]>());
-  const seq = useRef(0);
 
-  const run = useCallback(
-    async (term: string) => {
-      const cached = cache.current.get(term.toLowerCase());
-      if (cached) {
-        setResults(cached);
-        setQuery(term);
-        setStatus("done");
-        return;
-      }
-      const ticket = ++seq.current;
-      try {
-        const result = await search(term);
-        if (ticket !== seq.current) return;
-        if (result.success) {
-          cache.current.set(term.toLowerCase(), result.data);
-          setResults(result.data);
-          setQuery(term);
-          setStatus("done");
-        } else if (result.code === "UNAUTHORIZED") {
-          setOpen(false);
-          onSessionError();
-        } else {
-          setStatus("error");
-        }
-      } catch {
-        if (ticket !== seq.current) return;
-        if (typeof navigator !== "undefined" && navigator.onLine === false) {
-          setStatus("offline");
-        } else {
-          setOpen(false);
-          onSessionError();
-        }
-      }
+  const applyUpdate = (update: SearchUpdate<T>) => {
+    if (update.status === "done") {
+      setResults(update.results);
+      setQuery(update.term);
+    }
+    setStatus(update.status);
+  };
+  const runnerOptions: SearchRunnerOptions<T> = {
+    search,
+    onUpdate: applyUpdate,
+    onSessionError: () => {
+      setOpen(false);
+      onSessionError();
     },
-    [search, onSessionError]
-  );
+  };
+  const [runner] = useState(() => createSearchRunner<T>(runnerOptions));
+  useLayoutEffect(() => {
+    runner.setOptions(runnerOptions);
+  });
 
-  const debouncedRun = useDebouncedCallback(run, debounceMs);
+  const debouncedRun = useDebouncedCallback((term: string) => void runner.run(term), debounceMs);
+
+  // Nothing is reported after unmount: saving navigates away, which aborts an
+  // in-flight search, and that rejection is not an expired session.
+  useEffect(() => {
+    runner.attach();
+    return () => runner.detach();
+  }, [runner]);
+
+  useEffect(
+    () =>
+      cancelOn?.on(() => {
+        debouncedRun.cancel();
+        runner.cancel();
+        setOpen(false);
+        setActive(-1);
+        setStatus((current) => (current === "loading" ? "idle" : current));
+      }),
+    [cancelOn, debouncedRun, runner]
+  );
 
   const startSearch = (text: string) => {
     const term = text.trim();
     setActive(-1);
     if (term.length < minChars) {
       debouncedRun.cancel();
-      seq.current++;
+      runner.cancel();
       setResults([]);
       setStatus("idle");
       setOpen(false);
       return;
     }
     setOpen(true);
-    if (cache.current.has(term.toLowerCase())) {
+    if (runner.cached(term)) {
       debouncedRun.cancel();
-      void run(term);
+      void runner.run(term);
     } else {
       setStatus("loading");
       debouncedRun(term);
@@ -159,7 +162,7 @@ export function AsyncCombobox<T>({
 
   const pick = (option: T) => {
     debouncedRun.cancel();
-    seq.current++;
+    runner.cancel();
     close();
     onPick(option);
   };
@@ -250,9 +253,10 @@ export function AsyncCombobox<T>({
         onKeyDown={handleKeyDown}
         onFocus={(event) => {
           onFocus?.(event);
-          const term = value.trim().toLowerCase();
-          if (term && cache.current.get(term)?.length) {
-            setResults(cache.current.get(term) ?? []);
+          const term = value.trim();
+          const cached = term ? runner.cached(term) : undefined;
+          if (cached?.length) {
+            setResults(cached);
             setStatus("done");
             setOpen(true);
           }

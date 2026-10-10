@@ -1,6 +1,7 @@
 import createMiddleware from "next-intl/middleware";
 import { NextResponse, type NextRequest } from "next/server";
 import { routing } from "./navigation";
+import { checkRequestHosts, warnUnknownHostOnce } from "./lib/auth/host-allowlist";
 import { loginPath, localeFromPath } from "./lib/auth/paths";
 import { decideProxyAction } from "./lib/auth/proxy-rules";
 import { SESSION_COOKIE, authEnabled, verifySessionToken } from "./lib/auth/session";
@@ -20,8 +21,33 @@ function negotiateLocale(req: NextRequest): AppLocale {
   return routing.defaultLocale;
 }
 
+// Next.js always sees a Host header from a real client; unit tests may not.
+function hostHeaders(req: NextRequest) {
+  return {
+    get: (name: string) =>
+      name === "host" ? (req.headers.get("host") ?? req.nextUrl.host) : req.headers.get(name),
+  };
+}
+
 export default async function proxy(req: NextRequest) {
   const enabled = authEnabled();
+
+  // Sign-in off: only the network keeps strangers out (DNS rebinding, see
+  // lib/auth/host-allowlist). With APP_HOSTS set, names the install is not
+  // known by are refused; without it every name is served, so upgrades never
+  // lock anyone out, and the first non-local name logs one warning.
+  // The health check stays reachable under any name.
+  if (!enabled && req.nextUrl.pathname !== "/api/health") {
+    const hosts = checkRequestHosts(hostHeaders(req));
+    if (hosts.verdict === "refused") {
+      return new NextResponse("Unknown host: add it to APP_HOSTS\n", {
+        status: 421,
+        headers: { "Cache-Control": "no-store", "Content-Type": "text/plain; charset=utf-8" },
+      });
+    }
+    if (hosts.verdict === "unknown") warnUnknownHostOnce(hosts.host);
+  }
+
   const decision = decideProxyAction({
     pathname: req.nextUrl.pathname,
     search: req.nextUrl.search,
@@ -43,8 +69,12 @@ export default async function proxy(req: NextRequest) {
         { error: "UNAUTHENTICATED" },
         { status: 401, headers: { "Cache-Control": "no-store" } }
       );
-    case "redirect":
-      return NextResponse.redirect(new URL(decision.location, req.url), 307);
+    case "redirect": {
+      // safeNextPath already keeps it same-site; never trust that alone.
+      const dest = new URL(decision.location, req.url);
+      const sameSite = dest.origin === req.nextUrl.origin;
+      return NextResponse.redirect(sameSite ? dest : new URL("/", req.url), 307);
+    }
     case "login": {
       const locale = decision.locale ?? negotiateLocale(req);
       return NextResponse.redirect(new URL(loginPath(locale, decision.next), req.url), 307);

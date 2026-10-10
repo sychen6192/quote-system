@@ -1,7 +1,12 @@
 // QuoteView + branding → the email template's props, all text pre-formatted.
 // Pure; kept apart from the template so the server action can be tested
 // with the template mocked.
-import { formatDocumentDate, formatTotal, present } from "@/components/quote-document/format";
+import {
+  documentMoney,
+  formatDocumentDate,
+  formatTotal,
+  present,
+} from "@/components/quote-document/format";
 import type { AppLocale } from "@/i18n/locales";
 import { pickCompanyName } from "@/lib/company-name";
 import type { QuoteView } from "@/lib/quote-view";
@@ -43,11 +48,14 @@ export function quoteEmailProps({
       number: view.quotationNumber ?? "",
       title: view.title,
       validUntil: formatDocumentDate(view.validUntil, lang),
-      total: formatTotal(view.totals.total, {
-        currency: branding.currency,
-        currencyLocale: branding.currencyLocale,
-        fractionDigits: branding.fractionDigits,
-      }),
+      total: formatTotal(
+        view.totals.total,
+        documentMoney(view, {
+          currency: branding.currency,
+          currencyLocale: branding.currencyLocale,
+          fractionDigits: branding.fractionDigits,
+        })
+      ),
       recipientName: view.customer.contactPerson ?? view.customer.companyName,
     },
     message: present(message ?? null),

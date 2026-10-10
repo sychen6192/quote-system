@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { documentAccent } from "./accent";
 import {
   amountInWords,
+  documentMoney,
   formatAmount,
   formatUnitPrice,
   formatDocumentDate,
@@ -59,11 +60,12 @@ export function QuoteDocument({
   className,
 }: QuoteDocumentProps) {
   const accent = documentAccent(branding.brandColor);
-  const money: DocumentMoney = {
+  // Every figure in one format, so the printed amounts add up (see documentMoney).
+  const money: DocumentMoney = documentMoney(view, {
     currency: branding.currency,
     currencyLocale: branding.currencyLocale,
     fractionDigits: branding.fractionDigits,
-  };
+  });
   const { company, payment } = branding;
   const { customer, totals } = view;
   const date = (iso: string | null) => formatDocumentDate(iso, locale);

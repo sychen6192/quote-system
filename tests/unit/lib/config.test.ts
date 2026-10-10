@@ -1,20 +1,6 @@
-import * as fs from "node:fs";
-import * as os from "node:os";
 import * as path from "node:path";
-import {
-  getAppConfig,
-  getAppNameOverride,
-  getEnvSettings,
-  toPublicConfig,
-  getBrandingDataUri,
-} from "@/lib/config";
+import { brandingCandidates, getAppConfig, getAppNameOverride, getEnvSettings } from "@/lib/config";
 import { pickCompanyName } from "@/lib/company-name";
-
-// 1x1 transparent PNG
-const TINY_PNG = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
-  "base64"
-);
 
 describe("getAppConfig", () => {
   it("returns placeholder defaults when no env vars are set", () => {
@@ -272,26 +258,6 @@ describe("getEnvSettings", () => {
   });
 });
 
-describe("toPublicConfig", () => {
-  it("exposes only client-safe fields", () => {
-    const pub = toPublicConfig(
-      getAppConfig({
-        COMPANY_NAME: "Acme Ltd.",
-        BANK_ACCOUNT_NUMBER: "secret-999",
-      })
-    );
-    expect(pub).toEqual({
-      companyName: "Acme Ltd.",
-      companyNameLocal: "",
-      currency: "TWD",
-      currencyLocale: "zh-TW",
-      defaultTaxRate: 5,
-      twVatLookup: false,
-    });
-    expect(JSON.stringify(pub)).not.toContain("secret-999");
-  });
-});
-
 describe("pickCompanyName", () => {
   it("uses the local name for Chinese locales when set", () => {
     expect(pickCompanyName("Acme Ltd.", "頂尖公司", "zh-TW")).toBe("頂尖公司");
@@ -309,43 +275,30 @@ describe("pickCompanyName", () => {
   });
 });
 
-describe("getBrandingDataUri", () => {
-  let dir: string;
-  beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), "branding-test-"));
-    fs.mkdirSync(path.join(dir, "branding"));
-    fs.mkdirSync(path.join(dir, "branding-defaults"));
-  });
-  afterEach(() => {
-    fs.rmSync(dir, { recursive: true, force: true });
+// services/settings.ts reads these in order (after a Settings-page upload).
+describe("brandingCandidates", () => {
+  const at = (...parts: string[]) => path.join("/srv/app", ...parts);
+
+  it("tries the legacy branding/ mount first, then the shipped default", () => {
+    expect(brandingCandidates("logo", "/srv/app")).toEqual([
+      at("branding", "logo.png"),
+      at("branding-defaults", "logo.png"),
+    ]);
   });
 
-  it("prefers user logo over default", () => {
-    fs.writeFileSync(path.join(dir, "branding", "logo.png"), TINY_PNG);
-    fs.writeFileSync(
-      path.join(dir, "branding-defaults", "logo.png"),
-      Buffer.from("not-used")
-    );
-    expect(getBrandingDataUri("logo", dir)).toBe(
-      `data:image/png;base64,${TINY_PNG.toString("base64")}`
-    );
+  it("has no default stamp", () => {
+    expect(brandingCandidates("stamp", "/srv/app")).toEqual([at("branding", "stamp.png")]);
   });
 
-  it("falls back logo to branding-defaults", () => {
-    fs.writeFileSync(path.join(dir, "branding-defaults", "logo.png"), TINY_PNG);
-    expect(getBrandingDataUri("logo", dir)).toBe(
-      `data:image/png;base64,${TINY_PNG.toString("base64")}`
-    );
+  it("falls back icon to the logo, then the default logo", () => {
+    expect(brandingCandidates("icon", "/srv/app")).toEqual([
+      at("branding", "icon.png"),
+      at("branding", "logo.png"),
+      at("branding-defaults", "logo.png"),
+    ]);
   });
 
-  it("returns null for missing stamp (no default)", () => {
-    expect(getBrandingDataUri("stamp", dir)).toBeNull();
-  });
-
-  it("falls back icon to logo then default logo", () => {
-    fs.writeFileSync(path.join(dir, "branding-defaults", "logo.png"), TINY_PNG);
-    expect(getBrandingDataUri("icon", dir)).toBe(
-      `data:image/png;base64,${TINY_PNG.toString("base64")}`
-    );
+  it("resolves against the working directory by default", () => {
+    expect(brandingCandidates("stamp")).toEqual([path.join(process.cwd(), "branding", "stamp.png")]);
   });
 });

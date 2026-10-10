@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { sendQuoteEmail, type SendEmailResult } from "@/actions/send-email";
 import { reloadForSignIn } from "@/components/app-shell/session";
+import { DownloadLink } from "@/components/app-shell/download-link";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -196,16 +197,13 @@ export function SendEmailDialog({
           (event.currentTarget as HTMLElement | null)?.focus();
         }}
         // A failure toast's Retry must stay clickable without closing the dialog.
-        onInteractOutside={(event) => {
-          if ((event.target as Element | null)?.closest?.("[data-sonner-toaster]")) event.preventDefault();
-        }}
       >
-        {/* The modal dialog turns off pointer events outside itself. */}
-        <style>{"[data-sonner-toaster]{pointer-events:auto}"}</style>
         <form onSubmit={onSubmit} noValidate className="flex min-h-0 flex-col">
           <DialogHeader className="space-y-1 border-b px-5 pb-4 pt-5 text-left sm:px-6">
             <DialogTitle className="pr-8 text-lg">{t("title")}</DialogTitle>
-            <DialogDescription>{t("description", { number: quote.quotationNumber })}</DialogDescription>
+            <DialogDescription>
+              {t(disabled ? "descriptionDisabled" : "description", { number: quote.quotationNumber })}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-5 px-5 py-5 sm:px-6">
@@ -217,7 +215,8 @@ export function SendEmailDialog({
                 <MailWarning aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-warning" />
                 <div className="space-y-1">
                   <p className="font-semibold">{t("disabled.title")}</p>
-                  <p className="text-muted-foreground">{t("disabled.description")}</p>
+                  {/* Not muted-foreground: that is about 4.1:1 on the warning tint. */}
+                  <p className="text-foreground/80">{t("disabled.description")}</p>
                   <Link
                     href="/settings"
                     className="inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline sm:min-h-0 sm:pt-1"
@@ -345,10 +344,10 @@ export function SendEmailDialog({
             </Button>
             {disabled ? (
               <Button asChild className="h-11 md:h-9">
-                <a href={downloadHref} download onClick={() => onOpenChange(false)}>
+                <DownloadLink href={downloadHref} onClick={() => onOpenChange(false)}>
                   <Download aria-hidden="true" />
                   {tActions("downloadPdf")}
-                </a>
+                </DownloadLink>
               </Button>
             ) : (
               <Button type="submit" disabled={pending} className="h-11 min-w-36 md:h-9">

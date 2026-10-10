@@ -1,10 +1,10 @@
 import "server-only";
 import type { AppLocale } from "@/i18n/locales";
-import { toDecimalString } from "@/lib/money";
+import { minorUnitStep, toDecimalString } from "@/lib/money";
 import type { DisplayStatus } from "@/lib/status";
 import enStatus from "@/messages/en/Status.json";
 import zhStatus from "@/messages/zh-TW/Status.json";
-import { listQuotesForExport, type QuoteListItem, type QuoteListParams } from "@/services/quotes";
+import { quoteExportBatches, type QuoteListItem, type QuoteListParams } from "@/services/quotes";
 
 // CSV export of the quotes list (spec §1): UTF-8 BOM so Excel detects the
 // encoding, RFC 4180 quoting with CRLF, and CSV-injection guarding.
@@ -26,9 +26,14 @@ export function csvEscape(cell: CsvCell): string {
   return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
+/** Records as CSV lines, each ending in CRLF (RFC 4180). */
+export function csvLines(rows: CsvCell[][]): string {
+  return rows.map((row) => row.map(csvEscape).join(",") + "\r\n").join("");
+}
+
 /** RFC 4180: CRLF between records, UTF-8 BOM up front. */
 export function toCsv(rows: CsvCell[][]): string {
-  return BOM + rows.map((row) => row.map(csvEscape).join(",")).join("\r\n") + "\r\n";
+  return BOM + csvLines(rows);
 }
 
 /** quotes-YYYYMMDD.csv */
@@ -119,12 +124,23 @@ export type QuotesCsvOptions = {
   fractionDigits: number;
 };
 
-export function quotesToCsv(rows: QuoteListItem[], options: QuotesCsvOptions): string {
+/** BOM and the localised header line: written once, before any batch. */
+export function quotesCsvHeader(options: QuotesCsvOptions): string {
   const headers = HEADERS[options.locale] ?? HEADERS.en;
+  return toCsv([COLUMNS.map((column) => headers[column])]);
+}
+
+/** One batch of quotes as CSV lines (no BOM, no header). */
+export function quotesCsvRows(rows: QuoteListItem[], options: QuotesCsvOptions): string {
   const statusLabels = STATUS_LABELS[options.locale] ?? STATUS_LABELS.en;
-  const money = (cents: number | null | undefined): TrustedCell => ({
-    trusted: toDecimalString(cents ?? 0, options.fractionDigits),
-  });
+  // Amounts use the currency's digits, unless that would drop cents: quotes
+  // saved before amounts were rounded to the displayed unit (TWD before
+  // 1.0.1) may hold e.g. 1665 cents of tax, written as 16.65, not 17.
+  const step = minorUnitStep(options.fractionDigits);
+  const money = (cents: number | null | undefined): TrustedCell => {
+    const value = typeof cents === "number" && Number.isFinite(cents) ? Math.round(cents) : 0;
+    return { trusted: toDecimalString(value, value % step === 0 ? options.fractionDigits : 2) };
+  };
   const date = (value: string | null | undefined): TrustedCell => ({
     trusted: value ? value.slice(0, 10) : "",
   });
@@ -155,13 +171,49 @@ export function quotesToCsv(rows: QuoteListItem[], options: QuotesCsvOptions): s
     return COLUMNS.map((column) => cells[column]);
   });
 
-  return toCsv([COLUMNS.map((column) => headers[column]), ...records]);
+  return csvLines(records);
 }
 
-/** The quotes matching the list filters as a CSV document. */
-export async function buildQuotesCsv(
+export function quotesToCsv(rows: QuoteListItem[], options: QuotesCsvOptions): string {
+  return quotesCsvHeader(options) + quotesCsvRows(rows, options);
+}
+
+/**
+ * Every quote matching the list filters as a streamed CSV document: the
+ * header once, then one chunk per batch as the client reads. The first batch
+ * is loaded before this resolves, so a failing query still becomes an error
+ * response rather than a truncated download.
+ */
+export async function quotesCsvStream(
   params: QuoteListParams,
-  options: QuotesCsvOptions
-): Promise<string> {
-  return quotesToCsv(await listQuotesForExport(params), options);
+  options: QuotesCsvOptions,
+  { batchSize }: { batchSize?: number } = {}
+): Promise<ReadableStream<Uint8Array>> {
+  const batches = quoteExportBatches(params, { batchSize });
+  let pending: IteratorResult<QuoteListItem[], void> | null = await batches.next();
+  const encoder = new TextEncoder();
+  let started = false;
+
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        let text = "";
+        if (!started) {
+          started = true;
+          text = quotesCsvHeader(options);
+        }
+        const next = pending ?? (await batches.next());
+        pending = null;
+        if (!next.done) text += quotesCsvRows(next.value, options);
+        if (text) controller.enqueue(encoder.encode(text));
+        if (next.done) controller.close();
+      } catch (error) {
+        console.error("CSV export failed mid-stream:", error);
+        controller.error(error);
+      }
+    },
+    async cancel() {
+      await batches.return(undefined);
+    },
+  });
 }

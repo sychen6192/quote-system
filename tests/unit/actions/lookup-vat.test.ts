@@ -119,3 +119,21 @@ describe("lookupVatNumber", () => {
     expect(global.fetch).toHaveBeenCalledTimes(30);
   });
 });
+
+describe("lookupVatNumber: overall limit", () => {
+  it("caps lookups per process at 60 a minute, whatever address is claimed", async () => {
+    let action!: typeof import("@/actions/lookup-vat");
+    jest.isolateModules(() => {
+      action = jest.requireActual("@/actions/lookup-vat");
+    });
+    enableLookup();
+    let n = 0;
+    (headers as jest.Mock).mockImplementation(async () => new Headers({ "x-forwarded-for": `172.30.0.${++n}` }));
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => [] }) as unknown as typeof fetch;
+    for (let i = 0; i < 60; i++) {
+      expect(await action.lookupVatNumber("22099131")).toEqual({ success: false, code: "NOT_FOUND" });
+    }
+    expect(await action.lookupVatNumber("22099131")).toEqual({ success: false, code: "RATE_LIMITED" });
+    expect(global.fetch).toHaveBeenCalledTimes(60);
+  });
+});

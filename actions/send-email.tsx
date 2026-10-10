@@ -14,11 +14,12 @@ import { QuoteEmail } from "@/components/emails/quote-template";
 import { DEFAULT_LOCALE, LOCALES, type AppLocale } from "@/i18n/locales";
 import { pickCompanyName } from "@/lib/company-name";
 import { todayInTimeZone } from "@/lib/dates";
+import { minorUnitStep } from "@/lib/money";
 import { localizedPdfFilename } from "@/lib/pdf/labels";
 import { renderQuotePdf } from "@/lib/pdf/quote-pdf";
 import { quoteViewFromRecord } from "@/lib/quote-view";
 import { quoteIdSchema, toFieldErrors } from "@/lib/schemas/quote";
-import { createRateLimiter, getClientIp } from "@/lib/server/rate-limit";
+import { checkAll, createRateLimiter, getClientIp } from "@/lib/server/rate-limit";
 import { normalizeStatus } from "@/lib/status";
 import { recordQuoteEvent } from "@/services/events";
 import { getQuoteById } from "@/services/quotes";
@@ -57,8 +58,11 @@ const sendEmailSchema = z.object({
 export type SendEmailInput = z.input<typeof sendEmailSchema>;
 
 // Per process; stops a leaked session (or an open install) from turning the
-// verified sender domain into a spam relay.
+// verified sender domain into a spam relay. The address comes from
+// X-Forwarded-For, which a direct client can rotate, so a shared hourly cap
+// bounds the total too.
 const limiter = createRateLimiter({ windowMs: 60 * 60_000, max: 20 });
+const overallLimiter = createRateLimiter({ windowMs: 60 * 60_000, max: 50, maxKeys: 1 });
 
 /** RFC 5322 display name: quoted, with " and \ escaped and no line breaks. */
 function fromHeader(name: string, email: string): string {
@@ -102,7 +106,11 @@ export async function sendQuoteEmail(input: unknown): Promise<SendEmailResult> {
       return { success: false, code: "MAIL_DISABLED", message: "Email is not configured" };
     }
 
-    const limit = limiter.check(getClientIp(await headers()));
+    const ip = getClientIp(await headers());
+    const limit = checkAll([
+      [limiter, ip],
+      [overallLimiter, "*"],
+    ]);
     if (!limit.ok) return rateLimited(limit.retryAfterMs);
 
     const quote = await getQuoteById(id);
@@ -122,7 +130,7 @@ export async function sendQuoteEmail(input: unknown): Promise<SendEmailResult> {
     const html = await render(
       <QuoteEmail
         {...quoteEmailProps({
-          view: quoteViewFromRecord(quote, { today }),
+          view: quoteViewFromRecord(quote, { today, minorUnitStep: minorUnitStep(branding.fractionDigits) }),
           branding,
           lang,
           message,

@@ -99,7 +99,8 @@ export function ExpiredNotice({ validUntilLabel }: { validUntilLabel: string }) 
         <AlertTriangle aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-warning" />
         <div className="space-y-0.5">
           <p className="font-semibold text-foreground">{t("title", { date: validUntilLabel })}</p>
-          <p className="text-sm text-muted-foreground">{t("description")}</p>
+          {/* Not muted-foreground: that is 4.1:1 on the warning tint. */}
+          <p className="text-sm text-foreground/80">{t("description")}</p>
         </div>
       </div>
       <Button asChild variant="outline" className="h-11 shrink-0 bg-background md:h-9">

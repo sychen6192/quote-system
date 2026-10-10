@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { hasLocale } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { PageContainer, PageHeader } from "@/components/app-shell/page-header";
+import { pagePath, requireSession } from "@/components/app-shell/require-session";
 import { DEFAULT_TAB, HASH_TAB_ATTRIBUTE, SETTINGS_TABS } from "@/components/settings/model";
 import { SettingsView } from "@/components/settings/settings-view";
+import { routing } from "@/navigation";
 import { loadSettingsPageData } from "./load-settings";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +40,8 @@ const HASH_CSS = [
 
 export default async function SettingsPage({ params }: { params: Params }) {
   const { locale } = await params;
+  if (!hasLocale(routing.locales, locale)) notFound();
+  await requireSession(locale, pagePath(locale, "/settings"));
   setRequestLocale(locale);
   const t = await getTranslations("Settings");
   const data = await loadSettingsPageData();

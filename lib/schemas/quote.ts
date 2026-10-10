@@ -11,7 +11,8 @@ import { calculateQuoteFinancials, lineAmount, toBasisPoints, toCents } from "@/
 
 export const MAX_DB_ID = 2_147_483_647;
 export const MAX_ITEMS = 200;
-export const MAX_QUANTITY = 1e9;
+// quotation_items.quantity is numeric(12,3): |value| < 10^(12-3).
+export const MAX_QUANTITY = 999_999_999.999;
 export const MAX_UNIT_PRICE = 1e12;
 const MAX_TOTAL_CENTS = Number.MAX_SAFE_INTEGER;
 
@@ -51,11 +52,20 @@ const requiredNumber = () =>
 const optionalNumber = () =>
   numberInput.pipe(z.number({ error: "invalidNumber" }).default(0));
 
+// Postgres text cannot hold NUL: reject it here as a field error instead of
+// failing the insert with a generic error.
+const noNul = (s: string) => !s.includes("\u0000");
+
 const requiredText = (max: number) =>
-  z.string({ error: "required" }).trim().min(1, "required").max(max, "tooLong");
+  z
+    .string({ error: "required" })
+    .trim()
+    .min(1, "required")
+    .max(max, "tooLong")
+    .refine(noNul, "invalidText");
 
 const optionalText = (max: number) =>
-  z.string({ error: "invalidText" }).trim().max(max, "tooLong").optional();
+  z.string({ error: "invalidText" }).trim().max(max, "tooLong").refine(noNul, "invalidText").optional();
 
 const isoDate = () =>
   z

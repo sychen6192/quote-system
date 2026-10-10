@@ -1,12 +1,16 @@
 import {
+  DEVICE_TTL_SECONDS,
   MIN_AUTH_SECRET_LENGTH,
   SESSION_TTL_SECONDS,
   authEnabled,
   cleanEnv,
+  createDeviceToken,
   createSessionToken,
+  deviceCookieOptions,
   passwordMatches,
   resolveAuthSecret,
   sessionCookieOptions,
+  verifyDeviceToken,
   verifySessionToken,
 } from "@/lib/auth/session";
 
@@ -155,5 +159,55 @@ describe("sessionCookieOptions", () => {
       maxAge: 60 * 60 * 24 * 30,
     });
     expect(sessionCookieOptions(true).secure).toBe(true);
+  });
+});
+
+describe("device tokens", () => {
+  it("round-trips a fresh random id, signed with the session key", async () => {
+    const a = await createDeviceToken(undefined, env());
+    const b = await createDeviceToken(undefined, env());
+    expect(a).toMatch(/^d1\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}$/);
+    expect(a).not.toBe(b);
+    const id = await verifyDeviceToken(a, env());
+    expect(id).toBe(a.split(".")[1]);
+    expect(await createDeviceToken(id!, env())).toBe(a);
+  });
+
+  it("rejects missing, malformed, tampered and re-keyed tokens", async () => {
+    const token = await createDeviceToken(undefined, env());
+    const [d, id, sig] = token.split(".");
+    for (const bad of [
+      undefined,
+      null,
+      "",
+      "garbage",
+      `${d}.${id}`,
+      `d2.${id}.${sig}`,
+      `${d}.${id.replace(/^./, (c) => (c === "A" ? "B" : "A"))}.${sig}`,
+      `${d}.${id}.${sig.replace(/^./, (c) => (c === "A" ? "B" : "A"))}`,
+    ]) {
+      expect(await verifyDeviceToken(bad, env())).toBeNull();
+    }
+    expect(await verifyDeviceToken(token, env({ APP_PASSWORD: "other" }))).toBeNull();
+    expect(await verifyDeviceToken(token, env({ AUTH_SECRET: "f".repeat(32) }))).toBeNull();
+  });
+
+  it("is never accepted as a session, nor a session as a device", async () => {
+    const device = await createDeviceToken(undefined, env());
+    const session = await createSessionToken(Date.now(), env());
+    expect(await verifySessionToken(device, Date.now(), env())).toBe(false);
+    expect(await verifyDeviceToken(session, env())).toBeNull();
+  });
+
+  it("is a long-lived httpOnly cookie scoped to the auth routes", () => {
+    expect(deviceCookieOptions(false)).toEqual({
+      httpOnly: true,
+      sameSite: "lax",
+      secure: false,
+      path: "/api/auth",
+      maxAge: DEVICE_TTL_SECONDS,
+    });
+    expect(deviceCookieOptions(true).secure).toBe(true);
+    expect(DEVICE_TTL_SECONDS).toBeLessThanOrEqual(400 * 24 * 60 * 60);
   });
 });

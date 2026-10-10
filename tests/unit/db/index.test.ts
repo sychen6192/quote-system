@@ -57,6 +57,16 @@ describe("db (lazy pool)", () => {
     expect(db).toBeInstanceOf(FakeDb);
   });
 
+  // Columns are `timestamp without time zone` read back as UTC: now() and
+  // defaultNow() must run in UTC whatever the server's TimeZone is.
+  it("pins the session time zone to UTC", () => {
+    load().getDb();
+    expect(postgresMock).toHaveBeenCalledWith(
+      "postgres://u:p@db:5432/app",
+      expect.objectContaining({ connection: expect.objectContaining({ TimeZone: "UTC" }) })
+    );
+  });
+
   it("strips one layer of quotes from DATABASE_URL and honours DB_POOL_MAX", () => {
     process.env.DATABASE_URL = ` "postgres://u:p@db:5432/app" `;
     process.env.DB_POOL_MAX = "4";

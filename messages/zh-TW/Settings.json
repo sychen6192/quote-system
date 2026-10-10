@@ -101,7 +101,7 @@
     "preview": {
       "label": "預覽",
       "button": "新增報價單",
-      "badge": "已寄出",
+      "badge": "已發送",
       "link": "查看所有報價單",
       "document": "報價單"
     },
@@ -296,16 +296,16 @@
     "authOff": "未設定密碼",
     "authOnBody": "所有人皆以伺服器 .env 檔中 <code>APP_PASSWORD</code> 設定的共用密碼登入。修改該密碼即可讓所有人登出。",
     "authOffBody": "在伺服器的 .env 檔設定 <code>APP_PASSWORD</code> 並重新啟動 App，即可要求輸入密碼。",
-    "authOffWarning": "任何能開啟此網址的人都能查看並修改你的報價單。",
+    "authOffWarning": "任何能開啟此網址的人都能查看並修改您的報價單。",
     "installTitle": "安裝 App",
     "installDescription": "安裝後可從主畫面或 Dock 直接開啟，並在獨立視窗中使用。",
-    "installed": "你正在使用已安裝的 App。",
+    "installed": "您正在使用已安裝的 App。",
     "installIos": "iPhone 與 iPad：在 Safari 點選「分享」，再選「加入主畫面」。",
     "installOther": "Android 與電腦：在瀏覽器選單或網址列點選「安裝」（Chrome、Edge）。",
     "installNeedsHttps": "安裝 App 需要安全連線（https://）網址。",
     "httpsGuide": "如何設定 HTTPS",
     "dataTitle": "資料管理",
-    "dataDescription": "所有資料都儲存在你自己的資料庫中。",
+    "dataDescription": "所有資料都儲存在您自己的資料庫中。",
     "export": "匯出報價單（CSV）",
     "backupBody": "若要完整備份（含設定與圖片），請備份 PostgreSQL 資料庫，例如使用 <code>pg_dump</code>。",
     "docsTitle": "說明文件",
@@ -317,7 +317,7 @@
       "https": "HTTPS 與手機安裝",
       "httpsHint": "在手機上安裝 App 的必要設定",
       "backup": "備份與還原",
-      "backupHint": "保護你的報價資料",
+      "backupHint": "保護您的報價資料",
       "upgrade": "版本升級",
       "upgradeHint": "更新到新版本"
     }

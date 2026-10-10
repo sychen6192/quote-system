@@ -254,3 +254,38 @@ describe("formValuesFromRecord", () => {
     );
   });
 });
+
+describe("minor-unit rounding in the views", () => {
+  const values = () =>
+    formValues({
+      discountType: "percent",
+      discountValue: 5,
+      taxRate: 5,
+      otherFees: 0,
+      items: [
+        { productName: "A", description: "", unit: "", quantity: 1.5, unitPrice: 333, isTaxable: true },
+        { productName: "B", description: "", unit: "", quantity: 1.5, unitPrice: 333, isTaxable: true },
+      ],
+    });
+
+  it("rounds line amounts and totals to whole units, identically in all three", () => {
+    const step = 100;
+    const record = recordFrom(values());
+    const fromRecord = quoteViewFromRecord(record, { today, minorUnitStep: step });
+    const fromForm = quoteViewFromForm(values(), { today, minorUnitStep: step });
+    const stored = quoteRecordValues(quoteFormSchema.parse(values()), { minorUnitStep: step });
+
+    expect(fromRecord.items.map((i) => i.amount)).toEqual([50_000, 50_000]);
+    expect(fromRecord.totals).toMatchObject({ subtotal: 100_000, discount: 5_000, tax: 4_800, total: 99_800 });
+    expect(fromForm.items.map((i) => i.amount)).toEqual([50_000, 50_000]);
+    expect(fromForm.totals).toEqual(fromRecord.totals);
+    expect(stored.totals).toEqual(fromRecord.totals);
+    expect(stored.quote).toMatchObject({ subtotal: 100_000, discountAmount: 5_000, taxAmount: 4_800, totalAmount: 99_800 });
+  });
+
+  it("keeps plain cents without a step", () => {
+    const view = quoteViewFromRecord(recordFrom(values()), { today });
+    expect(view.items.map((i) => i.amount)).toEqual([49_950, 49_950]);
+    expect(view.totals.subtotal).toBe(99_900);
+  });
+});

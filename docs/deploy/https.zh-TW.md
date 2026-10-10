@@ -74,6 +74,8 @@ Quote System 用一般的 HTTP 就能正常使用，但瀏覽器只允許從安�
    APP_PASSWORD=<夠強的密碼>
    ```
 
+   （可使用英文字母、數字與 `. _ ~ ! @ % ^ * + = : , -`，或用單引號把整組密碼括起來，詳見 `.env.example`。）
+
 4. 執行 `docker compose up -d`，稍等一分鐘後開啟 `https://quote.example.com`。若無法連線，`docker compose logs caddy` 會說明原因（通常是 DNS 尚未生效，或 80 埠被擋）。
 
 此時整個網際網路都能連到這個 App：請務必設定 `APP_PASSWORD`，並保持映像檔為最新版本。若想在前面再加一道登入，可使用 Cloudflare Access（方式 3）。
@@ -94,7 +96,7 @@ Quote System 用一般的 HTTP 就能正常使用，但瀏覽器只允許從安�
 
 4. 在 tailnet 內的任一裝置開啟 `https://<主機名稱>.<tailnet 名稱>.ts.net`（可用 `tailscale serve status` 查詢）。
 
-`APP_BIND` 維持 `0.0.0.0`（預設）或設為 `127.0.0.1` 皆可；Tailscale 會從本機連到 App。
+`APP_BIND` 維持 `0.0.0.0`（預設）或設為 `127.0.0.1` 皆可；Tailscale 會從本機連到 App。請保留 `APP_PASSWORD`。若關閉登入，App 仍會接受 `*.ts.net` 名稱（並記錄一次警告）；請在 `.env` 加上這個名稱，例如 `APP_HOSTS=<主機名稱>.<tailnet 名稱>.ts.net`，再執行 `docker compose up -d`，App 就會拒絕其他網域名稱（防範 DNS rebinding 攻擊）。
 
 ### Cloudflare Tunnel（公開網址，可在前面加一道登入）
 
@@ -112,8 +114,19 @@ Quote System 用一般的 HTTP 就能正常使用，但瀏覽器只允許從安�
    ```
 
    並在 `.env` 加上 `CLOUDFLARE_TUNNEL_TOKEN=<token>`，再執行 `docker compose up -d`。
-3. 在該 Tunnel 的「**Public hostname**」分頁新增 `quote.example.com`，服務設為 `http://app:3000`。
+3. 在該 Tunnel 的「**Public hostname**」分頁新增 `quote.example.com`，服務設為 `http://app:3000`。請保留 `APP_PASSWORD`；若仍要關閉登入（例如已在第 4 步加上 Access），請在 `.env` 加上 `APP_HOSTS=quote.example.com`，讓 App 拒絕其他名稱。
+
+   不要再把 3000 埠開放到區網：connector 是在 Docker 內部連到 App，而能開啟 `http://<伺服器 IP>:3000` 的人，就能繞過 Tunnel 與 Cloudflare Access。請在 `.env` 設定 `APP_BIND=127.0.0.1`，再執行 `docker compose up -d`；之後 3000 埠只接受伺服器本機的連線（若 connector 直接裝在主機上而不是 Docker 裡，服務改用 `http://localhost:3000`，一樣可以連線）。
 4. 選用：在「**Zero Trust → Access → Applications**」保護 `quote.example.com`，只允許團隊的 Email 以一次性驗證碼登入。
+
+   瀏覽器在安裝 App 時，有些檔案會在不帶 Access Cookie 的情況下下載，Access 則會把這些請求導向它的登入頁面。請為同一個主機名稱再新增一個 Access 應用程式，設定以下路徑並套用 **Bypass** 政策（Everyone），否則永遠不會出現安裝選項：
+
+   - `/manifest.webmanifest`
+   - `/icons/*`
+   - `/sw.js`
+   - `/offline.html`
+
+   這些檔案不含任何報價單或客戶資料（即使設定了 `APP_PASSWORD`，App 也會公開它們），而且路徑較明確的應用程式會優先於整個主機名稱的設定。在 App 前面加上的其他登入機制（反向代理的 Basic Auth、Authelia、Authentik）也需要同樣的例外設定。
 
 ## 安裝 App
 
@@ -127,7 +140,8 @@ Quote System 用一般的 HTTP 就能正常使用，但瀏覽器只允許從安�
 
 ## 疑難排解
 
-- **找不到安裝選項**：網址列必須顯示鎖頭且沒有任何警告。出現憑證警告（即使已點選繼續前往）代表裝置尚未信任該憑證，請重做方式 1 的第 4 步。iPhone 請使用 Safari。
+- **找不到安裝選項**：網址列必須顯示鎖頭且沒有任何警告。出現憑證警告（即使已點選繼續前往）代表裝置尚未信任該憑證，請重做方式 1 的第 4 步。iPhone 請使用 Safari。若 App 前面有 Cloudflare Access 或其他登入機制，請放行安裝所需的檔案（方式 3 的第 4 步）。
 - **搬移伺服器後出現「你的連線不是私人連線」**：憑證是針對 `SITE_ADDRESS` 簽發的，請開啟完全相同的網址，或修改 `SITE_ADDRESS` 後執行 `docker compose up -d`。
 - **Caddy 無法啟動**：查看 `docker compose logs caddy`。出現「address already in use」表示 80 或 443 埠已被其他程式占用，請設定 `HTTP_PORT` 與 `HTTPS_PORT`。
+- **出現「Unknown host」**：登入已關閉且設定了 `APP_HOSTS`，但你開啟的網址不在清單中。請把該主機名稱加入 `APP_HOSTS`（以逗號分隔；反向代理在 `X-Forwarded-Host` 送出的名稱也要加入），再執行 `docker compose up -d`。
 - **在自己的反向代理後面一直被要求重新登入**：當代理伺服器送出 `X-Forwarded-Proto: https` 時，App 會將 Session Cookie 標記為 `Secure`。若代理送出這個標頭、瀏覽器實際卻使用 `http://`，瀏覽器就會捨棄該 Cookie。請只在 HTTPS 連線時送出這個標頭，就像內建的 Caddy 一樣。

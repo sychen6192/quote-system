@@ -32,7 +32,9 @@
     --destructive-foreground: 0 0% 100%;
     --success: 142 72% 26%;
     --success-foreground: 0 0% 100%;
-    --warning: 25 90% 35%;
+    /* 32%, not 35%: the expired badge sits on its tint over --ground too
+       (4.9:1 there; 35% was 4.3:1). */
+    --warning: 25 90% 32%;
     --warning-foreground: 0 0% 100%;
     --info: 201 96% 32%;
     --info-foreground: 0 0% 100%;
@@ -163,6 +165,13 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* A modal dialog turns off pointer events on everything behind it; toasts
+   (Undo, Retry, Reload) must stay clickable over it. The toaster list itself
+   has no height, so it never blocks the page. (Outside @layer: not purged.) */
+[data-sonner-toaster] {
+  pointer-events: auto;
 }
 
 @layer utilities {

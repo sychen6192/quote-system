@@ -31,6 +31,7 @@ const TOTAL_FIELDS = ["items", "taxRate", "discountType", "discountValue", "othe
  * only when a total changes, not on every keystroke in a product name.
  */
 export function useFormTotals(): QuoteFinancials {
+  const { step } = useMoney();
   return useWatch<QuoteFormValues, (typeof TOTAL_FIELDS)[number][], QuoteFormValues, QuoteFinancials>({
     name: [...TOTAL_FIELDS],
     compute: (watched) => {
@@ -41,7 +42,10 @@ export function useFormTotals(): QuoteFinancials {
         QuoteFormValues["discountValue"],
         QuoteFormValues["otherFees"],
       ];
-      return formTotals({ items: items ?? [], taxRate, discountType, discountValue, otherFees });
+      return formTotals(
+        { items: items ?? [], taxRate, discountType, discountValue, otherFees },
+        { minorUnitStep: step }
+      );
     },
   });
 }

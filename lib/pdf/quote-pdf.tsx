@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { quotationItems, quotations } from "@/db/schema";
 import { QuotePDFDocument } from "@/components/pdf/QuotePDFDocument";
 import type { AppLocale } from "@/i18n/locales";
+import { minorUnitStep } from "@/lib/money";
 import { quoteViewFromRecord, type QuoteRecord } from "@/lib/quote-view";
 import type { DocumentBranding } from "@/lib/settings/types";
 import { registerPdfFonts } from "./fonts";
@@ -41,7 +42,7 @@ export async function renderQuotePdf(
   registerPdfFonts();
   const buffer = await renderToBuffer(
     <QuotePDFDocument
-      view={quoteViewFromRecord(quote, { today })}
+      view={quoteViewFromRecord(quote, { today, minorUnitStep: minorUnitStep(branding.fractionDigits) })}
       branding={branding}
       labels={pdfDocumentLabels(lang)}
       lang={lang}

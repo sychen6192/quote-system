@@ -90,6 +90,28 @@ export function formatUnitPrice(cents: number, money: DocumentMoney): string {
   return numberFormat(money.currencyLocale, digits, max).format(value / 100);
 }
 
+type DocumentFigures = {
+  items: readonly { amount: number }[];
+  totals: { subtotal: number; discount: number; tax: number; otherFees: number; total: number };
+};
+
+/**
+ * The money format to print `view` with. Views are computed rounded to the
+ * currency's displayed unit (lib/money minorUnitStep), so this is normally
+ * `money` itself. If any line amount or total still carries cents the
+ * currency hides (NT$10.50), those figures would each round on their own and
+ * stop adding up on paper, so the whole document shows cents instead.
+ */
+export function documentMoney(view: DocumentFigures, money: DocumentMoney): DocumentMoney {
+  const digits = money.fractionDigits;
+  if (digits >= 2) return money;
+  const step = digits === 1 ? 10 : 100;
+  const { subtotal, discount, tax, otherFees, total } = view.totals;
+  const figures = [...view.items.map((item) => item.amount), subtotal, discount, tax, otherFees, total];
+  const hidden = figures.some((cents) => Number.isFinite(cents) && Math.round(cents) % step !== 0);
+  return hidden ? { ...money, fractionDigits: 2 } : money;
+}
+
 /** Cents with the currency symbol (the grand total). */
 export function formatTotal(cents: number, money: DocumentMoney): string {
   return formatMoney(cents, money);

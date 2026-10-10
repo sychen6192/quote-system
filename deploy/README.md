@@ -16,12 +16,15 @@ cp .env.example .env      # set POSTGRES_PASSWORD, AUTH_SECRET and APP_PASSWORD
 docker compose up -d      # http://<server-ip>:3000
 ```
 
+`APP_PASSWORD` may contain letters, digits and `. _ ~ ! @ % ^ * + = : , -`; for other characters, wrap it in single quotes (`APP_PASSWORD='Acme$ecure #2026'`). Unquoted, Docker Compose would change a password with `$` or ` #` in it.
+
 Useful commands:
 
 ```sh
-docker compose --profile https up -d     # HTTPS via Caddy (SITE_ADDRESS in .env)
+docker compose --profile https up -d     # HTTPS via Caddy (SITE_ADDRESS and APP_BIND=127.0.0.1 in .env)
 docker compose --profile backup up -d    # daily database dumps into ./backups
-docker compose pull && docker compose up -d    # upgrade; migrations run on start
+# upgrade: set QUOTE_VERSION in .env to the new release (or re-run install.sh), then
+docker compose pull && docker compose up -d    # migrations run on start
 docker compose logs -f app               # app logs
 ```
 

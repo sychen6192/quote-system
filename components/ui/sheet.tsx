@@ -5,6 +5,7 @@ import * as SheetPrimitive from "@radix-ui/react-dialog"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
+import { ignoreToastInteractions } from "@/components/ui/toast-layer"
 import { DialogCloseButton } from "@/components/ui/dialog"
 
 const Sheet = SheetPrimitive.Root
@@ -70,6 +71,7 @@ const SheetContent = React.forwardRef<
       children,
       showCloseButton = true,
       closeLabel,
+      onInteractOutside,
       ...props
     },
     ref
@@ -78,6 +80,7 @@ const SheetContent = React.forwardRef<
       <SheetOverlay />
       <SheetPrimitive.Content
         ref={ref}
+        onInteractOutside={ignoreToastInteractions(onInteractOutside)}
         className={cn(sheetVariants({ side }), className)}
         {...props}
       >

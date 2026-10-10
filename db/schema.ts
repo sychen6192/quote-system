@@ -88,7 +88,8 @@ export const quotations = pgTable(
     terms: text("terms"),
     sentAt: timestamp("sent_at"),
     decidedAt: timestamp("decided_at"),
-    createdAt: timestamp("created_at").defaultNow(),
+    // NOT NULL (0002) so the list's newest/oldest order is a plain index scan.
+    createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },
   (t) => [

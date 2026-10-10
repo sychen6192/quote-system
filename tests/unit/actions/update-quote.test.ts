@@ -4,15 +4,18 @@ jest.mock("@/lib/auth/guard", () => ({
   assertAuthenticated: jest.fn(),
   isUnauthenticatedError: (e: unknown) => e instanceof Error && e.message === "UNAUTHENTICATED",
 }));
+jest.mock("@/services/settings", () => ({ getSettings: jest.fn() }));
 
 import { revalidatePath } from "next/cache";
 import { updateQuote } from "@/actions/update-quote";
 import { db } from "@/db";
 import { assertAuthenticated } from "@/lib/auth/guard";
-import { createTxMock } from "./helpers";
+import { getSettings } from "@/services/settings";
+import { createTxMock, testSettings } from "./helpers";
 
 const mockTransaction = db.transaction as jest.Mock;
 const mockAuth = assertAuthenticated as jest.Mock;
+const mockSettings = getSettings as jest.Mock;
 
 function validInput(overrides: Record<string, unknown> = {}) {
   return {
@@ -52,6 +55,7 @@ function useTx(queues: Parameters<typeof createTxMock>[0]) {
 
 beforeEach(() => {
   mockAuth.mockResolvedValue(undefined);
+  mockSettings.mockResolvedValue(testSettings());
   useTx({ select: [[{ id: 1, customerId: 42 }], [{ n: 0 }]] });
   jest.spyOn(console, "error").mockImplementation(() => {});
 });
@@ -150,5 +154,76 @@ describe("updateQuote", () => {
     const res = await updateQuote(1, validInput());
     expect(res).toEqual({ success: false, code: "INTERNAL", message: "Failed to update quote" });
     expect(console.error).toHaveBeenCalled();
+  });
+
+  it("returns INTERNAL when settings cannot be loaded", async () => {
+    mockSettings.mockRejectedValueOnce(new Error("db down"));
+    const res = await updateQuote(1, validInput());
+    expect(res).toMatchObject({ success: false, code: "INTERNAL" });
+    expect(mockTransaction).not.toHaveBeenCalled();
+  });
+
+  // TWD is shown without decimals: stored figures must be whole NT$ so the
+  // list, dashboard and CSV add up like the document.
+  it("stores whole displayed units for a zero-decimal currency", async () => {
+    const input = validInput({
+      discountType: "percent",
+      discountValue: 5,
+      taxRate: 5,
+      otherFees: 0,
+      items: [{ productName: "Widget", quantity: 1, unitPrice: 1003, isTaxable: true }],
+    });
+    await updateQuote(1, input);
+    const quoteSet = txMock.argsOf("update", "set")[1] as Record<string, unknown>;
+    expect(quoteSet).toMatchObject({ subtotal: 100_300, discountAmount: 5_000, taxAmount: 4_800, totalAmount: 100_100 });
+
+    mockSettings.mockResolvedValue(testSettings({ money: { currency: "USD", currencyLocale: "en-US", fractionDigits: 2 } }));
+    useTx({ select: [[{ id: 1, customerId: 42 }], [{ n: 0 }]] });
+    await updateQuote(1, input);
+    const usd = txMock.argsOf("update", "set")[1] as Record<string, unknown>;
+    expect(usd).toMatchObject({ subtotal: 100_300, discountAmount: 5_015, taxAmount: 4_764, totalAmount: 100_049 });
+  });
+});
+
+// Two open editors (phone and desktop) must not silently overwrite each other.
+describe("updateQuote: concurrent edits", () => {
+  const loadedAt = new Date("2026-10-10T07:40:33.123Z");
+
+  it("returns CONFLICT and writes nothing when the quote changed since it was loaded", async () => {
+    useTx({ select: [[{ id: 1, customerId: 42, updatedAt: new Date("2026-10-10T07:45:00.000Z") }], [{ n: 0 }]] });
+    const res = await updateQuote(1, validInput(), loadedAt.toISOString());
+    expect(res).toMatchObject({ success: false, code: "CONFLICT" });
+    expect(txMock.calls.filter((c) => c.op !== "select")).toHaveLength(0);
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["ISO string", loadedAt.toISOString()],
+    ["epoch ms", loadedAt.getTime()],
+    ["Date", loadedAt],
+  ])("saves when the version matches (%s)", async (_label, expected) => {
+    useTx({ select: [[{ id: 1, customerId: 42, updatedAt: new Date(loadedAt) }], [{ n: 0 }]] });
+    await expect(updateQuote(1, validInput(), expected)).resolves.toEqual({ success: true, id: 1 });
+    const firstSelect = txMock.calls.find((c) => c.op === "select");
+    expect(Object.keys(firstSelect?.args[0] as object)).toContain("updatedAt");
+  });
+
+  it("treats null as 'never edited' and conflicts once someone has", async () => {
+    useTx({ select: [[{ id: 1, customerId: 42, updatedAt: null }], [{ n: 0 }]] });
+    await expect(updateQuote(1, validInput(), null)).resolves.toEqual({ success: true, id: 1 });
+    useTx({ select: [[{ id: 1, customerId: 42, updatedAt: loadedAt }], [{ n: 0 }]] });
+    await expect(updateQuote(1, validInput(), null)).resolves.toMatchObject({ code: "CONFLICT" });
+  });
+
+  it("skips the check without an expected version ('save anyway')", async () => {
+    useTx({ select: [[{ id: 1, customerId: 42, updatedAt: new Date() }], [{ n: 0 }]] });
+    await expect(updateQuote(1, validInput())).resolves.toEqual({ success: true, id: 1 });
+  });
+
+  it.each(["yesterday", NaN, {}, true])("rejects a malformed expected version %p", async (expected) => {
+    // Typed for callers, but a Server Action receives whatever is sent.
+    const res = await updateQuote(1, validInput(), expected as never);
+    expect(res).toEqual({ success: false, code: "VALIDATION", fieldErrors: { expectedUpdatedAt: ["invalidValue"] } });
+    expect(mockTransaction).not.toHaveBeenCalled();
   });
 });

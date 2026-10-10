@@ -91,7 +91,7 @@ export function CustomerCard({ customer }: { customer: QuoteViewCustomer }) {
       {company ? (
         <div className="mt-4 border-t pt-3">
           <Link
-            href={{ pathname: "/quotes", query: { q: company } }}
+            href={{ pathname: "/quotes", query: { customer: company } }}
             className="inline-flex min-h-11 items-center gap-2 text-sm font-medium text-primary underline-offset-4 hover:underline md:min-h-8"
           >
             <Search aria-hidden="true" className="size-4" />

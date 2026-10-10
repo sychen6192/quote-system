@@ -131,26 +131,6 @@ export function renderQuoteNumber(
   return formatQuoteNumber(quoteNumberScope(pattern, issuedDate), seq);
 }
 
-/** The sequence number of `quotationNumber` within `scope`, else null. */
-export function parseQuoteNumberSeq(
-  quotationNumber: string,
-  scope: QuoteNumberScope
-): number | null {
-  const { prefix, suffix } = scope;
-  if (
-    quotationNumber.length <= prefix.length + suffix.length ||
-    !quotationNumber.startsWith(prefix) ||
-    !quotationNumber.endsWith(suffix)
-  ) {
-    return null;
-  }
-  const digits = quotationNumber.slice(
-    prefix.length,
-    quotationNumber.length - suffix.length
-  );
-  return /^\d{1,9}$/.test(digits) ? Number(digits) : null;
-}
-
 /** Anything drizzle can run raw SQL on: the db or a transaction. */
 export type SqlExecutor = { execute: (query: SQL) => PromiseLike<unknown> };
 

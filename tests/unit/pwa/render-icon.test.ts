@@ -47,7 +47,7 @@ jest.mock("@/services/settings", () => ({
 }));
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { renderIcon, getIconVersion } = require("@/lib/pwa/render-icon") as typeof import("@/lib/pwa/render-icon");
+const { renderIcon, renderVersionedIcon, getIconVersion } = require("@/lib/pwa/render-icon") as typeof import("@/lib/pwa/render-icon");
 
 beforeEach(() => {
   getBrandingAsset.mockResolvedValue({ data: LOGO, mime: "image/png", version: "logo-v1" });
@@ -88,6 +88,18 @@ describe("renderIcon", () => {
     getBrandingAsset.mockResolvedValue(null);
     const png = await renderIcon("maskable-512.png");
     expect(readPngSize(png!)).toEqual({ width: 512, height: 512 });
+  }, 20_000);
+
+  it("reports the getIconVersion() token of the image it drew", async () => {
+    const branded = await renderVersionedIcon("apple-180.png");
+    expect(branded!.version).toBe(await getIconVersion());
+    expect(branded!.png).toBe(await renderIcon("apple-180.png"));
+    // Database unreachable: the bundled default logo is drawn under another token.
+    getBrandingAsset.mockResolvedValue({ data: LOGO, mime: "image/png", version: "default-logo" });
+    const fallback = await renderVersionedIcon("apple-180.png");
+    expect(fallback!.version).not.toBe(branded!.version);
+    expect(fallback!.version).toBe(await getIconVersion());
+    expect(await renderVersionedIcon("nope.png")).toBeNull();
   }, 20_000);
 
   it("versions icon URLs by image and brand colour", async () => {
