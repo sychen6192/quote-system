@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { hasLocale } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Globe, KeyRound } from "lucide-react";
-import { Link } from "@/navigation";
+import { Link, routing } from "@/navigation";
 import { LOCALES } from "@/i18n/locales";
 import { safeNextPath } from "@/lib/auth/paths";
 import { authEnabled } from "@/lib/auth/session";
@@ -66,6 +67,7 @@ export default async function LoginPage({
   searchParams: SearchParams;
 }) {
   const { locale } = await params;
+  if (!hasLocale(routing.locales, locale)) notFound();
   setRequestLocale(locale);
   const sp = await searchParams;
   const next = safeNextPath(first(sp.next), `/${locale}`);

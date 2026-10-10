@@ -18,6 +18,7 @@ import { InstallAppButton } from "@/components/pwa/install-app-button";
 import { useInstallPlatform, useInstallPrompt, useStandalone } from "@/components/pwa/use-pwa";
 import { installUi } from "@/lib/pwa/platform";
 import { LogoutButton } from "@/components/auth/logout-button";
+import { DownloadLink } from "@/components/app-shell/download-link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useSettingsPage } from "./settings-context";
@@ -205,10 +206,10 @@ export function AboutSection() {
         <SettingsCard title={t("dataTitle")} description={t("dataDescription")}>
           <div className="flex flex-wrap gap-2">
             <Button asChild variant="outline" className="h-11 md:h-9">
-              <a href={`/api/export/quotes?lang=${encodeURIComponent(locale)}`} download>
+              <DownloadLink href={`/api/export/quotes?lang=${encodeURIComponent(locale)}`}>
                 <Download aria-hidden="true" />
                 {t("export")}
-              </a>
+              </DownloadLink>
             </Button>
           </div>
           <p className="mt-3 text-sm text-muted-foreground">

@@ -13,9 +13,11 @@ import { appSettings, brandingAssets } from "@/db/schema";
 import {
   SETTINGS_TTL_MS,
   getBrandingAsset,
+  getBrandingStatus,
   getDocumentBranding,
   getPublicConfig,
   getSettings,
+  getSettingsProvenance,
   invalidateSettingsCache,
 } from "@/services/settings";
 
@@ -260,6 +262,49 @@ describe("getBrandingAsset — fallback order", () => {
     expect((await getBrandingAsset("logo"))?.data.subarray(PNG.length).toString()).toBe("disk-logo");
   });
 
+  it("keeps the last good DB asset through a database blip", async () => {
+    writeFile("branding-defaults/logo.png", marker("default"));
+    writeFile("branding/logo.png", marker("disk-logo"));
+    fake.assets.logo = dbRow(marker("db-logo"));
+    fake.assets.icon = dbRow(marker("db-icon"));
+    const logo = await getBrandingAsset("logo");
+    const icon = await getBrandingAsset("icon");
+    expect(logo?.data.subarray(PNG.length).toString()).toBe("db-logo");
+
+    fake.error = new Error("ECONNRESET");
+    now += SETTINGS_TTL_MS + 1; // settings and asset caches expire mid-outage
+    const during = await getBrandingAsset("logo");
+    expect(during?.data.subarray(PNG.length).toString()).toBe("db-logo");
+    expect(during?.version).toBe(logo?.version);
+    // The app icon (and so its PWA version token) does not change either.
+    expect((await getBrandingAsset("icon"))?.version).toBe(icon?.version);
+    expect(await getBrandingStatus()).toMatchObject({ logo: "db", icon: "db" });
+
+    fake.error = null;
+    now += SETTINGS_TTL_MS + 1;
+    expect((await getBrandingAsset("logo"))?.version).toBe(logo?.version);
+  });
+
+  it("keeps a known absence of uploads through a blip (disk, as before)", async () => {
+    writeFile("branding/logo.png", marker("disk-logo"));
+    fake.assets.icon = dbRow(marker("db-icon"));
+    expect((await getBrandingAsset("logo"))?.data.subarray(PNG.length).toString()).toBe("disk-logo");
+    fake.error = new Error("ECONNRESET");
+    now += SETTINGS_TTL_MS + 1;
+    expect((await getBrandingAsset("logo"))?.data.subarray(PNG.length).toString()).toBe("disk-logo");
+  });
+
+  it("forgets the last good DB asset after a write, then falls through to disk", async () => {
+    writeFile("branding/logo.png", marker("disk-logo"));
+    fake.assets.logo = dbRow(marker("db-logo"));
+    expect((await getBrandingAsset("logo"))?.data.subarray(PNG.length).toString()).toBe("db-logo");
+    // e.g. the upload was removed, then the database went away
+    delete fake.assets.logo;
+    invalidateSettingsCache();
+    fake.error = new Error("ECONNRESET");
+    expect((await getBrandingAsset("logo"))?.data.subarray(PNG.length).toString()).toBe("disk-logo");
+  });
+
   it("detects the type of disk files by their bytes", async () => {
     writeFile("branding/logo.png", JPEG);
     expect((await getBrandingAsset("logo"))?.mime).toBe("image/jpeg");
@@ -354,5 +399,60 @@ describe("getPublicConfig", () => {
     expect(JSON.stringify(pub)).not.toContain("re_secret_value");
     expect(pub.logoUrl).toBe(`/api/branding/logo?v=${pub.version}`);
     expect(pub.iconUrl).toBe(`/api/branding/icon?v=${pub.version}`);
+  });
+});
+
+// The Settings page shows, per field, whether it was saved there, comes from
+// .env or is the built-in default; it must not read app_settings itself.
+describe("getSettingsProvenance", () => {
+  it("reports db / env / default per field, with the getSettings precedence", async () => {
+    process.env.COMPANY_NAME = "Env Co";
+    process.env.COMPANY_ADDRESS = "Env St";
+    process.env.COMPANY_PHONE = "02-1234";
+    fake.settingsRow = {
+      // "" hides the address (blank is a value there) but not the name.
+      data: { company: { name: "", address: "", email: "db@acme.test" }, money: { currency: "USD" } },
+      updatedAt: new Date("2026-10-09T00:00:00Z"),
+    };
+    const p = await getSettingsProvenance();
+    expect(p.storeUnavailable).toBe(false);
+    expect(p.sources.company).toMatchObject({
+      name: "env",
+      address: "db",
+      email: "db",
+      phone: "env",
+      website: "default",
+    });
+    expect(p.sources.money.currency).toBe("db");
+    expect(p.sources.quote.showAmountInWords).toBe("default");
+    expect(p.env.company?.name).toBe("Env Co");
+    expect(p.stored.company).toMatchObject({ address: "", email: "db@acme.test" });
+
+    const s = await getSettings();
+    expect(s.company.name).toBe("Env Co");
+    expect(s.company.address).toBe("");
+  });
+
+  it("covers every section and field", async () => {
+    const p = await getSettingsProvenance();
+    expect(Object.keys(p.sources).sort()).toEqual(
+      ["appearance", "company", "features", "mail", "money", "payment", "quote", "region"].sort()
+    );
+    expect(Object.values(p.sources.payment)).toEqual(["default", "default", "default", "default"]);
+  });
+
+  it("flags an unreadable database and falls back to env", async () => {
+    process.env.COMPANY_NAME = "Env Co";
+    fake.error = new Error("connection refused");
+    const p = await getSettingsProvenance();
+    expect(p.storeUnavailable).toBe(true);
+    expect(p.stored).toEqual({});
+    expect(p.sources.company.name).toBe("env");
+  });
+
+  it("is not cached: a save shows up at once", async () => {
+    await getSettingsProvenance();
+    fake.settingsRow = { data: { company: { website: "https://acme.test" } }, updatedAt: new Date() };
+    expect((await getSettingsProvenance()).sources.company.website).toBe("db");
   });
 });

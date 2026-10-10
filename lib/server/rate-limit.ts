@@ -23,6 +23,8 @@ export type RateLimiter = {
   check(key: string): RateLimitResult;
   /** Same answer as check() would give, without recording a hit. */
   peek(key: string): RateLimitResult;
+  /** Refunds one hit recorded by check() (e.g. once it proved legitimate). */
+  release(key: string): void;
   /** Forgets `key` (e.g. after a successful login). */
   reset(key: string): void;
 };
@@ -96,23 +98,63 @@ export function createRateLimiter({
       const t = now();
       return result(live(key, t), t);
     },
+    release(key) {
+      const b = live(key, now());
+      if (b && b.count > 0) b.count -= 1;
+    },
     reset(key) {
       buckets.delete(key);
     },
   };
 }
 
+/**
+ * Records one hit on every `[limiter, key]` pair, but only when all of them
+ * allow it; otherwise records nothing and returns the first refusal. Keeps a
+ * request refused by one limit from using up another's budget.
+ */
+export function checkAll(entries: ReadonlyArray<readonly [RateLimiter, string]>): RateLimitResult {
+  for (const [limiter, key] of entries) {
+    const r = limiter.peek(key);
+    if (!r.ok) return r;
+  }
+  let remaining = Number.POSITIVE_INFINITY;
+  for (const [limiter, key] of entries) {
+    remaining = Math.min(remaining, limiter.check(key).remaining);
+  }
+  return { ok: true, retryAfterMs: 0, remaining: Number.isFinite(remaining) ? remaining : 0 };
+}
+
 type HeaderSource = { get(name: string): string | null };
+type Env = Record<string, string | undefined>;
+
+function trustedHops(env: Env): number {
+  const raw = (env.TRUST_PROXY_HOPS ?? "").trim();
+  if (!/^\d+$/.test(raw)) return 1;
+  const n = Number(raw);
+  return n >= 1 ? n : 1;
+}
 
 /**
- * Best-effort client address for rate-limit keys. Behind a reverse proxy this
- * is the forwarded address, which a direct client can spoof, so use it to
- * slow abuse down, never to authorise anything.
+ * Best-effort client address for rate-limit keys: the X-Forwarded-For entry
+ * written by the nearest proxy, i.e. the right-most one (or the
+ * TRUST_PROXY_HOPS-th from the right when several trusted proxies append).
+ * The bundled Caddy replaces the header, Cloudflare appends the address it
+ * saw, and Next fills it with the socket address only when it is absent; the
+ * left-most entry is whatever the client chose to send.
+ *
+ * A client talking to the app directly still controls the whole header, so
+ * use this to slow abuse down, never to authorise anything, and never as the
+ * only limit.
  */
-export function getClientIp(headers: HeaderSource): string {
-  const forwarded = headers.get("x-forwarded-for");
-  const first = forwarded?.split(",")[0]?.trim();
-  if (first) return first;
+export function getClientIp(headers: HeaderSource, env: Env = process.env): string {
+  const entries = (headers.get("x-forwarded-for") ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (entries.length > 0) {
+    return entries[Math.max(0, entries.length - trustedHops(env))];
+  }
   const real = headers.get("x-real-ip")?.trim();
   return real || "unknown";
 }

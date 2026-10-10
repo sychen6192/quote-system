@@ -1,5 +1,6 @@
 "use server";
 
+import { normalizeSearchQuery } from "@/lib/search-query";
 import { searchCustomerOptions, type CustomerOption } from "@/services/customers";
 import { searchProductOptions, type ProductOption } from "@/services/products";
 import { internalError, requireAuth, type ActionFailure } from "./types";
@@ -7,10 +8,9 @@ import { internalError, requireAuth, type ActionFailure } from "./types";
 export type SearchResult<T> = { success: true; data: T[] } | ActionFailure;
 
 const LIMIT = 8;
-const MAX_QUERY_LENGTH = 100;
 
 function normalizeQuery(q: unknown): string {
-  return typeof q === "string" ? q.trim().slice(0, MAX_QUERY_LENGTH) : "";
+  return typeof q === "string" ? normalizeSearchQuery(q) : "";
 }
 
 async function search<T>(

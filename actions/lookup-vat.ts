@@ -2,7 +2,7 @@
 
 import { headers } from "next/headers";
 import { gcisUrl, parseGcisResponse, type VatCompany } from "@/lib/gcis";
-import { createRateLimiter, getClientIp } from "@/lib/server/rate-limit";
+import { checkAll, createRateLimiter, getClientIp } from "@/lib/server/rate-limit";
 import { getSettings } from "@/services/settings";
 import { requireAuth } from "./types";
 
@@ -14,8 +14,10 @@ export type VatLookupResult =
     };
 
 // The government API is shared and unauthenticated; don't let one client
-// hammer it through us.
+// hammer it through us. The per-address key is spoofable (X-Forwarded-For),
+// so a shared cap bounds the total.
 const limiter = createRateLimiter({ windowMs: 60_000, max: 30 });
+const overallLimiter = createRateLimiter({ windowMs: 60_000, max: 60, maxKeys: 1 });
 
 export async function lookupVatNumber(vat: unknown): Promise<VatLookupResult> {
   if (await requireAuth()) return { success: false, code: "UNAUTHORIZED" };
@@ -34,7 +36,8 @@ export async function lookupVatNumber(vat: unknown): Promise<VatLookupResult> {
   const trimmed = typeof vat === "string" ? vat.trim() : "";
   if (!/^\d{8}$/.test(trimmed)) return { success: false, code: "INVALID" };
 
-  if (!limiter.check(getClientIp(await headers())).ok) {
+  const ip = getClientIp(await headers());
+  if (!checkAll([[limiter, ip], [overallLimiter, "*"]]).ok) {
     return { success: false, code: "RATE_LIMITED" };
   }
 

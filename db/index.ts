@@ -53,6 +53,12 @@ function holder(): Holder {
       idle_timeout: 30,
       connect_timeout: 10,
       onnotice: () => {},
+      // Every column is `timestamp without time zone` and drizzle reads it
+      // back as UTC; JS writes UTC wall time. now()/defaultNow() write the
+      // session's local time, so pin the session to UTC: a Postgres whose
+      // TimeZone is Asia/Taipei (initdb takes the OS zone) would otherwise
+      // put created_at 8 hours in the future.
+      connection: { TimeZone: "UTC" },
     });
     h = { client, db: drizzle(client, { schema }) };
     store[HOLDER] = h;

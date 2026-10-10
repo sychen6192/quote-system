@@ -13,6 +13,9 @@ describe("safeNextPath", () => {
 
   it("normalises dot segments without leaving the site", () => {
     expect(safeNextPath("/en/../zh-TW/quotes")).toBe("/zh-TW/quotes");
+    expect(safeNextPath("/./en/quotes")).toBe("/en/quotes");
+    // An encoded slash is not a path separator: stays a same-site path.
+    expect(safeNextPath("/.%2F/evil.example")).toBe("/.%2F/evil.example");
   });
 
   it.each([
@@ -27,6 +30,16 @@ describe("safeNextPath", () => {
     "",
     " /en",
     "/en/\u0000",
+    // Dot segments that collapse into a protocol-relative path once parsed.
+    "/.//evil.example",
+    "/..//evil.example",
+    "/a/..//evil.example",
+    "/en/..//evil.example",
+    "/%2e//evil.example",
+    "/%2E//evil.example",
+    "/%2E%2E//evil.example",
+    "/.///evil.example",
+    "/././/evil.example/x?y#z",
   ])("rejects %j", (input) => {
     expect(safeNextPath(input, "/en")).toBe("/en");
   });

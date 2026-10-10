@@ -5,6 +5,10 @@ import {
   hashString,
   mergeSettings,
   type EnvSettings,
+  BLANK_IS_A_VALUE,
+  blankIsAValue,
+  isBlankSetting,
+  settingSource,
 } from "@/lib/settings/merge";
 import type { EffectiveSettings } from "@/lib/settings/types";
 
@@ -275,5 +279,24 @@ describe("version", () => {
     expect(hashString("abc")).toBe(hashString("abc"));
     expect(hashString("abc")).not.toBe(hashString("abd"));
     expect(hashString("abc")).toMatch(/^[0-9a-z]{1,11}$/);
+  });
+});
+
+describe("settingSource / BLANK_IS_A_VALUE", () => {
+  it("treats a saved blank as a value only where hiding makes sense", () => {
+    expect(blankIsAValue("company", "address")).toBe(true);
+    expect(blankIsAValue("company", "name")).toBe(false);
+    expect(BLANK_IS_A_VALUE.mail).toEqual(["ccEmails", "replyTo"]);
+  });
+
+  it("resolves db > env > default like mergeSettings", () => {
+    const env = { company: { name: "Env Co", address: "Env St" } };
+    expect(settingSource("company", "name", env, { company: { name: "" } })).toBe("env");
+    expect(settingSource("company", "address", env, { company: { address: "" } })).toBe("db");
+    expect(settingSource("company", "name", env, { company: { name: "DB Co" } })).toBe("db");
+    expect(settingSource("company", "website", env, {})).toBe("default");
+    expect(settingSource("mail", "ccEmails", { mail: { ccEmails: [] } }, {})).toBe("default");
+    expect(isBlankSetting([])).toBe(true);
+    expect(isBlankSetting(0)).toBe(false);
   });
 });

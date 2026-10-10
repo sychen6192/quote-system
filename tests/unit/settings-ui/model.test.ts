@@ -1,5 +1,5 @@
 import { getEnvSettings } from "@/lib/config";
-import { SETTINGS_DEFAULTS, mergeSettings } from "@/lib/settings/merge";
+import { BLANK_IS_A_VALUE, SETTINGS_DEFAULTS, mergeSettings, settingSource } from "@/lib/settings/merge";
 import {
   parseSettingsLayer,
   settingsSectionSchemas,
@@ -162,6 +162,23 @@ describe("resolveSettingsFields", () => {
     expect(resolved.meta.quote.defaultSalesperson.source).toBe("default");
   });
 
+  it("reports the source getSettings() itself uses (lib/settings/merge settingSource)", () => {
+    for (const stored of [{}, blankStored()]) {
+      const envSettings = getEnvSettings(FULL_ENV);
+      const db = parseSettingsLayer(stored);
+      const { resolved } = resolveLike(FULL_ENV, stored);
+      for (const section of SETTINGS_SECTIONS) {
+        for (const key of Object.keys(resolved.meta[section])) {
+          expect({ section, key, source: resolved.meta[section][key].source }).toEqual({
+            section,
+            key,
+            source: settingSource(section, key, envSettings.layer, db),
+          });
+        }
+      }
+    }
+  });
+
   it("names an env var for every field the env layer can set", () => {
     const layer = getEnvSettings(FULL_ENV).layer;
     for (const section of SETTINGS_SECTIONS) {
@@ -177,6 +194,25 @@ describe("resolveSettingsFields", () => {
 });
 
 describe("buildSectionPatch", () => {
+  it("keeps a cleared field blank exactly where lib/settings/merge says blank is a value", () => {
+    for (const section of SETTINGS_SECTIONS) {
+      const keys = Object.keys(SETTINGS_DEFAULTS[section]).filter((key) => {
+        const sample = (SETTINGS_DEFAULTS[section] as Record<string, unknown>)[key];
+        return typeof sample === "string" || Array.isArray(sample);
+      });
+      const blanks = Object.fromEntries(
+        keys.map((key) => [key, Array.isArray((SETTINGS_DEFAULTS[section] as Record<string, unknown>)[key]) ? [] : ""])
+      );
+      const patch = buildSectionPatch(section, keys, blanks);
+      const keptBlank = keys.filter((key) => patch[key] !== null).sort();
+      expect({ section, keptBlank }).toEqual({
+        section,
+        keptBlank: [...(BLANK_IS_A_VALUE[section] ?? [])].filter((key) => keys.includes(key)).sort(),
+      });
+    }
+  });
+
+
   it("sends only the given keys, clearing fallback fields with null", () => {
     expect(
       buildSectionPatch("company", ["name", "nameLocal", "phone"], {

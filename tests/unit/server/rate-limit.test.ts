@@ -1,4 +1,4 @@
-import { createRateLimiter, getClientIp } from "@/lib/server/rate-limit";
+import { checkAll, createRateLimiter, getClientIp } from "@/lib/server/rate-limit";
 
 function clock(start = 1_000_000) {
   let t = start;
@@ -65,6 +65,20 @@ describe("createRateLimiter", () => {
     expect(rl.peek("a").ok).toBe(true);
   });
 
+  it("release() refunds one recorded hit", () => {
+    const c = clock();
+    const rl = createRateLimiter({ windowMs: 1000, max: 2, now: c.now });
+    rl.check("a");
+    rl.check("a");
+    expect(rl.peek("a").ok).toBe(false);
+    rl.release("a");
+    expect(rl.peek("a")).toEqual({ ok: true, retryAfterMs: 0, remaining: 1 });
+    rl.release("a");
+    rl.release("a");
+    rl.release("unknown");
+    expect(rl.peek("a")).toEqual({ ok: true, retryAfterMs: 0, remaining: 2 });
+  });
+
   it("reset() forgets a key", () => {
     const rl = createRateLimiter({ windowMs: 1000, max: 1 });
     rl.check("a");
@@ -97,11 +111,47 @@ describe("createRateLimiter", () => {
   });
 });
 
+describe("checkAll", () => {
+  it("records a hit on every limiter only when all allow it", () => {
+    const c = clock();
+    const perKey = createRateLimiter({ windowMs: 1000, max: 2, now: c.now });
+    const all = createRateLimiter({ windowMs: 1000, max: 3, maxKeys: 1, now: c.now });
+    const hit = (ip: string) => checkAll([[perKey, ip], [all, "*"]]);
+
+    expect(hit("a")).toEqual({ ok: true, retryAfterMs: 0, remaining: 1 });
+    expect(hit("a")).toEqual({ ok: true, retryAfterMs: 0, remaining: 0 });
+    // Refused per key: must not use up the shared budget.
+    expect(hit("a")).toMatchObject({ ok: false, retryAfterMs: 1000 });
+    expect(all.peek("*").remaining).toBe(1);
+    expect(hit("b").ok).toBe(true);
+    // Shared cap reached: refused for everyone, and "c" is not charged.
+    expect(hit("c")).toMatchObject({ ok: false });
+    expect(perKey.peek("c").remaining).toBe(2);
+  });
+});
+
 describe("getClientIp", () => {
   const h = (init: Record<string, string>) => new Headers(init);
 
-  it("uses the first X-Forwarded-For entry", () => {
-    expect(getClientIp(h({ "x-forwarded-for": "203.0.113.7, 10.0.0.1" }))).toBe("203.0.113.7");
+  // The right-most entry is the one the nearest proxy wrote (Caddy replaces
+  // the header, Cloudflare appends the real client); the left-most is whatever
+  // the client sent.
+  it("uses the right-most X-Forwarded-For entry", () => {
+    expect(getClientIp(h({ "x-forwarded-for": "203.0.113.7, 10.0.0.1" }))).toBe("10.0.0.1");
+    expect(getClientIp(h({ "x-forwarded-for": "1.1.1.1, 2.2.2.2" }))).toBe("2.2.2.2");
+    expect(getClientIp(h({ "x-forwarded-for": "198.51.100.3" }))).toBe("198.51.100.3");
+    expect(getClientIp(h({ "x-forwarded-for": "1.1.1.1, 2.2.2.2, " }))).toBe("2.2.2.2");
+  });
+
+  it("skips TRUST_PROXY_HOPS - 1 trusted proxies from the right", () => {
+    const xff = h({ "x-forwarded-for": "6.6.6.6, 203.0.113.7, 10.0.0.2" });
+    expect(getClientIp(xff, { TRUST_PROXY_HOPS: "2" })).toBe("203.0.113.7");
+    expect(getClientIp(xff, { TRUST_PROXY_HOPS: "1" })).toBe("10.0.0.2");
+    // More hops than entries: the left-most entry is the best guess.
+    expect(getClientIp(xff, { TRUST_PROXY_HOPS: "9" })).toBe("6.6.6.6");
+    for (const bad of ["", "0", "-1", "abc", "1.5"]) {
+      expect(getClientIp(xff, { TRUST_PROXY_HOPS: bad })).toBe("10.0.0.2");
+    }
   });
 
   it("falls back to X-Real-IP, then 'unknown'", () => {

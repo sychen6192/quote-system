@@ -55,6 +55,113 @@ describe("proxy: auth disabled", () => {
   });
 });
 
+// Sign-in off: a DNS-rebinding page (Host: its own name, pointed at the LAN
+// address) must not get same-origin access once APP_HOSTS lists the names.
+describe("proxy: auth disabled, APP_HOSTS set", () => {
+  beforeEach(() => {
+    process.env.APP_HOSTS = "tunnel.example.org";
+  });
+  afterEach(() => {
+    delete process.env.APP_HOSTS;
+    delete process.env.SITE_ADDRESS;
+  });
+
+  it("answers 421 for a foreign Host before anything else", async () => {
+    for (const path of ["/en/quotes/1", "/api/export/quotes", "/sw.js", "/en/settings"]) {
+      const res = await proxy(req(path, { headers: { host: "rebind.attacker.example:3000" } }));
+      expect(res.status).toBe(421);
+      expect(res.headers.get("cache-control")).toBe("no-store");
+      expect(await res.text()).toMatch(/APP_HOSTS/);
+    }
+    const action = await proxy(
+      req("/en/quotes", {
+        method: "POST",
+        headers: { host: "rebind.attacker.example:3000", origin: "http://rebind.attacker.example:3000", "next-action": "x" },
+      })
+    );
+    expect(action.status).toBe(421);
+    expect(intl).not.toHaveBeenCalled();
+  });
+
+  it("does not trust an added X-Forwarded-Host", async () => {
+    const res = await proxy(
+      req("/en/quotes", { headers: { host: "rebind.attacker.example", "x-forwarded-host": "192.168.1.20:3000" } })
+    );
+    expect(res.status).toBe(421);
+  });
+
+  it("serves LAN addresses, local names, SITE_ADDRESS and APP_HOSTS", async () => {
+    process.env.SITE_ADDRESS = "quote.example.com";
+    for (const host of ["192.168.1.20:3000", "[::1]:3000", "nas.local", "quotes", "quote.example.com", "tunnel.example.org"]) {
+      const res = await proxy(req("/en/quotes", { headers: { host } }));
+      expect(res.headers.get("x-test-intl")).toBe("1");
+    }
+  });
+
+  it("keeps the health check reachable under any name", async () => {
+    const res = await proxy(req("/api/health", { headers: { host: "rebind.attacker.example" } }));
+    expect(res.headers.get("x-middleware-next")).toBe("1");
+  });
+
+  it("does not apply with sign-in on (the session cookie is bound to the real name)", async () => {
+    process.env.APP_PASSWORD = "s3cret";
+    const res = await proxy(req("/en/quotes", { headers: { host: "quotes.example.com" } }));
+    expect(res.status).toBe(307);
+    expect(location(res)).toMatch(/\/en\/login/);
+  });
+});
+
+// Upgrades must not lock out an install reached through its own domain with
+// sign-in off: without APP_HOSTS every name is served, with one warning.
+describe("proxy: auth disabled, APP_HOSTS empty", () => {
+  const WARNED = Symbol.for("quote-system.auth.unknown-host-warned");
+  let warn: jest.SpyInstance;
+  beforeEach(() => {
+    delete (globalThis as { [WARNED]?: boolean })[WARNED];
+    warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+  });
+  afterEach(() => {
+    warn.mockRestore();
+    delete process.env.SITE_ADDRESS;
+  });
+
+  it("serves a public host name and warns once per process, not per request", async () => {
+    for (const host of ["quotes.example.com", "quotes.example.com:443", "other.example.net"]) {
+      const res = await proxy(req("/en/quotes", { headers: { host } }));
+      expect(res.status).not.toBe(421);
+      expect(res.headers.get("x-test-intl")).toBe("1");
+    }
+    const action = await proxy(
+      req("/en/quotes", {
+        method: "POST",
+        headers: { host: "quotes.example.com", origin: "http://quotes.example.com", "next-action": "x" },
+      })
+    );
+    expect(action.status).not.toBe(421);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][0]).toMatch(/quotes\.example\.com/);
+    expect(warn.mock.calls[0][0]).toMatch(/APP_PASSWORD/);
+    expect(warn.mock.calls[0][0]).toMatch(/APP_HOSTS/);
+  });
+
+  it("does not warn for LAN addresses, local names or SITE_ADDRESS", async () => {
+    process.env.SITE_ADDRESS = "quote.example.com";
+    for (const host of ["192.168.1.20:3000", "[::1]:3000", "localhost:3000", "nas.local", "quotes", "quote.example.com"]) {
+      const res = await proxy(req("/en/quotes", { headers: { host } }));
+      expect(res.headers.get("x-test-intl")).toBe("1");
+    }
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("does not warn for the health check or with sign-in on", async () => {
+    await proxy(req("/api/health", { headers: { host: "quotes.example.com" } }));
+    process.env.APP_PASSWORD = "s3cret";
+    const res = await proxy(req("/en/quotes", { headers: { host: "quotes.example.com" } }));
+    expect(res.status).toBe(307);
+    expect(warn).not.toHaveBeenCalled();
+  });
+});
+
 describe("proxy: auth enabled", () => {
   beforeEach(() => {
     process.env.APP_PASSWORD = "s3cret";
@@ -114,6 +221,31 @@ describe("proxy: auth enabled", () => {
     expect(login.status).toBe(307);
     expect(location(login)).toBe("/zh-TW");
   });
+
+  it("never redirects a signed-in visitor off-site from /login", async () => {
+    const cookie = `qs_session=${await createSessionToken()}`;
+    for (const next of ["%2F.%2F%2Fevil.example%2Flogin", "%2Fen%2F..%2F%2Fevil.example", "%2F%2Fevil.example"]) {
+      const res = await proxy(req(`/en/login?next=${next}`, { headers: { cookie } }));
+      expect(res.status).toBe(307);
+      expect(res.headers.get("location")).toBe(`${BASE}/en`);
+    }
+  });
+});
+
+describe("proxy: /_next/<page>", () => {
+  it.each([undefined, "s3cret"])("404s it without rendering (APP_PASSWORD=%s)", async (pw) => {
+    if (pw) process.env.APP_PASSWORD = pw;
+    for (const path of ["/_next/quotes/1", "/_next/quotes/1/edit", "/_next/settings", "/_next/quotes/new"]) {
+      const res = await proxy(req(path));
+      expect(res.status).toBe(404);
+      expect(res.headers.get("x-middleware-next")).toBeNull();
+    }
+    expect(intl).not.toHaveBeenCalled();
+  });
+
+  it("passes the dev HMR endpoint through", async () => {
+    expect((await proxy(req("/_next/webpack-hmr"))).headers.get("x-middleware-next")).toBe("1");
+  });
 });
 
 describe("proxy: file-like paths", () => {
@@ -129,7 +261,7 @@ describe("proxy: file-like paths", () => {
 
   it("passes PWA assets through without auth or locale", async () => {
     process.env.APP_PASSWORD = "s3cret";
-    for (const path of ["/sw.js", "/manifest.webmanifest", "/offline.html", "/icons/maskable-512.png"]) {
+    for (const path of ["/robots.txt", "/sw.js", "/manifest.webmanifest", "/offline.html", "/icons/maskable-512.png"]) {
       expect((await proxy(req(path))).headers.get("x-middleware-next")).toBe("1");
     }
     expect(intl).not.toHaveBeenCalled();

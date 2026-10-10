@@ -92,9 +92,17 @@ function sortItems(items: ItemRow[]): ItemRow[] {
   return [...items].sort((a, b) => a.position - b.position || a.id - b.id);
 }
 
+export type QuoteMoneyOptions = {
+  /**
+   * minorUnitStep(money.fractionDigits) of the configured currency, so line
+   * amounts and totals are whole displayed units (see calculateQuoteFinancials).
+   */
+  minorUnitStep?: number;
+};
+
 export function quoteViewFromRecord(
   row: QuoteRecord,
-  { today }: { today: string }
+  { today, minorUnitStep }: { today: string } & QuoteMoneyOptions
 ): QuoteView {
   const items: QuoteViewItem[] = sortItems(row.items).map((item) => ({
     productName: item.productName,
@@ -103,7 +111,7 @@ export function quoteViewFromRecord(
     quantity: Number(item.quantity),
     unitPrice: item.unitPrice,
     isTaxable: item.isTaxable ?? true,
-    amount: lineAmount(Number(item.quantity), item.unitPrice),
+    amount: lineAmount(Number(item.quantity), item.unitPrice, minorUnitStep),
   }));
   const discountType: DiscountType =
     row.discountType === "percent" ? "percent" : "amount";
@@ -112,6 +120,7 @@ export function quoteViewFromRecord(
     taxRateBp,
     discount: { type: discountType, value: row.discountValue },
     otherFees: row.otherFees ?? 0,
+    minorUnitStep,
   });
   const status = normalizeStatus(row.status);
   const validUntil = toIsoDate(row.validUntil) ?? "";
@@ -157,12 +166,13 @@ export function quoteViewFromForm(
     id = null,
     quotationNumber = null,
     status = "draft",
+    minorUnitStep,
   }: {
     today: string;
     id?: number | null;
     quotationNumber?: string | null;
     status?: QuoteStatus;
-  }
+  } & QuoteMoneyOptions
 ): QuoteView {
   const items: QuoteViewItem[] = (values.items ?? []).map((item) => {
     const quantity = lenientNumber(item?.quantity);
@@ -174,7 +184,7 @@ export function quoteViewFromForm(
       quantity,
       unitPrice,
       isTaxable: item?.isTaxable ?? true,
-      amount: lineAmount(quantity, unitPrice),
+      amount: lineAmount(quantity, unitPrice, minorUnitStep),
     };
   });
   const discountType: DiscountType =
@@ -191,6 +201,7 @@ export function quoteViewFromForm(
           : toCents(discountValue),
     },
     otherFees: toCents(lenientNumber(values.otherFees)),
+    minorUnitStep,
   });
   const validUntil = toIsoDate(values.validUntil ?? null) ?? "";
 
@@ -274,7 +285,10 @@ export type QuoteRecordValues = {
  * Parsed form data → DB column values (cents, basis points, positions,
  * computed totals). The inverse of formValuesFromRecord.
  */
-export function quoteRecordValues(data: QuoteFormData): QuoteRecordValues {
+export function quoteRecordValues(
+  data: QuoteFormData,
+  { minorUnitStep }: QuoteMoneyOptions = {}
+): QuoteRecordValues {
   const items = data.items.map((item, position) => ({
     position,
     productName: item.productName,
@@ -294,6 +308,7 @@ export function quoteRecordValues(data: QuoteFormData): QuoteRecordValues {
     taxRateBp,
     discount: { type: data.discountType, value: discountValue },
     otherFees,
+    minorUnitStep,
   });
 
   return {
@@ -321,7 +336,9 @@ export function quoteRecordValues(data: QuoteFormData): QuoteRecordValues {
       discountAmount: totals.discount,
       taxRate: taxRateBp,
       taxAmount: totals.tax,
-      otherFees: totals.otherFees,
+      // As entered, like unit prices and the discount value; the totals
+      // (and every view) round it to the displayed unit.
+      otherFees,
       totalAmount: totals.total,
     },
     items,

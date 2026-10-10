@@ -27,6 +27,7 @@
   "email": {
     "title": "Send quotation",
     "description": "{number} is attached as a PDF.",
+    "descriptionDisabled": "Download {number} as a PDF and attach it to your own email.",
     "to": "To",
     "toPlaceholder": "name@company.com",
     "cc": "CC",

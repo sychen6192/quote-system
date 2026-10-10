@@ -65,6 +65,13 @@ jobs:
           docker exec "${{ job.services.postgres.id }}" createdb -U postgres quote_test
           DATABASE_URL="$TEST_DATABASE_URL" npm run db:migrate
 
+      # pg_dump/pg_restore for the restore drill (tests/unit/packaging/restore-drill.test.ts),
+      # which runs the documented restore commands against the service.
+      - name: PostgreSQL client tools
+        run: |
+          pg_restore --version || { sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client; }
+          pg_dump --version
+
       - name: Unit and integration tests
         run: npm test -- --ci
 
@@ -253,11 +260,12 @@ jobs:
             echo '```'
             echo
             echo "## Upgrade"
-            echo 'In your install directory, run the installer again:'
+            echo "Take a backup, download this installer and run it again inside your install directory (or add \`QUOTE_DIR=<your install directory>\`; the default is \`~/quote-system\`):"
             echo '```sh'
+            echo "curl -fsSLO https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/install.sh"
             echo "QUOTE_VERSION=${version} sh install.sh"
             echo '```'
-            echo "or set \`QUOTE_VERSION=${version}\` in \`.env\`, then run \`docker compose pull && docker compose up -d\`."
+            echo "Without the installer: set \`QUOTE_VERSION=${version}\` in \`.env\`, then run \`docker compose pull && docker compose up -d\` in the install directory."
             echo "Image: \`${IMAGE}:${version}\` (linux/amd64, linux/arm64). Database migrations run automatically on start."
             echo
             echo "## Commits"

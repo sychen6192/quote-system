@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpDown } from "lucide-react";
+import { ArrowUpDown, Building2, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
@@ -23,11 +23,14 @@ type Counts = Record<DisplayStatus | "all", number>;
 /** Search, status chips (with counts) and sort for the quotes list. */
 export function QuotesToolbar({
   q,
+  customer = "",
   status,
   sort,
   counts,
 }: {
   q: string;
+  /** Exact customer filter (?customer=, from the customer directory); "" = none. */
+  customer?: string;
   status: DisplayStatus | null;
   sort: SortOption;
   counts: Counts;
@@ -77,6 +80,24 @@ export function QuotesToolbar({
         </Select>
       </div>
 
+      {customer ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex h-9 max-w-full items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 pl-3 pr-1 text-sm font-medium text-foreground">
+            <Building2 aria-hidden="true" className="size-4 shrink-0 text-primary" />
+            <span className="truncate">{t("customerFilter.label", { name: customer })}</span>
+            <button
+              type="button"
+              onClick={() => update({ customer: null })}
+              aria-label={t("customerFilter.clear", { name: customer })}
+              title={t("customerFilter.clear", { name: customer })}
+              className="relative inline-flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors after:absolute after:-inset-2 hover:bg-primary/15 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <X aria-hidden="true" className="size-4" />
+            </button>
+          </span>
+        </div>
+      ) : null}
+
       <div className="-mx-4 overflow-x-auto px-4 no-scrollbar md:mx-0 md:px-0">
         <ToggleGroup
           type="single"
@@ -101,7 +122,8 @@ export function QuotesToolbar({
                 <span
                   className={cn(
                     "min-w-[1.25rem] rounded-full px-1.5 py-0.5 text-xs font-semibold tabular-nums leading-none",
-                    selected ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"
+                    // Solid, not a /20 tint: the tint over the chip was 4.4:1 (4.0:1 dark).
+                    selected ? "bg-primary-foreground text-primary" : "bg-muted text-muted-foreground"
                   )}
                 >
                   {counts[chip.value]}

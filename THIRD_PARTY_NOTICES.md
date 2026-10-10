@@ -183,8 +183,6 @@ These npm packages run in production. Their full license texts ship with each pa
 | sonner | MIT |
 | next-themes | MIT |
 | nextjs-toploader | MIT |
-| date-fns | MIT |
-| react-day-picker | MIT |
 | class-variance-authority | Apache-2.0 |
 | clsx, tailwind-merge | MIT |
 | tailwindcss (build time) | MIT |

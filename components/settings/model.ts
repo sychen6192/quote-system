@@ -1,8 +1,9 @@
 // Pure, client-safe model of the Settings page: tabs ↔ URL hash, where each
 // field's value comes from (Settings page / .env / built-in default) and the
-// patch a section save sends. The server page resolves sources with the same
-// precedence as lib/settings/merge.ts (tests/unit/settings-ui keeps them in
-// step).
+// patch a section save sends. Sources come from lib/settings/merge.ts, the
+// rules getSettings() itself follows (tests/unit/settings-ui checks the
+// values agree too).
+import { blankIsAValue, isBlankSetting, settingSource } from "@/lib/settings/merge";
 import type {
   SettingsLayer,
   SettingsSection,
@@ -50,23 +51,6 @@ export type FieldMeta = {
 export type SectionValues = Record<string, FieldValue>;
 export type SettingsSnapshot = Record<SettingsSection, SectionValues>;
 export type SettingsFieldMeta = Record<SettingsSection, Record<string, FieldMeta>>;
-
-// Text fields where a saved "" means "hide it" rather than "use the
-// fallback" (mirrors BLANK_IS_A_VALUE in lib/settings/merge.ts).
-const BLANK_IS_A_VALUE: { [S in SettingsSection]?: readonly string[] } = {
-  company: ["nameLocal", "address", "vatNumber", "email", "phone", "website"],
-  payment: ["bankName", "bankCode", "accountName", "accountNumber"],
-  quote: ["defaultNotes", "defaultTerms", "defaultSalesperson", "footerText"],
-  mail: ["ccEmails", "replyTo"],
-};
-
-export function blankIsAValue(section: SettingsSection, key: string): boolean {
-  return BLANK_IS_A_VALUE[section]?.includes(key) ?? false;
-}
-
-export function isBlank(value: unknown): boolean {
-  return value === "" || (Array.isArray(value) && value.length === 0);
-}
 
 /** The env var behind each field (lib/config.ts getEnvSettings). */
 export const ENV_VARS: { [S in SettingsSection]: Record<string, string> } = {
@@ -135,13 +119,11 @@ export function resolveSettingsFields(
     values[section] = {};
     meta[section] = {};
     for (const [key, fallbackDefault] of Object.entries(defaults[section])) {
-      const dbValue = layerValue(db, section, key);
       const envValue = layerValue(env, section, key);
-      const envSet = envValue !== undefined && !isBlank(envValue);
-      const dbSet = dbValue !== undefined && (blankIsAValue(section, key) || !isBlank(dbValue));
+      const envSet = envValue !== undefined && !isBlankSetting(envValue);
       const fallback = envSet ? envValue : fallbackDefault;
-      const source: FieldSource = dbSet ? "db" : envSet ? "env" : "default";
-      values[section][key] = asFieldValue(dbSet ? dbValue : fallback);
+      const source: FieldSource = settingSource(section, key, env, db);
+      values[section][key] = asFieldValue(source === "db" ? layerValue(db, section, key) : fallback);
       meta[section][key] = {
         source,
         fallback: asFieldValue(fallback),
@@ -188,7 +170,7 @@ export function buildSectionPatch(
   for (const key of keys) {
     const value = parsed[key];
     if (value === undefined) continue;
-    patch[key] = !blankIsAValue(section, key) && isBlank(value) ? null : value;
+    patch[key] = !blankIsAValue(section, key) && isBlankSetting(value) ? null : value;
   }
   return patch;
 }

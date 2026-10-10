@@ -177,9 +177,14 @@ describe("iconLayout", () => {
 });
 
 describe("icon URLs and caching", () => {
-  it("caches versioned URLs forever, plain ones for an hour", () => {
-    expect(iconCacheControl(true)).toBe("public, max-age=31536000, immutable");
-    expect(iconCacheControl(false)).toBe("public, max-age=3600");
+  it("caches a URL forever only when its ?v= names the image served", () => {
+    expect(iconCacheControl("tok1", "tok1")).toBe("public, max-age=31536000, immutable");
+    expect(iconCacheControl(null, "tok1")).toBe("public, max-age=3600");
+  });
+
+  it("caches briefly when ?v= names another image (a settings change, or a database outage)", () => {
+    expect(iconCacheControl("tok0", "tok1")).toBe("public, max-age=300");
+    expect(iconCacheControl("", "tok1")).toBe("public, max-age=300");
   });
 
   it("changes the version with the image and with the brand colour", () => {

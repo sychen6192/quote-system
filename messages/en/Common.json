@@ -1,6 +1,5 @@
 {
   "backToDashboard": "Back to dashboard",
-  "toggleTheme": "Toggle theme",
   "number": "Number",
   "customer": "Customer",
   "status": "Status",
@@ -17,9 +16,8 @@
   "copyFailed": "Couldn't copy. Select the text and copy it instead.",
   "clearSearch": "Clear search",
   "loading": "Loading…",
-  "notSet": "Not set",
   "sessionExpired": "Your session has expired. Taking you to the sign-in page…",
-  "genericError": "Something went wrong. Please try again.",
+  "downloadFailed": "Couldn't download the file. Please try again.",
   "pagination": {
     "label": "Pagination",
     "previous": "Previous",

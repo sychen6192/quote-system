@@ -1,10 +1,10 @@
-import { pdfLineBreakSyllables } from "@/lib/pdf/line-break";
+import { LONG_RUN_CHARS, pdfLineBreakSyllables } from "@/lib/pdf/line-break";
 
 describe("pdfLineBreakSyllables", () => {
   it.each<[string, string[]]>([
     // Latin words are never hyphenated…
     ["quotation", ["quotation"]],
-    ["supercalifragilisticexpialidocious", ["supercalifragilisticexpialidocious"]],
+    ["internationalization", ["internationalization"]],
     ["sales@example.com", ["sales@example.com"]],
     ["QT-20261009-001", ["QT-20261009-001"]],
     ["0123-456-789", ["0123-456-789"]],
@@ -44,5 +44,38 @@ describe("pdfLineBreakSyllables", () => {
     for (let i = 1; i < syllables.length; i++) {
       expect(syllables[i] === "" || syllables[i - 1] === "").toBe(true);
     }
+  });
+});
+
+// A SKU, hash or URL wider than its box must still wrap, in every PDF text
+// (the callback is registered globally), not run over the next column.
+describe("pdfLineBreakSyllables: long Latin runs", () => {
+  const nonEmpty = (syllables: string[]) => syllables.filter((s) => s !== "");
+
+  it("keeps runs up to LONG_RUN_CHARS whole", () => {
+    const run = "A".repeat(LONG_RUN_CHARS);
+    expect(pdfLineBreakSyllables(run)).toEqual([run]);
+  });
+
+  it("lets a longer run break between any two characters, without hyphens", () => {
+    const sku = "SKU0123456789ABCDEFGHIJKLMNOP";
+    const syllables = pdfLineBreakSyllables(sku);
+    expect(nonEmpty(syllables)).toEqual(Array.from(sku));
+    expect(syllables.join("")).toBe(sku);
+    for (let i = 1; i < syllables.length; i++) {
+      expect(syllables[i] === "" || syllables[i - 1] === "").toBe(true);
+    }
+  });
+
+  it("keeps closing punctuation with the character before it", () => {
+    const hash = "0123456789abcdef0123456789abcdef).";
+    expect(nonEmpty(pdfLineBreakSyllables(hash)).pop()).toBe("f).");
+  });
+
+  it("splits a long run inside mixed CJK text and long URL segments", () => {
+    const word = "見https://example.test/a0123456789b0123456789c0123456789";
+    const syllables = pdfLineBreakSyllables(word);
+    expect(syllables.join("")).toBe(word);
+    expect(Math.max(...nonEmpty(syllables).map((s) => Array.from(s).length))).toBeLessThanOrEqual(LONG_RUN_CHARS);
   });
 });

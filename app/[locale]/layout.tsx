@@ -8,14 +8,18 @@ import { notFound } from "next/navigation";
 import NextTopLoader from "nextjs-toploader";
 import { routing } from "@/navigation";
 import { getPublicConfig } from "@/services/settings";
+import { isAuthenticated } from "@/lib/auth/guard";
 import { brandColorCss, brandHex } from "@/lib/brand-color";
 import { AppConfigProvider } from "@/components/providers/app-config-provider";
+import { signedOutConfig } from "@/components/providers/signed-out-config";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AppToaster } from "@/components/providers/app-toaster";
 import { AppShell } from "@/components/app-shell/app-shell";
 import { appDisplayName, brandDisplayName, shortAppName } from "@/components/app-shell/brand-name";
+import { appIconLinks } from "@/components/app-shell/icon-links";
 import { PwaRoot } from "@/components/pwa/pwa-root";
 import { THEME_COLORS } from "@/lib/pwa/platform";
+import { getIconVersion } from "@/lib/pwa/render-icon";
 
 // Self-hosted (OFL, @fontsource-variable/inter latin subset): builds must not
 // depend on reaching Google Fonts — air-gapped / firewalled self-hosters.
@@ -40,24 +44,20 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const { locale } = await params;
   if (!hasLocale(routing.locales, locale)) notFound();
 
-  const t = await getTranslations({ locale, namespace: "Metadata" });
-  const config = await getPublicConfig();
+  const [t, config, iconVersion] = await Promise.all([
+    getTranslations({ locale, namespace: "Metadata" }),
+    getPublicConfig(),
+    getIconVersion(),
+  ]);
   const appName = appDisplayName(config, t("title"));
   const brand = brandDisplayName(config, locale, t("title"));
-  const v = encodeURIComponent(config.version);
 
   return {
     title: { default: brand, template: `%s | ${appName}` },
     description: t("description"),
     applicationName: appName,
     robots: { index: false, follow: false },
-    icons: {
-      icon: [
-        { url: `/icons/favicon-32.png?v=${v}`, sizes: "32x32", type: "image/png" },
-        { url: `/icons/any-192.png?v=${v}`, sizes: "192x192", type: "image/png" },
-      ],
-      apple: `/icons/apple-180.png?v=${v}`,
-    },
+    icons: appIconLinks(iconVersion),
     appleWebApp: { capable: true, title: shortAppName(appName), statusBarStyle: "default" },
     formatDetection: { telephone: false },
   };
@@ -88,13 +88,24 @@ export default async function LocaleLayout({
   if (!hasLocale(routing.locales, locale)) notFound();
   setRequestLocale(locale);
 
-  const [messages, config] = await Promise.all([getMessages(), getPublicConfig()]);
+  const [messages, config, signedIn] = await Promise.all([
+    getMessages(),
+    getPublicConfig(),
+    // Always true without APP_PASSWORD.
+    isAuthenticated(),
+  ]);
+  // The config is serialised into every page, the sign-in page included.
+  const clientConfig = signedIn ? config : signedOutConfig(config);
   const brandCss = brandColorCss(config.brandColor);
   const brand = brandHex(config.brandColor);
 
   return (
     <html lang={locale} className={inter.variable} suppressHydrationWarning>
       <head>
+        {/* Not Next's metadata manifest, which is linked without crossorigin:
+            with credentials, a login proxy in front of the app lets it through
+            (app/manifest.webmanifest/route.ts). */}
+        <link rel="manifest" href="/manifest.webmanifest" crossOrigin="use-credentials" />
         {/* Numbers only (lib/brand-color.ts), so inlining is safe. */}
         {brandCss ? <style id="brand-color" dangerouslySetInnerHTML={{ __html: brandCss }} /> : null}
       </head>
@@ -102,7 +113,7 @@ export default async function LocaleLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <NextTopLoader color={brand} height={3} showSpinner={false} shadow={false} zIndex={1600} />
           <NextIntlClientProvider messages={messages}>
-            <AppConfigProvider value={config}>
+            <AppConfigProvider value={clientConfig}>
               <AppShell>{children}</AppShell>
               <AppToaster />
               <PwaRoot />

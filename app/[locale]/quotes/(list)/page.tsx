@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 import { Download, FileText, Plus, SearchX } from "lucide-react";
+import { notFound } from "next/navigation";
+import { hasLocale } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { Link } from "@/navigation";
+import { Link, routing } from "@/navigation";
 import { Button } from "@/components/ui/button";
 import { PageContainer, PageHeader } from "@/components/app-shell/page-header";
+import { pagePath, requireSession } from "@/components/app-shell/require-session";
 import { EmptyState } from "@/components/app-shell/empty-state";
+import { DownloadLink } from "@/components/app-shell/download-link";
 import { ListQueryProvider, ListResults } from "@/components/app-shell/list-query";
 import { firstParam, mergeQuery } from "@/components/app-shell/query";
 import { PaginationControls } from "@/components/pagination-controls";
@@ -35,14 +39,17 @@ export default async function QuotesListPage({
   searchParams: SearchParams;
 }) {
   const { locale } = await params;
-  setRequestLocale(locale);
+  if (!hasLocale(routing.locales, locale)) notFound();
   const sp = await searchParams;
+  await requireSession(locale, pagePath(locale, "/quotes", sp));
+  setRequestLocale(locale);
   const t = await getTranslations("QuotesList");
 
   const settings = await getSettings();
   const today = todayInTimeZone(settings.region.timezone);
   const raw = {
     q: firstParam(sp.q),
+    customer: firstParam(sp.customer),
     status: firstParam(sp.status),
     sort: firstParam(sp.sort),
     page: firstParam(sp.page),
@@ -54,12 +61,13 @@ export default async function QuotesListPage({
   // Only filters that took effect; unknown values were ignored by the service.
   const query = {
     q: filters.q || null,
+    customer: filters.customer || null,
     status: filters.status,
     sort: filters.sort === "newest" ? null : filters.sort,
   };
   const exportHref = `/api/export/quotes?${mergeQuery(query, { lang: locale }).toString()}`;
-  const filtered = Boolean(filters.q || filters.status);
-  const noQuotesAtAll = statusCounts.all === 0 && !filters.q;
+  const filtered = Boolean(filters.q || filters.customer || filters.status);
+  const noQuotesAtAll = statusCounts.all === 0 && !filters.q && !filters.customer;
 
   return (
     <PageContainer className="space-y-5 md:space-y-6">
@@ -76,10 +84,10 @@ export default async function QuotesListPage({
                 variant="outline"
                 className="h-10 rounded-lg bg-card shadow-card sm:h-9"
               >
-                <a href={exportHref} download title={t("exportCsvHint")}>
+                <DownloadLink href={exportHref} title={t("exportCsvHint")}>
                   <Download aria-hidden="true" />
                   {t("exportCsv")}
-                </a>
+                </DownloadLink>
               </Button>
             )}
             {/* The empty state brings its own big "create" button. */}
@@ -113,6 +121,7 @@ export default async function QuotesListPage({
         <ListQueryProvider>
           <QuotesToolbar
             q={filters.q}
+            customer={filters.customer}
             status={filters.status}
             sort={filters.sort}
             counts={statusCounts}
@@ -126,7 +135,9 @@ export default async function QuotesListPage({
                 description={
                   filters.q
                     ? t("noResults.withQuery", { query: filters.q })
-                    : t("noResults.description")
+                    : filters.customer
+                      ? t("noResults.withCustomer", { name: filters.customer })
+                      : t("noResults.description")
                 }
                 action={
                   filtered ? (

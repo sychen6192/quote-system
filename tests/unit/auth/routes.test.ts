@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { verifySessionToken } from "@/lib/auth/session";
+import { createDeviceToken, verifyDeviceToken, verifySessionToken } from "@/lib/auth/session";
 
 const ORIGINAL = { ...process.env };
 const BASE = "http://localhost:3000";
@@ -32,6 +32,23 @@ function post(
 
 function setCookie(res: Response): string {
   return res.headers.get("set-cookie") ?? "";
+}
+
+function cookieValue(res: Response, name: string): string | undefined {
+  for (const c of res.headers.getSetCookie()) {
+    const m = new RegExp(`^${name}=([^;]*)`).exec(c);
+    if (m) return m[1];
+  }
+  return undefined;
+}
+
+async function fillOverallCap(login: LoginRoute) {
+  for (let i = 0; i < 30; i++) {
+    const res = await login.POST(
+      post("/api/auth/login", { password: "x", locale: "en" }, { origin: BASE, "x-forwarded-for": `10.0.0.${i}` })
+    );
+    expect(res.headers.get("location")).toMatch(/error=invalid/);
+  }
 }
 
 beforeEach(() => {
@@ -95,7 +112,14 @@ describe("POST /api/auth/login", () => {
 
   it("refuses open redirects", async () => {
     const { login } = loadRoutes();
-    for (const next of ["//evil.example/x", "https://evil.example", "/\\evil.example"]) {
+    for (const next of [
+      "//evil.example/x",
+      "https://evil.example",
+      "/\\evil.example",
+      "/.//evil.example/x",
+      "/a/..//evil.example",
+      "/%2e//evil.example",
+    ]) {
       const res = await login.POST(post("/api/auth/login", { password: "s3cret", locale: "en", next }));
       expect(res.headers.get("location")).toBe("/en");
     }
@@ -165,6 +189,119 @@ describe("POST /api/auth/login", () => {
     );
     expect(res.headers.get("location")).toMatch(/^\/en\/login\?error=throttled&retry=1&/);
     expect(setCookie(res)).toBe("");
+  });
+
+  it("sets a long-lived device cookie, scoped to the auth routes, on sign-in", async () => {
+    const { login } = loadRoutes();
+    const res = await login.POST(post("/api/auth/login", { password: "s3cret", locale: "en" }));
+    const device = cookieValue(res, "qs_device");
+    expect(device).toBeDefined();
+    expect(await verifyDeviceToken(device)).not.toBeNull();
+    const raw = res.headers.getSetCookie().find((c) => c.startsWith("qs_device="))!;
+    expect(raw).toMatch(/Path=\/api\/auth/);
+    expect(raw).toMatch(/HttpOnly/i);
+    expect(raw).toMatch(/Max-Age=34560000/);
+
+    // A failed attempt sets no device cookie.
+    const failed = await login.POST(post("/api/auth/login", { password: "nope", locale: "en" }));
+    expect(cookieValue(failed, "qs_device")).toBeUndefined();
+  });
+
+  it("keeps the device id when a known device signs in again", async () => {
+    const { login } = loadRoutes();
+    const token = await createDeviceToken();
+    const res = await login.POST(
+      post("/api/auth/login", { password: "s3cret" }, { origin: BASE, cookie: `qs_device=${token}` })
+    );
+    expect(cookieValue(res, "qs_device")).toBe(token);
+  });
+
+  // Rotating X-Forwarded-For fills the shared cap; browsers that signed in
+  // before must still get in.
+  it("lets a known device sign in while the overall cap is full", async () => {
+    const { login } = loadRoutes();
+    await fillOverallCap(login);
+    const device = await createDeviceToken();
+    const res = await login.POST(
+      post(
+        "/api/auth/login",
+        { password: "s3cret", locale: "en" },
+        { origin: BASE, "x-forwarded-for": "10.0.1.1", cookie: `qs_device=${device}` }
+      )
+    );
+    expect(res.headers.get("location")).toBe("/en");
+    expect(setCookie(res)).toMatch(/qs_session=v1\./);
+  });
+
+  it("ignores a forged device cookie", async () => {
+    const { login } = loadRoutes();
+    await fillOverallCap(login);
+    const forged = `d1.${"A".repeat(22)}.${"B".repeat(43)}`;
+    const res = await login.POST(
+      post("/api/auth/login", { password: "s3cret", locale: "en" }, { origin: BASE, cookie: `qs_device=${forged}` })
+    );
+    expect(res.headers.get("location")).toMatch(/error=throttled/);
+    expect(setCookie(res)).toBe("");
+  });
+
+  it("limits a known device on its own, whatever address it claims", async () => {
+    const { login } = loadRoutes();
+    const device = await createDeviceToken();
+    for (let i = 0; i < 5; i++) {
+      const res = await login.POST(
+        post(
+          "/api/auth/login",
+          { password: `guess${i}`, locale: "en" },
+          { origin: BASE, "x-forwarded-for": `172.16.0.${i}`, cookie: `qs_device=${device}` }
+        )
+      );
+      expect(res.headers.get("location")).toMatch(/error=invalid/);
+    }
+    const blocked = await login.POST(
+      post(
+        "/api/auth/login",
+        { password: "s3cret", locale: "en" },
+        { origin: BASE, "x-forwarded-for": "172.16.1.1", cookie: `qs_device=${device}` }
+      )
+    );
+    expect(blocked.headers.get("location")).toMatch(/error=throttled/);
+
+    // Another known device, from the very same address, is unaffected.
+    const other = await createDeviceToken();
+    const ok = await login.POST(
+      post(
+        "/api/auth/login",
+        { password: "s3cret", locale: "en" },
+        { origin: BASE, "x-forwarded-for": "172.16.0.0", cookie: `qs_device=${other}` }
+      )
+    );
+    expect(setCookie(ok)).toMatch(/qs_session=v1\./);
+  });
+
+  // Spoofing a victim's address must not lock out their known device.
+  it("does not let per-IP failures lock out a known device at that IP", async () => {
+    const { login } = loadRoutes();
+    const victim = { origin: BASE, "x-forwarded-for": "192.0.2.50" };
+    for (let i = 0; i < 5; i++) await login.POST(post("/api/auth/login", { password: "x" }, victim));
+    const device = await createDeviceToken();
+    const res = await login.POST(
+      post("/api/auth/login", { password: "s3cret" }, { ...victim, cookie: `qs_device=${device}` })
+    );
+    expect(setCookie(res)).toMatch(/qs_session=v1\./);
+  });
+
+  it("counts only failures toward the overall cap", async () => {
+    const { login } = loadRoutes();
+    for (let i = 0; i < 40; i++) {
+      const res = await login.POST(
+        post("/api/auth/login", { password: "s3cret" }, { origin: BASE, "x-forwarded-for": `10.7.0.${i}` })
+      );
+      expect(setCookie(res)).toMatch(/qs_session=/);
+    }
+    const res = await login.POST(
+      post("/api/auth/login", { password: "x", locale: "en" }, { origin: BASE, "x-forwarded-for": "10.7.1.1" })
+    );
+    expect(res.headers.get("location")).toMatch(/error=invalid/);
   });
 
   it("forgets earlier failures after a successful sign-in", async () => {

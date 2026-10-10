@@ -6,13 +6,47 @@ updates:
       interval: weekly
       day: monday
       timezone: Asia/Taipei
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     commit-message:
       prefix: chore(deps)
     groups:
-      # One PR a week for everything that should be safe; majors stay separate.
+      # One PR a week for everything that should be safe.
       minor-and-patch:
         update-types: [minor, patch]
+      # Majors arrive together in a second PR, so coupled ones (jest and
+      # ts-jest) move as a pair. If CI fails, comment
+      # "@dependabot ignore <name> major version" to drop the culprit.
+      majors:
+        update-types: [major]
+    ignore:
+      # Types for the Node.js runtime: they move with the Dockerfile's
+      # node:22-alpine, CI's node-version and engines (checked by
+      # tests/unit/packaging/config-docs.test.ts), never ahead of them.
+      - dependency-name: "@types/node"
+        versions: [">=23"]
+      # Deliberate migrations with code changes, not weekly updates.
+      - dependency-name: next
+        update-types: [version-update:semver-major]
+      - dependency-name: eslint-config-next
+        update-types: [version-update:semver-major]
+      - dependency-name: react
+        update-types: [version-update:semver-major]
+      - dependency-name: react-dom
+        update-types: [version-update:semver-major]
+      - dependency-name: "@types/react"
+        update-types: [version-update:semver-major]
+      - dependency-name: "@types/react-dom"
+        update-types: [version-update:semver-major]
+      # Waits for typescript-eslint's and eslint-config-next's peer ranges.
+      - dependency-name: eslint
+        update-types: [version-update:semver-major]
+      # v4 moves its PostCSS plugin and configuration (postcss.config.js,
+      # tailwind.config.ts).
+      - dependency-name: tailwindcss
+        update-types: [version-update:semver-major]
+      # 7 is outside ts-jest's and typescript-eslint's peer ranges.
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: github-actions
     directory: /

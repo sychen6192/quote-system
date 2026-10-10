@@ -10,6 +10,7 @@ import { QuoteDocument } from "@/components/quote-document/quote-document";
 import { useQuoteDocumentLabels } from "@/components/quote-document/use-quote-document-labels";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useFitScale } from "@/hooks/use-fit-scale";
+import { minorUnitStep } from "@/lib/money";
 import { quoteViewFromForm } from "@/lib/quote-view";
 import type { QuoteFormValues } from "@/lib/schemas/quote";
 import type { DocumentBranding } from "@/lib/settings/types";
@@ -55,8 +56,9 @@ export default function QuotePreview({
         id: quoteId,
         quotationNumber,
         status,
+        minorUnitStep: minorUnitStep(branding.fractionDigits),
       }),
-    [debounced, today, quoteId, quotationNumber, status]
+    [debounced, today, quoteId, quotationNumber, status, branding.fractionDigits]
   );
   const paper = useMemo(
     () => (

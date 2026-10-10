@@ -50,7 +50,7 @@ sh install.sh
 
 用瀏覽器開啟畫面上顯示的網址（例如 `http://192.168.1.20:3000`），輸入密碼即可登入。
 
-選項以環境變數指定，例如 `QUOTE_DIR=/opt/quote-system QUOTE_VERSION=1.0.0 APP_PORT=8080 sh install.sh`。設定 `APP_PASSWORD=`（空值）則不啟用登入。之後再執行一次安裝程式就會升級到最新版，`.env` 與資料都會保留。
+選項以環境變數指定，例如 `QUOTE_DIR=/opt/quote-system QUOTE_VERSION=1.0.0 APP_PORT=8080 sh install.sh`。設定 `APP_PASSWORD=`（空值）則不啟用登入；加上 `COMPOSE_PROFILES=https` 會一併啟動提供 HTTPS 的 Caddy（見下文）。之後再執行一次安裝程式就會升級到最新版，`.env` 與資料都會保留。只要 `https` profile 已啟用（寫在 `COMPOSE_PROFILES`，或曾手動啟動 Caddy），而 `APP_BIND` 是空值，安裝程式就會設為 `APP_BIND=127.0.0.1`，讓其他電腦只能透過 Caddy 連線；你自己設定過的 `APP_BIND` 則會保留。
 
 ### 手動以 Docker Compose 安裝
 
@@ -68,13 +68,15 @@ AUTH_SECRET=<至少 32 個隨機字元>
 APP_PASSWORD=<大家共用的登入密碼>
 ```
 
+`APP_PASSWORD` 可使用英文字母、數字與 `. _ ~ ! @ % ^ * + = : , -`。若要用其他字元，請用單引號把整組密碼括起來（`APP_PASSWORD='Acme$ecure #2026'`）：Docker Compose 讀取 `.env` 時，會把 `$name` 當成變數換成空字串，並在「空格加 `#`」處截斷，結果用你輸入的密碼反而登入不了。
+
 接著啟動：
 
 ```sh
 docker compose up -d
 ```
 
-App 預設使用 3000 埠（`APP_PORT`），資料庫不會對外開放任何連接埠。Windows 可在 PowerShell 執行相同指令（Windows 10 以上已內建 `curl` 與 `tar`），詳見〈[Windows 與 macOS 的 Docker Desktop](docs/deploy/docker-desktop.zh-TW.md)〉；Synology 與 QNAP 請參考〈[NAS 安裝說明](docs/deploy/nas.zh-TW.md)〉。
+App 預設使用 3000 埠（`APP_PORT`），資料庫不會對外開放任何連接埠。Windows 請改用〈[Windows 與 macOS 的 Docker Desktop](docs/deploy/docker-desktop.zh-TW.md)〉中的 PowerShell 步驟（使用 `curl.exe`，每行一個指令）；Synology 與 QNAP 請參考〈[NAS 安裝說明](docs/deploy/nas.zh-TW.md)〉。
 
 ## 首次設定
 
@@ -97,7 +99,7 @@ App 預設使用 3000 埠（`APP_PORT`），資料庫不會對外開放任何連
 瀏覽器只允許從安全網址安裝 App：`https://…`，或同一台電腦上的 `http://localhost`。一般的 `http://192.168.1.20:3000` 可以正常使用所有功能，只是手機上不會出現「安裝」選項。以下三種方式擇一：
 
 1. **使用 Caddy 自有憑證（公司或家中區網）**：在 `.env` 將 `SITE_ADDRESS` 設為伺服器 IP 或 `quote.local` 這類名稱，並設定 `APP_BIND=127.0.0.1`，接著執行 `docker compose --profile https up -d`，再開啟 `https://<SITE_ADDRESS>`。每台裝置都要先信任一次 Caddy 的根憑證（iPhone、iPad、Android、Windows 與 macOS 的步驟請見〈[HTTPS 設定指南](docs/deploy/https.zh-TW.md)〉）。
-2. **使用自己的網域**：將 `quote.example.com` 之類的 DNS 記錄指向伺服器，並讓 80 與 443 埠可從網際網路連入，設定 `SITE_ADDRESS=quote.example.com` 後執行 `docker compose --profile https up -d`。Caddy 會自動申請並更新免費憑證。請務必設定 `APP_PASSWORD`。
+2. **使用自己的網域**：將 `quote.example.com` 之類的 DNS 記錄指向伺服器，並讓 80 與 443 埠可從網際網路連入，設定 `SITE_ADDRESS=quote.example.com` 與 `APP_BIND=127.0.0.1` 後執行 `docker compose --profile https up -d`。Caddy 會自動申請並更新免費憑證。請務必設定 `APP_PASSWORD`。
 3. **使用 Tailscale 或 Cloudflare Tunnel（不必開放連接埠）**：執行 `tailscale serve --bg 3000`，tailnet 內的每台裝置都能透過 `https://<主機名稱>.<tailnet>.ts.net` 以有效憑證連線；Cloudflare Tunnel 則可把 App 發布到你的網域，並可搭配 Cloudflare Access 在前面再加一道登入。
 
 接著安裝 App：
@@ -120,6 +122,8 @@ App 預設使用 3000 埠（`APP_PORT`），資料庫不會對外開放任何連
 | `POSTGRES_PASSWORD` | 無，必填 | 內建 PostgreSQL 的資料庫密碼（限英文字母與數字），只在資料庫首次建立時套用 |
 | `APP_PASSWORD` | 空值（不需登入） | 共用登入密碼；修改後所有人都會被登出 |
 | `AUTH_SECRET` | 由 `APP_PASSWORD` 推導，並記錄警告 | 簽署 Session Cookie 的隨機字串，至少 32 個字元 |
+| `APP_HOSTS` | 空值（接受任何主機名稱） | 只在不需登入時使用。空值時，App 接受任何主機名稱；第一次以非區網名稱連入時，會記錄一則警告（每次啟動只記一次）。設定為你實際使用的名稱（以逗號分隔，例如 `quote.example.com`、`*.example.com`）後，其他名稱一律回應「Unknown host」（HTTP 421），藉此防範 DNS rebinding 攻擊。IP 位址、`localhost`、不含點的名稱、以 `.local`、`.lan`、`.home`、`.home.arpa`、`.internal`、`.localdomain` 或 `.localhost` 結尾的名稱，以及 `SITE_ADDRESS` 一律可用；設為 `*` 則接受所有名稱，也不再警告 |
+| `TRUST_PROXY_HOPS` | `1` | App 前方會在 `X-Forwarded-For` 附加位址的反向代理數量，只用來區分登入、寄信與統編查詢頻率限制的來源；例如 Cloudflare 後面再接 NAS 反向代理時請設為 `2` |
 | `APP_NAME` | 公司名稱，其次為「Quote System」 | 安裝後 App 顯示的名稱 |
 | `APP_TIMEZONE` | `TZ`，其次為 `Asia/Taipei` | IANA 時區，決定報價日期、編號與到期判斷所用的「今天」 |
 | `RESEND_API_KEY` | 空值（不寄信） | [Resend](https://resend.com) API 金鑰，只從環境變數讀取 |
@@ -156,7 +160,7 @@ App 預設使用 3000 埠（`APP_PORT`），資料庫不會對外開放任何連
 |---|---|---|
 | `QUOTE_VERSION` | 安裝時的版本 | 映像檔標籤：`1.0.0`、`1.0`、`1` 或 `latest` |
 | `QUOTE_IMAGE` | `ghcr.io/sychen6192/quote-system` | 映像檔來源（使用鏡像站或自行建置時） |
-| `APP_PORT`／`APP_BIND` | `3000`／`0.0.0.0` | App 在主機上的連接埠與位址；搭配 Caddy 時請用 `APP_BIND=127.0.0.1` |
+| `APP_PORT`／`APP_BIND` | `3000`／`0.0.0.0`（空值） | App 在主機上的連接埠與位址；搭配 Caddy 時請用 `APP_BIND=127.0.0.1`（`APP_BIND` 為空值時，安裝程式會自動設定） |
 | `SITE_ADDRESS` | `localhost` | Caddy 對外提供服務的網域、IP 或區網名稱（https profile） |
 | `CADDY_TLS` | 空值 | 設為 `tls internal` 時，`quote.office` 這類私有名稱也改用 Caddy 自有憑證 |
 | `HTTP_PORT`／`HTTPS_PORT` | `80`／`443` | Caddy 在主機上的連接埠 |
@@ -165,18 +169,21 @@ App 預設使用 3000 埠（`APP_PORT`），資料庫不會對外開放任何連
 | `BACKUP_INTERVAL_SECONDS` | `86400` | 備份間隔秒數（backup profile） |
 | `POSTGRES_USER`／`POSTGRES_DB` | `postgres`／`quote-system` | 資料庫使用者與名稱 |
 
-請以 `KEY=value` 格式填寫，不要加引號。品牌圖片也可以沿用舊做法：在 `docker-compose.yml` 旁的 `branding/` 資料夾放入 `logo.png`、`stamp.png`、`icon.png`；在設定頁面上傳的圖片會優先使用。
+請以 `KEY=value` 格式填寫，不要加引號；唯一的例外是含有英文字母、數字與 `. _ ~ ! @ % ^ * + = : , -` 以外字元的 `APP_PASSWORD`，需以單引號括起來（見〈[手動以 Docker Compose 安裝](#手動以-docker-compose-安裝)〉）。品牌圖片也可以沿用舊做法：在 `docker-compose.yml` 旁的 `branding/` 資料夾放入 `logo.png`、`stamp.png`、`icon.png`；在設定頁面上傳的圖片會優先使用。
 
 ## 密碼保護
 
 設定 `APP_PASSWORD` 後即啟用登入（安裝程式會自動產生隨機密碼）。所有人共用同一組密碼，登入狀態維持 30 天。
 
-- 修改 `.env` 中的密碼並執行 `docker compose up -d`，所有人都會被登出。
-- 同一來源連續輸錯 5 次密碼，會暫停登入 15 分鐘。
+- 修改 `.env` 中的密碼並執行 `docker compose up -d`，所有人都會被登出。密碼請使用英文字母、數字與 `. _ ~ ! @ % ^ * + = : , -`，或用單引號把整組密碼括起來。
+- 輸錯密碼有次數限制。次數記在記憶體中（App 重新啟動就歸零）；登入成功會把該瀏覽器或該來源位址的次數歸零，也不會計入共用上限。
+  - 曾在這裡登入成功的瀏覽器會保存一個裝置 Cookie（`qs_device`，效期 400 天，只會送往登入 API），並單獨計算：輸錯 5 次後最多要等 15 分鐘。下面兩項限制都不適用於它，所以別處的人亂猜密碼，也無法把它擋在門外。修改 `APP_PASSWORD` 或 `AUTH_SECRET` 後，所有裝置 Cookie 都會失效。
+  - 其他瀏覽器：同一個來源位址輸錯 5 次後，該位址最多暫停登入 15 分鐘。此外，因為直接連到 App 的用戶端可以自行捏造位址，這類瀏覽器合計每分鐘最多只能失敗 30 次；達到這個共用上限時，從未在此登入過的瀏覽器最多要等 1 分鐘，登入過的瀏覽器與目前已登入的使用者則不受影響。
+  - 來源位址取自 `X-Forwarded-For` 中由最近一層代理寫入的項目（內建的 Caddy 會設定）。如果 App 前面有好幾層代理都會附加這個標頭，請把 `TRUST_PROXY_HOPS` 設為代理的層數。
 - Session Cookie 設有 `HttpOnly` 與 `SameSite=Lax`；透過 HTTPS 連線時（由 Caddy 告知 App）也會加上 `Secure`。
 - `/api/health` 以及 App 圖示與 manifest 維持公開，讓健康檢查與安裝 App 正常運作。
 
-未設定密碼時，任何能連到該連接埠的人都能查看與修改你的報價單。沒有設定 `APP_PASSWORD` 的系統絕對不要對外公開；需要對外時也請盡量使用 HTTPS。Docker 對外開放的連接埠會繞過 ufw 等主機防火牆，若只想讓 Caddy 對外，請設定 `APP_BIND=127.0.0.1`。
+未設定密碼時，任何能連到該連接埠的人都能查看與修改你的報價單，所以請保留安裝程式設定的密碼。沒有設定 `APP_PASSWORD` 的系統絕對不要對外公開；需要對外時也請盡量使用 HTTPS。若在可信任的區網內關閉登入，又透過網域名稱連線（NAS 反向代理、Tailscale 的 `*.ts.net`、Tunnel），請把這些名稱寫進 `APP_HOSTS`：其他名稱會一律回應「Unknown host」，網頁就無法透過 DNS rebinding 連到 App。沒有設定 `APP_HOSTS` 時，App 接受任何名稱，只會在第一次以 IP 位址、`localhost`、不含點或 `.local` 這類區網名稱及 `SITE_ADDRESS` 以外的名稱連入時，記錄一則警告。Docker 對外開放的連接埠會繞過 ufw 等主機防火牆，若只想讓 Caddy 對外，請設定 `APP_BIND=127.0.0.1`。
 
 ## 備份與還原
 
@@ -190,17 +197,31 @@ App 預設使用 3000 埠（`APP_PORT`），資料庫不會對外開放任何連
 docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > quote-$(date +%F).dump
 ```
 
-**還原**（會取代目前的資料）：
+**還原**（會刪除目前的資料，再把備份檔還原到空白資料庫）：
 
 ```sh
-docker compose stop app
-docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists --no-owner' < quote-2026-10-09.dump
+docker compose stop app backup
+docker compose exec -T db sh -c 'dropdb -U "$POSTGRES_USER" --force "$POSTGRES_DB" && createdb -U "$POSTGRES_USER" "$POSTGRES_DB"'
+docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --exit-on-error' < quote-2026-10-09.dump
 docker compose start app
 ```
+
+`pg_restore` 必須在沒有錯誤的情況下完成；若中途出錯而停止，請從 `dropdb` 那一行重新執行。可以還原舊版本產生的備份檔，App 啟動時會自動套用較新的 migration。
 
 搬遷到新伺服器、更換資料庫密碼與升級 PostgreSQL 版本，請參考〈[備份指南](docs/deploy/backup.zh-TW.md)〉。
 
 ## 升級
+
+升級前請先備份。最簡單的方式是在安裝目錄中（或以相同的 `QUOTE_DIR`）再執行一次安裝程式：
+
+```sh
+curl -fsSLO https://github.com/sychen6192/quote-system/releases/latest/download/install.sh
+sh install.sh
+```
+
+它會下載新的發行套件，把 `.env` 中的 `QUOTE_VERSION` 更新為最新版，保留 `.env` 與資料，並備份你改過的 `docker-compose.yml`（自訂設定請寫在 `docker-compose.override.yml`）。
+
+手動升級：`.env` 會固定在安裝時的版本（`QUOTE_VERSION=1.0.0`），所以只執行 `docker compose pull` 不會有任何變化。請先把 `QUOTE_VERSION` 改成新版本（或設為 `1`，跟著所有 1.x 版本更新），再執行：
 
 ```sh
 cd ~/quote-system
@@ -208,9 +229,7 @@ docker compose pull
 docker compose up -d
 ```
 
-新版本啟動時會自動升級資料庫結構。如果 `.env` 中的 `QUOTE_VERSION` 固定在某個版本（安裝程式會固定在當時安裝的版本），請先修改它；或者直接再執行一次安裝程式：它會把 `QUOTE_VERSION` 更新為最新版，保留 `.env` 與資料，並備份你改過的 `docker-compose.yml`（自訂設定請寫在 `docker-compose.override.yml`）。
-
-升級前請先備份。資料庫升級只能往前：若要退回舊版，請還原升級前的備份，再把 `QUOTE_VERSION` 改回舊版本。各版本的更新內容請見 [Releases 頁面](https://github.com/sychen6192/quote-system/releases) 與 [CHANGELOG.md](CHANGELOG.md)。
+新版本啟動時會自動升級資料庫結構。資料庫升級只能往前：若要退回舊版，請把 `QUOTE_VERSION` 改回舊版本，再依〈[備份與還原](#備份與還原)〉的還原指令還原升級前的備份（這些指令會先清空資料庫，不會留下新版本的資料表），最後一步改用 `docker compose up -d` 取代 `docker compose start app`，App 容器才會以舊版映像檔重新建立。各版本的更新內容請見 [Releases 頁面](https://github.com/sychen6192/quote-system/releases) 與 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 開發
 
@@ -224,6 +243,8 @@ cp .env.example .env              # DATABASE_URL 已指向 compose 的資料庫
 docker compose up -d postgres     # PostgreSQL 16，位於 127.0.0.1:5432
 npm run dev                       # http://localhost:3000，啟動時自動套用 migration
 ```
+
+開發用的 compose 專案名稱是 `quote-system-dev`（volume 為 `quote-system-dev_postgres_data`），因此即使同一台機器上也以發行套件安裝了 Quote System，也不會動到它的資料庫。
 
 | 指令 | 用途 |
 |---|---|

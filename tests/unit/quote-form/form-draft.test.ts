@@ -1,5 +1,6 @@
 import {
   createDraftStatusStore,
+  createDraftWriter,
   draftDiffers,
   draftFingerprint,
   pruneDrafts,
@@ -91,6 +92,59 @@ describe("draft storage", () => {
     expect([...storage.map.keys()].sort()).toEqual(
       ["qs:draft:edit:7:200", "qs:draft:edit:70:100", "qs:draft:new"].sort()
     );
+  });
+});
+
+describe("pruneDrafts with an age limit", () => {
+  it("removes only drafts saved before the cut-off (and unreadable ones)", () => {
+    const storage = new MemoryStorage();
+    writeDraft(storage, "qs:draft:new:from:4", { a: 1 }, 100);
+    writeDraft(storage, "qs:draft:new:customer:globex", { a: 1 }, 5_000);
+    storage.setItem("qs:draft:new:from:9", "not json");
+    writeDraft(storage, "qs:draft:new", { a: 1 }, 1);
+    pruneDrafts(storage, "qs:draft:new:", "qs:draft:new:from:4", { savedBefore: 1_000 });
+    expect([...storage.map.keys()].sort()).toEqual(
+      ["qs:draft:new", "qs:draft:new:customer:globex", "qs:draft:new:from:4"].sort()
+    );
+  });
+});
+
+describe("createDraftWriter", () => {
+  // Opening Duplicate offers the older draft; saving the duplicate must not
+  // delete a draft this form never wrote.
+  it("clear() leaves a draft it did not write untouched", () => {
+    const storage = new MemoryStorage();
+    writeDraft(storage, "qs:draft:new", { companyName: "Half-done Customer" }, 1);
+    const writer = createDraftWriter("qs:draft:new", () => storage);
+    writer.clear();
+    expect(readDraft(storage, "qs:draft:new")?.values).toEqual({ companyName: "Half-done Customer" });
+  });
+
+  it("clear() removes the draft once this form has written it", () => {
+    const storage = new MemoryStorage();
+    const writer = createDraftWriter<{ a: number }>("k", () => storage);
+    expect(writer.write({ a: 1 }, 5)).toBe(true);
+    writer.clear();
+    expect(readDraft(storage, "k")).toBeNull();
+  });
+
+  it("clear() removes a draft that was restored into this form", () => {
+    const storage = new MemoryStorage();
+    writeDraft(storage, "k", { a: 1 }, 1);
+    const writer = createDraftWriter("k", () => storage);
+    writer.adopt();
+    writer.clear();
+    expect(readDraft(storage, "k")).toBeNull();
+  });
+
+  it("a failed write does not take ownership", () => {
+    const storage = new MemoryStorage();
+    writeDraft(storage, "k", { a: "older" }, 1);
+    storage.quota = 5;
+    const writer = createDraftWriter("k", () => storage);
+    expect(writer.write({ a: "newer and too long" }, 2)).toBe(false);
+    writer.clear();
+    expect(readDraft(storage, "k")).not.toBeNull();
   });
 });
 

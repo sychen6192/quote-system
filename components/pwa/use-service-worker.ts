@@ -4,6 +4,7 @@ import { createElement, useEffect, useRef, type CSSProperties } from "react";
 import { useTranslations } from "next-intl";
 import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { ACTION_TOAST_DURATION_MS } from "@/components/ui/toast-layer";
 import {
   UPDATE_CHECK_INTERVAL_MS,
   shouldCheckForUpdate,
@@ -110,14 +111,20 @@ export function useServiceWorker(): void {
     let registration: ServiceWorkerRegistration | null = null;
     let reloadRequested = false;
     let lastCheck = Date.now();
+    // The kill-switch worker (PWA_DISABLE_SW) also passes through "installed"
+    // on its way to removing itself: that is not a new version.
+    let swDisabled = false;
 
     const showUpdateToast = (reg: ServiceWorkerRegistration) => {
+      if (swDisabled) return;
       const tr = tRef.current;
       toast(tr("title"), {
         id: UPDATE_TOAST_ID,
         description: tr("description"),
         icon: createElement(RefreshCw, { "aria-hidden": true, className: "size-4 text-primary" }),
-        duration: Number.POSITIVE_INFINITY,
+        // Like every action toast. The waiting worker stays, so the next
+        // page load offers the update again.
+        duration: ACTION_TOAST_DURATION_MS,
         actionButtonStyle: actionButtonStyle(),
         action: {
           label: tr("reload"),
@@ -158,7 +165,10 @@ export function useServiceWorker(): void {
       if (reloadRequested) window.location.reload();
     };
     const onMessage = (event: MessageEvent) => {
-      if (event.data?.type === "SW_DISABLED") writeDisabled();
+      if (event.data?.type !== "SW_DISABLED") return;
+      writeDisabled();
+      swDisabled = true;
+      toast.dismiss(UPDATE_TOAST_ID);
     };
     const onVisibility = () => {
       if (document.visibilityState === "visible") checkForUpdate(false);

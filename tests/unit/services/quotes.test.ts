@@ -1,6 +1,7 @@
 jest.mock("@/db", () => ({ db: { query: { quotations: { findFirst: jest.fn() } } } }));
 jest.mock("@/services/settings", () => ({ getSettings: jest.fn() }));
 
+import { sql } from "drizzle-orm";
 import { PgDialect } from "drizzle-orm/pg-core";
 import { db } from "@/db";
 import {
@@ -8,6 +9,8 @@ import {
   getQuoteById,
   normalizeQuoteListParams,
   paginate,
+  quoteCustomerCondition,
+  quoteListOrder,
   quoteSearchCondition,
   quoteStatusCondition,
   resolveToday,
@@ -23,6 +26,7 @@ describe("normalizeQuoteListParams", () => {
   it("applies defaults", () => {
     expect(normalizeQuoteListParams({})).toEqual({
       q: "",
+      customer: "",
       status: null,
       sort: "newest",
       page: 1,
@@ -33,7 +37,18 @@ describe("normalizeQuoteListParams", () => {
   it("keeps valid values", () => {
     expect(
       normalizeQuoteListParams({ q: "  acme ", status: "expired", sort: "amount_desc", page: "3", pageSize: 50 })
-    ).toEqual({ q: "acme", status: "expired", sort: "amount_desc", page: 3, pageSize: 50 });
+    ).toEqual({ q: "acme", customer: "", status: "expired", sort: "amount_desc", page: 3, pageSize: 50 });
+  });
+
+  // Postgres rejects NUL in a text parameter: ?q=%00 must not crash the list.
+  it("strips NUL and other control characters from q and customer", () => {
+    expect(normalizeQuoteListParams({ q: "a\u0000b" }).q).toBe("ab");
+    expect(normalizeQuoteListParams({ q: "\u0000" }).q).toBe("");
+    expect(normalizeQuoteListParams({ customer: " Acme\u0000 Corp \t" }).customer).toBe("Acme Corp");
+  });
+
+  it("keeps a long exact customer name (company names allow 200 characters)", () => {
+    expect(normalizeQuoteListParams({ customer: "x".repeat(250) }).customer).toBe("x".repeat(200));
   });
 
   it.each([
@@ -91,6 +106,26 @@ describe("SQL fragments", () => {
     const query = dialect.sqlToQuery(quoteStatusCondition(status, "2026-10-09"));
     expect(query.sql).toMatch(pattern);
     expect(query.params).toEqual(params);
+  });
+
+  it("matches the customer exactly, ignoring case and outer spaces", () => {
+    const query = dialect.sqlToQuery(quoteCustomerCondition("Acme Corp")!);
+    expect(query.sql).toBe('lower(btrim("customers"."company_name")) = lower(btrim($1))');
+    expect(query.params).toEqual(["Acme Corp"]);
+    expect(quoteCustomerCondition("")).toBeUndefined();
+  });
+
+  // Plain directions on NOT NULL columns match the btree indexes (a backward
+  // scan for desc), so newest-first stops after LIMIT rows.
+  it.each([
+    ["newest", '"quotations"."created_at" desc, "quotations"."id" desc'],
+    ["oldest", '"quotations"."created_at" asc, "quotations"."id" asc'],
+    ["amount_desc", '"quotations"."total_amount" desc, "quotations"."id" desc'],
+    ["amount_asc", '"quotations"."total_amount" asc, "quotations"."id" asc'],
+    ["valid_until", '"quotations"."valid_until" asc, "quotations"."id" asc'],
+  ] as const)("orders %s without nulls clauses", (sort, expected) => {
+    const order = quoteListOrder(sort).map((part) => dialect.sqlToQuery(sql`${part}`).sql);
+    expect(order.join(", ")).toBe(expected);
   });
 
   it("reads rows from postgres-js and node-postgres results", () => {

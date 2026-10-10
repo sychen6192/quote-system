@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import { Plus, SearchX, Users } from "lucide-react";
+import { notFound } from "next/navigation";
+import { hasLocale } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { Link } from "@/navigation";
+import { Link, routing } from "@/navigation";
 import { Button } from "@/components/ui/button";
 import { PageContainer, PageHeader } from "@/components/app-shell/page-header";
+import { pagePath, requireSession } from "@/components/app-shell/require-session";
 import { EmptyState } from "@/components/app-shell/empty-state";
 import { ListQueryProvider, ListResults, ListSearchInput } from "@/components/app-shell/list-query";
 import { firstParam } from "@/components/app-shell/query";
@@ -39,8 +42,10 @@ export default async function CustomersPage({
   searchParams: SearchParams;
 }) {
   const { locale } = await params;
-  setRequestLocale(locale);
+  if (!hasLocale(routing.locales, locale)) notFound();
   const sp = await searchParams;
+  await requireSession(locale, pagePath(locale, "/customers", sp));
+  setRequestLocale(locale);
   const t = await getTranslations("Customers");
 
   const q = firstParam(sp.q).slice(0, MAX_QUERY_LENGTH);

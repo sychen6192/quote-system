@@ -16,6 +16,21 @@ const INK_LIGHT: Hsl = { h: 222, s: 47, l: 11 };
 const INK_DARK: Hsl = { h: 222, s: 47, l: 7 };
 /** --background in dark mode */
 const DARK_BACKGROUND: Hsl = INK_DARK;
+/** --card / --popover in dark mode: lighter than the page, and where most links sit. */
+const DARK_SURFACE: Hsl = { h: 221, s: 39, l: 16 };
+/** --ground in light mode: the grey behind the cards. */
+const LIGHT_GROUND: Hsl = { h: 220, s: 14, l: 94 };
+/** WCAG AA for normal-size text: the primary colour is also link and button text. */
+const TEXT_CONTRAST = 4.5;
+/** Dark-mode primary: saturation cap and the lightness it starts from. */
+const DARK_MAX_SATURATION = 65;
+const DARK_MIN_LIGHTNESS = 45;
+
+/** Reds, oranges, yellows and pinks: they muddy into browns when dark and greyed. */
+function isWarmHue(h: number): boolean {
+  const hue = ((h % 360) + 360) % 360;
+  return hue < 60 || hue >= 330;
+}
 
 export function isBrandHex(value: unknown): value is string {
   return typeof value === "string" && HEX_RE.test(value);
@@ -136,9 +151,15 @@ export function brandPalette(hex: string | null | undefined): BrandPalette | nul
   const base = round(rgbToHsl(rgb));
   const grey = base.s < 10;
 
-  // Light mode keeps the exact brand colour unless it is so pale that focus
-  // rings, links and outlines would vanish on white (< 3:1): then darken it.
-  const lightPrimary = adjustLightness(base, -1, (c) => contrastHsl(c, WHITE) >= 3, 0);
+  // Light mode keeps the exact brand colour unless it is too pale to read as
+  // text (links, ghost buttons) on white cards or the grey ground behind
+  // them (< 4.5:1): then darken it.
+  const lightPrimary = adjustLightness(
+    base,
+    -1,
+    (c) => contrastHsl(c, WHITE) >= TEXT_CONTRAST && contrastHsl(c, LIGHT_GROUND) >= TEXT_CONTRAST,
+    0
+  );
   const lightAccent: Hsl = { h: base.h, s: grey ? base.s : Math.min(100, Math.max(base.s, 60)), l: 97 };
   const lightAccentFg = adjustLightness(
     { h: base.h, s: grey ? base.s : Math.min(base.s, 71), l: 40 },
@@ -147,19 +168,28 @@ export function brandPalette(hex: string | null | undefined): BrandPalette | nul
     5
   );
 
-  // Dark mode: a lighter variant (saturation kept in a range that neither
-  // greys out nor turns neon) that still reads as text on the dark page.
+  // Dark mode: a lighter variant that still reads as text on the dark page
+  // and on the (lighter) cards. Saturation stays in a calm range and the
+  // lightness starts low and only rises as far as contrast needs: at 50%+
+  // lightness and full saturation teal or emerald glow neon cyan/green on a
+  // dark page.
   const darkPrimary = adjustLightness(
     {
       h: base.h,
-      s: grey ? base.s : Math.min(80, Math.max(50, base.s)),
-      l: Math.min(80, Math.max(50, base.l + 14)),
+      s: grey ? base.s : Math.min(DARK_MAX_SATURATION, Math.max(45, base.s)),
+      l: Math.min(70, Math.max(DARK_MIN_LIGHTNESS, base.l + 14)),
     },
     1,
-    (c) => contrastHsl(c, DARK_BACKGROUND) >= 4.5,
+    (c) => contrastHsl(c, DARK_BACKGROUND) >= TEXT_CONTRAST && contrastHsl(c, DARK_SURFACE) >= TEXT_CONTRAST,
     90
   );
-  const darkAccent: Hsl = { h: base.h, s: Math.min(base.s, 33), l: 24 };
+  // Hover and selection fills: a hint of the hue on the slate surfaces. Warm
+  // hues at this darkness turn brown or maroon unless kept nearly grey.
+  const darkAccent: Hsl = {
+    h: base.h,
+    s: Math.min(base.s, isWarmHue(base.h) ? 14 : 28),
+    l: 24,
+  };
 
   const light = hslToken(lightPrimary);
   const dark = hslToken(darkPrimary);

@@ -27,8 +27,8 @@ If `docker compose` is reported missing, use option B.
 ### Option B: Container Manager only
 
 1. On your computer, download `quote-system-deploy.tar.gz` from the [latest release](https://github.com/sychen6192/quote-system/releases/latest) and extract it (7-Zip on Windows, double-click on macOS).
-2. Copy `.env.example` to a file named `.env` and set `POSTGRES_PASSWORD` (letters and digits), `AUTH_SECRET` (32+ random characters) and `APP_PASSWORD`.
-3. In File Station, create `docker/quote-system` and upload `docker-compose.yml`, `Caddyfile` and `.env` into it. Create empty `branding` and `backups` folders there too.
+2. Copy `.env.example` to a file named `.env` and set `POSTGRES_PASSWORD` (letters and digits), `AUTH_SECRET` (32+ random characters) and `APP_PASSWORD` (letters, digits and `. _ ~ ! @ % ^ * + = : , -`, or the whole password in single quotes; see the comments in `.env.example`).
+3. In File Station, create `docker/quote-system` and upload `docker-compose.yml`, `Caddyfile` and `.env` into it. Create empty `branding` and `backups` folders there too. The dumps in `backups` contain all your data: in the folder's **Properties → Permission**, give access to administrators only.
 4. **Container Manager → Project → Create**: name `quote-system`, path `docker/quote-system`, choose **Use existing docker-compose.yml**, then **Next → Done**.
 
 ### HTTPS on Synology
@@ -41,7 +41,7 @@ DSM itself uses ports 80 and 443, so use DSM's reverse proxy instead of the bund
    - Destination: protocol **HTTP**, hostname `localhost`, port **3000**
    - Custom Header: add `X-Forwarded-Proto` with value `https`
 3. **Control Panel → Security → Certificate → Settings**: assign the certificate to the new reverse proxy entry.
-4. Open `https://quote.yourname.synology.me` and [install the app](https.md#installing-the-app).
+4. Open `https://quote.yourname.synology.me` and [install the app](https.md#installing-the-app). Keep sign-in on (`APP_PASSWORD`). If you turn it off, add `APP_HOSTS=quote.yourname.synology.me` to `.env` (and rebuild the project) so the app refuses other host names; without it the app answers under any name and logs a warning.
 
 Reaching it from outside your network also needs port 443 forwarded to the NAS. For access only from your own devices, the Tailscale package for DSM with `tailscale serve` works too ([HTTPS guide](https.md#tailscale-private-only-your-devices)).
 
@@ -67,10 +67,17 @@ For backups, start the backup profile as above and include `/share/Container/quo
 
 ## Upgrading on a NAS
 
-Over SSH, in the install directory:
+Over SSH, download the latest installer and run it again with the same `QUOTE_DIR` (or from inside the install directory). It moves `QUOTE_VERSION` in `.env` to the new release and restarts the app:
+
+```sh
+curl -fsSLO https://github.com/sychen6192/quote-system/releases/latest/download/install.sh
+sudo QUOTE_DIR=/volume1/docker/quote-system sh install.sh      # QNAP: /share/Container/quote-system
+```
+
+Without the installer (option B): set `QUOTE_VERSION` in `.env` to the new release first (the version installed is pinned there, so pulling alone changes nothing), then in the install directory:
 
 ```sh
 sudo docker compose pull && sudo docker compose up -d
 ```
 
-or run the installer again with the same `QUOTE_DIR`. Migrations run automatically.
+or, without SSH, edit `QUOTE_VERSION` in `.env` (File Station) and rebuild the project in Container Manager. Migrations run automatically.

@@ -1,14 +1,15 @@
 // Per-<Text> line-break callback for the quote PDF. Pure.
 //
-// The registered callback (lib/pdf/line-break) never breaks inside a Latin
-// run, so a long part number, hash or URL query wider than its column is
-// drawn straight over the neighbouring cells. Runs longer than any real
-// word may break between any two characters instead, without a hyphen (an
-// empty syllable is a zero-width break point).
-import { pdfLineBreakSyllables } from "@/lib/pdf/line-break";
+// The registered callback (lib/pdf/line-break) already lets a Latin run
+// longer than any real word break between characters, but only where the
+// kinsoku rules allow: a run with no legal break at all (dot leaders
+// "........", "……", "%%%%") would still be drawn straight over the
+// neighbouring cells. As a last resort such a run may break between any two
+// characters, without a hyphen (an empty syllable is a zero-width break
+// point). Everything else is exactly what the registered callback returns.
+import { LONG_RUN_CHARS, pdfLineBreakSyllables } from "@/lib/pdf/line-break";
 
-/** Longer than any dictionary word, shorter than a typical SKU or hash. */
-export const LONG_RUN_CHARS = 24;
+export { LONG_RUN_CHARS };
 
 export function pdfWrapSyllables(word: string): string[] {
   const out: string[] = [];

@@ -4,7 +4,8 @@
 #   Open:     http://<server-ip>:3000  (APP_PORT)
 #   HTTPS:    docker compose --profile https up -d    (Caddy on 80/443, see SITE_ADDRESS in .env)
 #   Backups:  docker compose --profile backup up -d   (daily pg_dump into ./backups)
-#   Upgrade:  docker compose pull && docker compose up -d   (database migrations run on start)
+#   Upgrade:  run install.sh again, or set QUOTE_VERSION in .env to the new release,
+#             then: docker compose pull && docker compose up -d   (migrations run on start)
 #
 # Tip: put COMPOSE_PROFILES=https,backup in .env to make the plain commands
 # include those services. Keep local changes in docker-compose.override.yml:
@@ -112,10 +113,14 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
+        # Dumps hold every customer and quote: readable only by the owner of
+        # ./backups (the user who installed), who can copy them without sudo.
+        umask 077
         echo "backup: every $${BACKUP_INTERVAL_SECONDS}s into /backups, keeping $${BACKUP_KEEP_DAYS} days"
         while true; do
           f=/backups/quote-$$(date +%Y%m%d-%H%M%S).dump
           if pg_dump -Fc -f "$$f.tmp"; then
+            chown "$$(stat -c %u:%g /backups)" "$$f.tmp" 2>/dev/null || true
             mv "$$f.tmp" "$$f" && echo "backup ok: $$f"
           else
             rm -f "$$f.tmp"; echo "backup FAILED" >&2
@@ -133,9 +138,12 @@ volumes:
   caddy_data:
   caddy_config:
 
-# Manual backup and restore (docs/deploy/backup.md has the full guide):
+# Manual backup and restore (docs/deploy/backup.md has the full guide). The
+# restore empties the database first, so a dump from an older version works too:
 #   docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > quote-$(date +%F).dump
-#   docker compose stop app
-#   docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists --no-owner' < quote-YYYY-MM-DD.dump
+#   docker compose stop app backup
+#   docker compose exec -T db sh -c 'dropdb -U "$POSTGRES_USER" --force "$POSTGRES_DB" && createdb -U "$POSTGRES_USER" "$POSTGRES_DB"'
+#   docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --exit-on-error' < quote-YYYY-MM-DD.dump
 #   docker compose start app
+# If pg_restore stops with an error, fix the cause and run it again from dropdb.
 # Also keep a copy of .env: the database volume only accepts its original POSTGRES_PASSWORD.

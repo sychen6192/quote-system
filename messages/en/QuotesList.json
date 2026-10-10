@@ -39,14 +39,18 @@
     "description": "Create your first quote — customers, items and totals are all on one page.",
     "cta": "Create your first quote"
   },
+  "customerFilter": {
+    "label": "Customer: {name}",
+    "clear": "Remove the customer filter “{name}”"
+  },
   "noResults": {
     "title": "No matching quotes",
     "description": "Try another search term or status.",
     "withQuery": "Nothing matches “{query}”. Try another search term or status.",
+    "withCustomer": "No quotes for “{name}” match these filters.",
     "clear": "Clear filters"
   },
   "delete": {
-    "trigger": "Delete",
     "title": "Delete quote {number}?",
     "description": "The quote, its items and its activity history are deleted permanently. This can't be undone.",
     "confirm": "Delete quote",

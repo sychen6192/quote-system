@@ -36,6 +36,8 @@ AUTH_SECRET=<at least 32 random characters>
 APP_PASSWORD=<the password everyone signs in with>
 ```
 
+Write the values without quotes. `APP_PASSWORD` may contain letters, digits and `. _ ~ ! @ % ^ * + = : , -`; for any other character, wrap the whole password in single quotes, for example `APP_PASSWORD='Acme$ecure #2026'`. Docker Compose would otherwise change a password that contains `$` or ` #`, and nobody could sign in with what you typed.
+
 This PowerShell line prints a suitable random value each time you run it:
 
 ```powershell
@@ -66,8 +68,17 @@ To install the app on phones you need HTTPS. On a desktop computer the simplest 
 
 ## Upgrading
 
-```sh
-cd ~/quote-system           # PowerShell: cd $HOME\quote-system
+On macOS (and in WSL), run the installer again in your home folder: `sh install.sh`. It downloads the new release, moves `QUOTE_VERSION` in `.env` to it and restarts the app.
+
+In PowerShell, `.env` names the exact version to run (`QUOTE_VERSION`), so `docker compose pull` alone changes nothing. Download the new bundle over the old one (your `.env` is kept), set `QUOTE_VERSION` to the new release from the [releases page](https://github.com/sychen6192/quote-system/releases) (for example `1.1.0`, or `1` to follow every 1.x release), then start it:
+
+```powershell
+cd $HOME\quote-system
+curl.exe -fsSLO https://github.com/sychen6192/quote-system/releases/latest/download/quote-system-deploy.tar.gz
+tar -xzf quote-system-deploy.tar.gz
+notepad .env                # set QUOTE_VERSION to the new release, then save
 docker compose pull
 docker compose up -d
 ```
+
+Database migrations run automatically when the new version starts. The new bundle replaces `docker-compose.yml`: keep your own changes in `docker-compose.override.yml`.

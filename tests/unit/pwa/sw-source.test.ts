@@ -266,6 +266,103 @@ describe("service worker", () => {
     expect(await cache.match(OFFLINE_URL)).toBeDefined();
   });
 
+  describe("behind a reverse proxy whose upstream is down", () => {
+    const request = { url: `${ORIGIN}/en/quotes`, method: "GET", mode: "navigate", headers: new Headers() };
+
+    it.each([
+      ["Caddy / nginx bad gateway", 502],
+      ["service unavailable", 503],
+      ["gateway timeout", 504],
+      ["Cloudflare: web server is down", 521],
+      ["Cloudflare Tunnel: origin unreachable", 530],
+    ])("shows the offline page for a %s (%i)", async (_, status) => {
+      const sw = loadWorker(serviceWorkerSource(VERSION));
+      await sw.dispatch("install");
+      sandboxFetch.mockResolvedValueOnce(basic("", { status }));
+      const result = await sw.dispatch("fetch", { request, preloadResponse: Promise.resolve(undefined) });
+      expect(await result.response!.text()).toBe(`body of ${OFFLINE_URL}`);
+    });
+
+    it("also checks the navigation preload response", async () => {
+      const sw = loadWorker(serviceWorkerSource(VERSION));
+      await sw.dispatch("install");
+      sandboxFetch.mockClear();
+      const result = await sw.dispatch("fetch", {
+        request,
+        preloadResponse: Promise.resolve(new Response("", { status: 504 })),
+      });
+      expect(await result.response!.text()).toBe(`body of ${OFFLINE_URL}`);
+      expect(sandboxFetch).not.toHaveBeenCalled();
+    });
+
+    it.each([500, 404, 401])("passes the app's own %i page through", async (status) => {
+      const sw = loadWorker(serviceWorkerSource(VERSION));
+      await sw.dispatch("install");
+      sandboxFetch.mockResolvedValueOnce(basic(`app error ${status}`, { status }));
+      const result = await sw.dispatch("fetch", { request, preloadResponse: Promise.resolve(undefined) });
+      expect(result.response!.status).toBe(status);
+      expect(await result.response!.text()).toBe(`app error ${status}`);
+    });
+
+    it("returns the gateway's response when the offline page is not cached, without refetching it", async () => {
+      const sw = loadWorker(serviceWorkerSource(VERSION));
+      await sw.dispatch("install");
+      await sw.caches.delete(`qs-offline-${VERSION}`);
+      sandboxFetch.mockClear();
+      sandboxFetch.mockResolvedValueOnce(basic("", { status: 502 }));
+      const result = await sw.dispatch("fetch", { request, preloadResponse: Promise.resolve(undefined) });
+      expect(result.response!.status).toBe(502);
+      expect(sandboxFetch).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("navigations it does not handle as pages", () => {
+    const navigate = (path: string, method = "GET") => ({
+      url: `${ORIGIN}${path}`,
+      method,
+      mode: "navigate",
+      headers: new Headers(),
+    });
+
+    it("answers with the navigation preload response instead of fetching again", async () => {
+      const sw = loadWorker(serviceWorkerSource(VERSION));
+      for (const path of ["/api/quotes/1/pdf?lang=en", "/api/export/quotes?lang=en", "/icons/any-512.png?v=1"]) {
+        const result = await sw.dispatch("fetch", {
+          request: navigate(path),
+          preloadResponse: Promise.resolve(new Response("pdf")),
+        });
+        expect(result.responded).toBe(true);
+        expect(await result.response!.text()).toBe("pdf");
+      }
+      expect(sandboxFetch).not.toHaveBeenCalled();
+    });
+
+    it("fetches once when there is no preload response", async () => {
+      const sw = loadWorker(serviceWorkerSource(VERSION));
+      const request = navigate("/api/quotes/1/pdf?lang=en");
+      const result = await sw.dispatch("fetch", { request, preloadResponse: Promise.resolve(undefined) });
+      expect(await result.response!.text()).toBe("body of /api/quotes/1/pdf");
+      expect(sandboxFetch).toHaveBeenCalledTimes(1);
+      expect(sandboxFetch).toHaveBeenCalledWith(request);
+    });
+
+    it("passes gateway errors through: an API response is not a page", async () => {
+      const sw = loadWorker(serviceWorkerSource(VERSION));
+      await sw.dispatch("install");
+      const result = await sw.dispatch("fetch", {
+        request: navigate("/api/health"),
+        preloadResponse: Promise.resolve(new Response("", { status: 502 })),
+      });
+      expect(result.response!.status).toBe(502);
+    });
+
+    it("leaves POST navigations (sign-out) to the browser", async () => {
+      const sw = loadWorker(serviceWorkerSource(VERSION));
+      const result = await sw.dispatch("fetch", { request: navigate("/api/auth/logout", "POST") });
+      expect(result.responded).toBe(false);
+    });
+  });
+
   it("does not answer API, RSC or POST requests", async () => {
     const sw = loadWorker(serviceWorkerSource(VERSION));
     for (const request of [
@@ -300,6 +397,14 @@ describe("kill switch", () => {
     expect(sw.self.registration.unregister).toHaveBeenCalled();
     expect(sw.windowClient.postMessage).toHaveBeenCalledWith({ type: "SW_DISABLED" });
     expect(sw.handlers.has("fetch")).toBe(false);
+  });
+
+  it("tells the pages while installing, before they can mistake it for an update", async () => {
+    const sw = loadWorker(killSwitchSource());
+    await sw.dispatch("install");
+    expect(sw.self.clients.matchAll).toHaveBeenCalledWith({ type: "window", includeUncontrolled: true });
+    expect(sw.windowClient.postMessage).toHaveBeenCalledWith({ type: "SW_DISABLED" });
+    expect(sw.self.skipWaiting).toHaveBeenCalled();
   });
 
   it.each([

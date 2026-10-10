@@ -3,6 +3,8 @@ import {
   currencyFractionDigits,
   formatMoney,
   lineAmount,
+  minorUnitStep,
+  roundToStep,
   toBasisPoints,
   toCents,
   toDecimalString,
@@ -327,5 +329,106 @@ describe("formatMoney", () => {
 
   it("treats non-finite input as zero", () => {
     expect(formatMoney(NaN, { currency: "TWD", currencyLocale: "zh-TW" })).toBe("$0");
+  });
+});
+
+
+// TWD/JPY/KRW are shown without decimals but stored in cents: every printed
+// figure must be a whole unit, or the document stops adding up.
+describe("minor-unit rounding", () => {
+  it("maps fraction digits to cents per displayed unit", () => {
+    expect(minorUnitStep(0)).toBe(100);
+    expect(minorUnitStep(1)).toBe(10);
+    expect(minorUnitStep(2)).toBe(1);
+    expect(minorUnitStep(3)).toBe(1);
+    expect(minorUnitStep(NaN)).toBe(1);
+    expect(minorUnitStep(-1)).toBe(1);
+  });
+
+  it("rounds half away from zero to a multiple of the step", () => {
+    expect(roundToStep(4950, 100)).toBe(5000);
+    expect(roundToStep(4949, 100)).toBe(4900);
+    expect(roundToStep(-4950, 100)).toBe(-5000);
+    expect(roundToStep(1234, 10)).toBe(1230);
+    expect(roundToStep(1235, 10)).toBe(1240);
+    expect(roundToStep(1234, 1)).toBe(1234);
+    expect(roundToStep(0, 100)).toBe(0);
+    expect(Object.is(roundToStep(-49, 100), -0)).toBe(false);
+    expect(roundToStep(99_999_999_999_950, 100)).toBe(100_000_000_000_000);
+  });
+
+  it("rounds a line amount when given a step", () => {
+    expect(lineAmount(1.5, 33300)).toBe(49950);
+    expect(lineAmount(1.5, 33300, 100)).toBe(50000);
+    expect(lineAmount(1.5, 33300, 1)).toBe(49950);
+  });
+
+  it("NT$1,003 with 5 % off and 5 % tax foots: 1,003 − 50 + 48 = 1,001", () => {
+    const f = calculateQuoteFinancials([{ quantity: 1, unitPrice: 100300 }], {
+      taxRateBp: 500,
+      discount: { type: "percent", value: 500 },
+      minorUnitStep: 100,
+    });
+    expect(f).toMatchObject({ subtotal: 100300, discount: 5000, tax: 4800, total: 100100 });
+  });
+
+  it("makes line amounts add up to the subtotal (2 × 1.5 h × NT$333)", () => {
+    const items = [
+      { quantity: 1.5, unitPrice: 33300 },
+      { quantity: 1.5, unitPrice: 33300 },
+    ];
+    const f = calculateQuoteFinancials(items, { taxRateBp: 0, minorUnitStep: 100 });
+    expect(f.subtotal).toBe(100000);
+    expect(f.total).toBe(100000);
+  });
+
+  it("rounds amount discounts and other fees too", () => {
+    const f = calculateQuoteFinancials([{ quantity: 1, unitPrice: 100000 }], {
+      taxRateBp: 0,
+      discount: { type: "amount", value: 1050 },
+      otherFees: 249,
+      minorUnitStep: 100,
+    });
+    expect(f).toMatchObject({ discount: 1100, otherFees: 200, total: 99100 });
+  });
+
+  it("every whole-dollar price NT$1,000–2,999 with 5 %/5 % prints figures that foot", () => {
+    const whole = (cents: number) => Number(toDecimalString(cents, 0));
+    for (let price = 1000; price < 3000; price++) {
+      const items = [
+        { quantity: 1, unitPrice: price * 100 },
+        { quantity: 1.5, unitPrice: 33300, isTaxable: price % 2 === 0 },
+      ];
+      const f = calculateQuoteFinancials(items, {
+        taxRateBp: 500,
+        discount: { type: "percent", value: 500 },
+        otherFees: 1234,
+        minorUnitStep: 100,
+      });
+      const lines = items.map((i) => lineAmount(i.quantity, i.unitPrice, 100));
+      expect(lines.every((a) => a % 100 === 0)).toBe(true);
+      expect(lines.reduce((a, b) => a + b, 0)).toBe(f.subtotal);
+      for (const v of [f.subtotal, f.discount, f.tax, f.otherFees, f.total]) expect(v % 100).toBe(0);
+      expect(whole(f.subtotal) - whole(f.discount) + whole(f.tax) + whole(f.otherFees)).toBe(whole(f.total));
+    }
+  });
+
+  it("rounds to tenths for one-decimal currencies", () => {
+    const f = calculateQuoteFinancials([{ quantity: 1, unitPrice: 1003 }], {
+      taxRateBp: 500,
+      discount: { type: "percent", value: 500 },
+      minorUnitStep: 10,
+    });
+    for (const v of [f.subtotal, f.discount, f.tax, f.total]) expect(v % 10).toBe(0);
+    expect(f.total).toBe(f.subtotal - f.discount + f.tax + f.otherFees);
+  });
+
+  it("changes nothing without a step (or with step 1)", () => {
+    const items = [{ quantity: 1, unitPrice: 100300 }];
+    const opts = { taxRateBp: 500, discount: { type: "percent" as const, value: 500 } };
+    const plain = calculateQuoteFinancials(items, opts);
+    expect(plain).toMatchObject({ subtotal: 100300, discount: 5015, tax: 4764, total: 100049 });
+    expect(calculateQuoteFinancials(items, { ...opts, minorUnitStep: 1 })).toEqual(plain);
+    expect(calculateQuoteFinancials(items, { ...opts, minorUnitStep: 7 })).toEqual(plain);
   });
 });

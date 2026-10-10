@@ -1,4 +1,4 @@
-// Web app manifest (spec §9). Pure: app/manifest.ts feeds it the runtime config.
+// Web app manifest (spec §9). Pure: app/manifest.webmanifest/route.ts feeds it the runtime config.
 import type { MetadataRoute } from "next";
 import { LOCALES, DEFAULT_LOCALE, type AppLocale } from "@/i18n/locales";
 import { shortAppName } from "@/components/app-shell/brand-name";

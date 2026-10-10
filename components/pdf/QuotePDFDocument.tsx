@@ -8,6 +8,7 @@ import type { ComponentProps } from "react";
 import { documentAccent, DOCUMENT_INK } from "@/components/quote-document/accent";
 import {
   amountInWords,
+  documentMoney,
   formatAmount,
   formatUnitPrice,
   formatDocumentDate,
@@ -23,6 +24,7 @@ import { PDF_FONT_FAMILY } from "@/lib/pdf/fonts";
 import type { QuoteView } from "@/lib/quote-view";
 import type { DocumentBranding } from "@/lib/settings/types";
 import { pdfWrapSyllables } from "./line-wrap";
+import { numberColumnWidths } from "./table-layout";
 import { estimateLineCount } from "./text-metrics";
 
 export type QuotePDFDocumentProps = {
@@ -221,11 +223,12 @@ const s = StyleSheet.create({
 
 export function QuotePDFDocument({ view, branding, labels, lang }: QuotePDFDocumentProps) {
   const accent = documentAccent(branding.brandColor);
-  const money: DocumentMoney = {
+  // Every figure in one format, so the printed amounts add up (see documentMoney).
+  const money: DocumentMoney = documentMoney(view, {
     currency: branding.currency,
     currencyLocale: branding.currencyLocale,
     fractionDigits: branding.fractionDigits,
-  };
+  });
   const { company, payment } = branding;
   const { customer, totals } = view;
   const date = (iso: string | null) => formatDocumentDate(iso, lang);
@@ -266,6 +269,16 @@ export function QuotePDFDocument({ view, branding, labels, lang }: QuotePDFDocum
   // Half a line of slack: the estimate is rough and the box must not reach the page number.
   const footerLines = footer ? estimateLineCount(footer, FOOTER_WIDTH_EM) + 0.5 : 0;
   const number = view.quotationNumber ?? "";
+  // Unit price and amount columns grow with their longest figure, so very
+  // large values never run into each other (the item column absorbs it).
+  const prices = view.items.map((item) => formatUnitPrice(item.unitPrice, money));
+  const amounts = view.items.map((item) => formatAmount(item.amount, money));
+  const numberCols = numberColumnWidths(prices, amounts, {
+    price: labels.colUnitPrice,
+    amount: labels.colAmount,
+  });
+  const priceCol = { width: numberCols.price.width };
+  const amountCol = { width: numberCols.amount.width };
   const docTitle = fillLabel(labels.documentLabel, { number }).trim();
   const contact = [
     customer.email,
@@ -383,8 +396,8 @@ export function QuotePDFDocument({ view, branding, labels, lang }: QuotePDFDocum
             <Text style={[s.th, s.colIndex]}>{labels.colIndex}</Text>
             <Text style={[s.th, s.colItem]}>{labels.colItem}</Text>
             <Text style={[s.th, s.colQty]}>{labels.colQty}</Text>
-            <Text style={[s.th, s.colPrice]}>{labels.colUnitPrice}</Text>
-            <Text style={[s.th, s.colAmount]}>{labels.colAmount}</Text>
+            <Text style={[s.th, s.colPrice, priceCol]}>{labels.colUnitPrice}</Text>
+            <Text style={[s.th, s.colAmount, amountCol]}>{labels.colAmount}</Text>
           </View>
           {view.items.length === 0 ? (
             <View style={s.row}>
@@ -409,8 +422,12 @@ export function QuotePDFDocument({ view, branding, labels, lang }: QuotePDFDocum
                   {formatQuantity(item.quantity, money.currencyLocale)}
                   {item.unit ? <Text style={s.unit}> {item.unit}</Text> : null}
                 </Text>
-                <Text style={[s.td, s.colPrice]}>{formatUnitPrice(item.unitPrice, money)}</Text>
-                <Text style={[s.td, s.colAmount, s.itemName]}>{formatAmount(item.amount, money)}</Text>
+                <Text style={[s.td, s.colPrice, priceCol, { fontSize: numberCols.price.fontSize }]}>
+                  {prices[index]}
+                </Text>
+                <Text style={[s.td, s.colAmount, s.itemName, amountCol, { fontSize: numberCols.amount.fontSize }]}>
+                  {amounts[index]}
+                </Text>
               </View>
             ))
           )}

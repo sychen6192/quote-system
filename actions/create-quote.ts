@@ -8,6 +8,7 @@ import {
   allocateQuoteNumber,
   validateQuoteNumberPattern,
 } from "@/lib/quote-number";
+import { minorUnitStep } from "@/lib/money";
 import { quoteRecordValues } from "@/lib/quote-view";
 import { quoteFormSchema, toFieldErrors } from "@/lib/schemas/quote";
 import { recordQuoteEvent } from "@/services/events";
@@ -37,17 +38,21 @@ export async function createQuote(data: unknown): Promise<ActionResult> {
   const parsed = quoteFormSchema.safeParse(data);
   if (!parsed.success) return validationError(toFieldErrors(parsed.error));
 
-  const values = quoteRecordValues(parsed.data);
-
   let pattern = DEFAULT_QUOTE_NUMBER_PATTERN;
+  let step: number;
   try {
-    const configured = (await getSettings()).quote.numberPattern;
+    const settings = await getSettings();
+    const configured = settings.quote.numberPattern;
     if (validateQuoteNumberPattern(configured).ok) pattern = configured;
     else console.warn(`createQuote: invalid number pattern "${configured}", using default`);
+    step = minorUnitStep(settings.money.fractionDigits);
   } catch (error) {
     console.error("createQuote: could not load settings:", error);
     return internalError("Failed to create quote");
   }
+
+  // Stored totals are whole displayed units (e.g. NT$), like the document.
+  const values = quoteRecordValues(parsed.data, { minorUnitStep: step });
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {

@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { customers, quotations } from "@/db/schema";
 import { sql, type SQL } from "drizzle-orm";
 import { toIsoDate } from "@/lib/dates";
+import { normalizeSearchQuery } from "@/lib/search-query";
 import { escapeLike, paginate, rowsOf } from "@/services/quotes";
 
 // Customers are a per-quote bill-to snapshot (one row per quote). Everything
@@ -34,7 +35,8 @@ export type CustomerDirectory = {
 };
 
 const DIRECTORY_PAGE_SIZE = 20;
-const MAX_QUERY_LENGTH = 100;
+/** Company names are up to 200 characters (lib/schemas/quote.ts). */
+const MAX_NAME_LENGTH = 200;
 
 const str = (v: unknown): string | null => (typeof v === "string" ? v : null);
 const num = (v: unknown): number => {
@@ -53,8 +55,9 @@ function toOption(row: Record<string, unknown>): CustomerOption {
   };
 }
 
+/** `q` must already be normalised (normalizeSearchQuery). */
 function likePattern(q: string): string {
-  return `%${escapeLike(q.trim().slice(0, MAX_QUERY_LENGTH))}%`;
+  return `%${escapeLike(q)}%`;
 }
 
 // Newest snapshot per normalised company that still belongs to a quote.
@@ -71,7 +74,7 @@ function latestPerCompany(match: SQL | undefined): SQL {
 }
 
 function matchCustomer(q: string): SQL | undefined {
-  if (!q.trim()) return undefined;
+  if (!q) return undefined;
   const pattern = likePattern(q);
   return sql`(c.company_name ilike ${pattern} or c.contact_person ilike ${pattern}
     or c.vat_number ilike ${pattern} or c.email ilike ${pattern})`;
@@ -89,11 +92,13 @@ export async function getCustomerDirectory({
 }: { q?: string; page?: number; pageSize?: number } = {}): Promise<CustomerDirectory> {
   const size = Math.min(Math.max(Math.trunc(pageSize) || DIRECTORY_PAGE_SIZE, 1), 100);
   const latest = sql`(${latestPerCompany(undefined)}) latest`;
-  const filter = q.trim()
-    ? sql`where (latest.company_name ilike ${likePattern(q)}
-        or latest.contact_person ilike ${likePattern(q)}
-        or latest.vat_number ilike ${likePattern(q)}
-        or latest.email ilike ${likePattern(q)})`
+  const term = normalizeSearchQuery(q);
+  const pattern = likePattern(term);
+  const filter = term
+    ? sql`where (latest.company_name ilike ${pattern}
+        or latest.contact_person ilike ${pattern}
+        or latest.vat_number ilike ${pattern}
+        or latest.email ilike ${pattern})`
     : sql``;
 
   const [countRow] = rowsOf(
@@ -142,10 +147,10 @@ export async function getCustomerDirectory({
 
 /** Company suggestions for the quote form, newest snapshot per company. */
 export async function searchCustomerOptions(q: string, limit = 8): Promise<CustomerOption[]> {
-  const term = (q ?? "").trim();
+  const term = normalizeSearchQuery(q);
   if (!term) return [];
   const size = Math.min(Math.max(Math.trunc(limit) || 8, 1), 50);
-  const prefix = `${escapeLike(term.slice(0, MAX_QUERY_LENGTH))}%`;
+  const prefix = `${escapeLike(term)}%`;
   const rows = rowsOf(
     await db.execute(sql`
       select * from (${latestPerCompany(matchCustomer(term))}) latest
@@ -157,7 +162,7 @@ export async function searchCustomerOptions(q: string, limit = 8): Promise<Custo
 
 /** The newest snapshot of a company (case/whitespace-insensitive), for ?customer= prefill. */
 export async function getLatestCustomerByName(name: string): Promise<CustomerOption | null> {
-  const trimmed = (name ?? "").trim();
+  const trimmed = normalizeSearchQuery(name, MAX_NAME_LENGTH);
   if (!trimmed) return null;
   const rows = rowsOf(
     await db.execute(sql`
@@ -168,18 +173,4 @@ export async function getLatestCustomerByName(name: string): Promise<CustomerOpt
       limit 1`)
   );
   return rows[0] ? toOption(rows[0]) : null;
-}
-
-/**
- * @deprecated Ships every company to the browser; use searchCustomerOptions
- * (actions/search.ts). Kept until the quote form moves to server-side search.
- */
-export async function getCustomerOptions(): Promise<CustomerOption[]> {
-  const rows = rowsOf(
-    await db.execute(sql`
-      select * from (${latestPerCompany(undefined)}) latest
-      order by latest.id desc
-      limit 500`)
-  );
-  return rows.map(toOption);
 }

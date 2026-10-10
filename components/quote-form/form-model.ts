@@ -198,12 +198,14 @@ export function lenientNumber(value: unknown): number {
 
 /**
  * The same conversions as quoteRecordValues on the server (cents, basis
- * points), applied to whatever the form holds while typing.
+ * points), applied to whatever the form holds while typing. Pass the
+ * currency's minorUnitStep so the figures are rounded as they will be saved.
  */
 export function formTotals(
   values: Partial<
     Pick<QuoteFormValues, "items" | "taxRate" | "discountType" | "discountValue" | "otherFees">
-  >
+  >,
+  { minorUnitStep }: { minorUnitStep?: number } = {}
 ): QuoteFinancials {
   const items = (values.items ?? []).map((item) => ({
     quantity: lenientNumber(item?.quantity),
@@ -219,6 +221,7 @@ export function formTotals(
       value: percent ? toBasisPoints(discountValue) : toCents(discountValue),
     },
     otherFees: toCents(lenientNumber(values.otherFees)),
+    minorUnitStep,
   });
 }
 
@@ -250,6 +253,39 @@ export function emptyItem(): QuoteItemFormValues {
     unitPrice: "",
     isTaxable: true,
   };
+}
+
+function isBlankText(value: unknown): boolean {
+  return value === undefined || value === null || (typeof value === "string" && value.trim() === "");
+}
+
+/** Untouched since emptyItem(): no text, no price, the default quantity of 1. */
+export function isBlankItem(item: Partial<QuoteItemFormValues> | null | undefined): boolean {
+  if (!item) return true;
+  const defaultQuantity = isBlankText(item.quantity) || toNumberOrNaN(item.quantity) === 1;
+  return (
+    isBlankText(item.productName) &&
+    isBlankText(item.description) &&
+    isBlankText(item.unit) &&
+    isBlankText(item.unitPrice) &&
+    defaultQuantity
+  );
+}
+
+/**
+ * Indexes of the untouched rows at the end of the list (e.g. added by Enter
+ * in the last price field), highest first so they can be removed in order.
+ * The first row always stays, so an empty quote still says "add an item".
+ */
+export function trailingBlankItemIndexes(
+  items: readonly (Partial<QuoteItemFormValues> | null | undefined)[] | null | undefined
+): number[] {
+  const list = items ?? [];
+  const indexes: number[] = [];
+  for (let index = list.length - 1; index > 0 && isBlankItem(list[index]); index--) {
+    indexes.push(index);
+  }
+  return indexes;
 }
 
 export const VALIDITY_PRESET_DAYS = [7, 14, 30, 60] as const;
@@ -326,11 +362,30 @@ export function mapServerFieldErrors(
   return { fields, form };
 }
 
-/** localStorage key of the autosaved draft (spec §10). */
-export function quoteDraftKey(
-  edit?: { id: number; updatedAt: Date | string | number | null | undefined } | null
-): string {
-  if (!edit) return "qs:draft:new";
+export const NEW_QUOTE_DRAFT_KEY = "qs:draft:new";
+/** Drafts of a create form that started from something (Duplicate, a customer). */
+export const SEEDED_DRAFT_PREFIX = `${NEW_QUOTE_DRAFT_KEY}:`;
+/** Seeded drafts are dropped after this long (they pile up one per source). */
+export const SEEDED_DRAFT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
+export type QuoteDraftSource =
+  | { id: number; updatedAt: Date | string | number | null | undefined }
+  | { from: number }
+  | { customer: string };
+
+/**
+ * localStorage key of the autosaved draft (spec §10). A blank new quote, a
+ * duplicate of quote N and a new quote for customer X each get their own key,
+ * so starting one never overwrites another's unsaved draft.
+ */
+export function quoteDraftKey(source?: QuoteDraftSource | null): string {
+  if (!source) return NEW_QUOTE_DRAFT_KEY;
+  if ("from" in source) return `${SEEDED_DRAFT_PREFIX}from:${source.from}`;
+  if ("customer" in source) {
+    const name = source.customer.trim().toLowerCase();
+    return name ? `${SEEDED_DRAFT_PREFIX}customer:${encodeURIComponent(name)}` : NEW_QUOTE_DRAFT_KEY;
+  }
+  const edit = source;
   const stamp =
     edit.updatedAt instanceof Date
       ? edit.updatedAt.getTime()
@@ -345,4 +400,22 @@ export function quoteDraftKey(
 /** Every draft of one saved quote, whatever its updatedAt. */
 export function quoteDraftPrefix(id: number): string {
   return `qs:draft:edit:${id}:`;
+}
+
+/**
+ * The version an editor sends with updateQuote (optimistic concurrency): the
+ * quote's updatedAt as loaded, in epoch ms; null for a quote never edited
+ * since it was created (or an unreadable value, which the server then reports
+ * as a conflict rather than overwriting).
+ */
+export function quoteVersion(updatedAt: Date | string | number | null | undefined): number | null {
+  const ms =
+    updatedAt instanceof Date
+      ? updatedAt.getTime()
+      : typeof updatedAt === "number"
+        ? updatedAt
+        : typeof updatedAt === "string"
+          ? Date.parse(updatedAt)
+          : NaN;
+  return Number.isFinite(ms) ? ms : null;
 }

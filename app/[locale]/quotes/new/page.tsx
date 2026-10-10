@@ -1,6 +1,13 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { hasLocale } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { quoteDraftKey } from "@/components/quote-form/form-model";
+import { pagePath, requireSession } from "@/components/app-shell/require-session";
+import {
+  SEEDED_DRAFT_MAX_AGE_MS,
+  SEEDED_DRAFT_PREFIX,
+  quoteDraftKey,
+} from "@/components/quote-form/form-model";
 import {
   duplicateQuoteValues,
   newQuoteValues,
@@ -13,6 +20,7 @@ import { parseQuoteId } from "@/lib/schemas/quote";
 import { getLatestCustomerByName } from "@/services/customers";
 import { getQuoteById } from "@/services/quotes";
 import { getDocumentBranding, getSettings } from "@/services/settings";
+import { routing } from "@/navigation";
 
 // Defaults depend on the request: "today" in the business timezone and the
 // Settings page values (never frozen at build time).
@@ -42,8 +50,10 @@ export default async function NewQuotePage({
   searchParams: Promise<SearchParams>;
 }) {
   const { locale } = await params;
-  setRequestLocale(locale);
+  if (!hasLocale(routing.locales, locale)) notFound();
   const query = await searchParams;
+  await requireSession(locale, pagePath(locale, "/quotes/new", query));
+  setRequestLocale(locale);
 
   const [settings, branding] = await Promise.all([
     getSettings(),
@@ -87,7 +97,17 @@ export default async function NewQuotePage({
     <QuoteForm
       mode="create"
       initialValues={initialValues}
-      draftKey={quoteDraftKey()}
+      // Its own draft per source: opening Duplicate or "New quote for X"
+      // never overwrites a half-finished blank quote, or the reverse.
+      draftKey={quoteDraftKey(
+        duplicatedFrom
+          ? { from: duplicatedFrom.id }
+          : customerName
+            ? { customer: prefilledCustomer ?? customerName }
+            : null
+      )}
+      draftPrunePrefix={SEEDED_DRAFT_PREFIX}
+      draftPruneMaxAgeMs={SEEDED_DRAFT_MAX_AGE_MS}
       today={today}
       branding={branding}
       duplicatedFrom={duplicatedFrom}

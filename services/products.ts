@@ -2,6 +2,7 @@ import "server-only";
 import { db } from "@/db";
 import { quotationItems } from "@/db/schema";
 import { sql } from "drizzle-orm";
+import { normalizeSearchQuery } from "@/lib/search-query";
 import { escapeLike, rowsOf } from "@/services/quotes";
 
 export type ProductOption = {
@@ -13,14 +14,12 @@ export type ProductOption = {
   isTaxable: boolean;
 };
 
-const MAX_QUERY_LENGTH = 100;
-
 /**
  * Item suggestions from past quotes: the newest line per normalised product
  * name, names starting with `q` first.
  */
 export async function searchProductOptions(q: string, limit = 8): Promise<ProductOption[]> {
-  const term = (q ?? "").trim().slice(0, MAX_QUERY_LENGTH);
+  const term = normalizeSearchQuery(q);
   if (!term) return [];
   const size = Math.min(Math.max(Math.trunc(limit) || 8, 1), 50);
   const escaped = escapeLike(term);

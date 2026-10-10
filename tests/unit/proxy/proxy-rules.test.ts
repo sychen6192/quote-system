@@ -53,7 +53,14 @@ describe("isPublicPath", () => {
 // notFound() does not stop e.g. the dashboard from rendering (into the 404's
 // RSC payload) for /favicon.ico. Nothing may reach [locale] unchecked.
 describe("decideProxyAction: file-like paths", () => {
-  const publicAssets = ["/sw.js", "/manifest.webmanifest", "/offline.html", "/icons/any-192.png", "/icons/apple-180.png"];
+  const publicAssets = [
+    "/robots.txt",
+    "/sw.js",
+    "/manifest.webmanifest",
+    "/offline.html",
+    "/icons/any-192.png",
+    "/icons/apple-180.png",
+  ];
 
   it.each([true, false])("serves the PWA assets untouched (auth enabled: %s)", (authEnabled) => {
     for (const pathname of publicAssets) {
@@ -65,7 +72,8 @@ describe("decideProxyAction: file-like paths", () => {
     for (const pathname of [
       "/favicon.ico",
       "/apple-touch-icon.png",
-      "/robots.txt",
+      "/robots.txt.bak",
+      "/robots.txt/x",
       "/foo.json",
       "/a.b",
       "/en.json",
@@ -92,6 +100,8 @@ describe("decideProxyAction: file-like paths", () => {
 
   it("never runs a Server Action at an asset URL", () => {
     expect(decide({ pathname: "/sw.js", isServerAction: true, method: "POST" })).toEqual({ action: "notFound" });
+    expect(decide({ pathname: "/robots.txt", isServerAction: true, method: "POST" })).toEqual({ action: "notFound" });
+    expect(decide({ pathname: "/robots.txt", method: "POST" })).toEqual({ action: "notFound" });
     expect(decide({ pathname: "/icons/a.png", method: "POST" })).toEqual({ action: "unauthorized" });
   });
 });
@@ -174,7 +184,50 @@ describe("decideProxyAction: auth enabled, not signed in", () => {
 
   it("passes Next internals through untouched", () => {
     expect(decide({ pathname: "/_next/webpack-hmr" })).toEqual({ action: "next" });
+    expect(decide({ pathname: "/_next/mcp" })).toEqual({ action: "next" });
+    expect(decide({ pathname: "/_next/static/chunks/a.js" })).toEqual({ action: "next" });
+    expect(decide({ pathname: "/_next/image", search: "?url=%2Fx.png&w=64&q=75" })).toEqual({ action: "next" });
     expect(decide({ pathname: "/_next/x", isServerAction: true })).toEqual({ action: "unauthorized" });
+    expect(decide({ pathname: "/_next/quotes/1", method: "POST" })).toEqual({ action: "unauthorized" });
+  });
+});
+
+// Next routes /_next/<page> into [locale] with locale "_next"; the layout's
+// notFound() does not stop the page, which renders its data into the 404.
+describe("decideProxyAction: /_next/ is never a page", () => {
+  const leaky = [
+    "/_next/quotes/1",
+    "/_next/quotes/1/edit",
+    "/_next/quotes/new",
+    "/_next/settings",
+    "/_next/customers",
+    "/_next",
+    "/_next/",
+    "/_next/static",
+    "/_next/imagex",
+    "/_next/webpack-hmr/x",
+    "/_next/data/build/en.json",
+  ];
+
+  it.each([
+    ["auth on, signed out", { authEnabled: true, authenticated: false }],
+    ["auth on, signed in", { authEnabled: true, authenticated: true }],
+    ["auth off", { authEnabled: false, authenticated: false }],
+  ])("404s /_next/<anything else> (%s)", (_label, auth) => {
+    for (const pathname of leaky) {
+      const d = decide({ ...auth, pathname });
+      // "/_next" itself is an ordinary unprefixed page path (no leak: the
+      // proxy guards it like any other).
+      if (pathname === "/_next") {
+        expect(d.action).not.toBe("next");
+        continue;
+      }
+      expect(d).toEqual({ action: "notFound" });
+    }
+  });
+
+  it("still lets Next's own endpoints through with auth off", () => {
+    expect(decide({ authEnabled: false, pathname: "/_next/webpack-hmr" })).toEqual({ action: "next" });
   });
 });
 
@@ -202,6 +255,17 @@ describe("decideProxyAction: auth enabled, signed in", () => {
       action: "redirect",
       location: "/en",
     });
+  });
+
+  // URL parsing collapses dot segments into a protocol-relative "//evil".
+  it.each([
+    "?next=%2F.%2F%2Fevil.example",
+    "?next=%2Fa%2F..%2F%2Fevil.example",
+    "?next=%2Fen%2F..%2F%2Fevil.example%2Flogin",
+    "?next=%2F%252e%2F%2Fevil.example",
+    "?next=%2F%2e%2F%2Fevil.example",
+  ])("never redirects off-site after dot-segment normalisation (%s)", (search) => {
+    expect(decide({ ...signedIn, pathname: "/en/login", search })).toEqual({ action: "redirect", location: "/en" });
   });
 
   it("never redirects the login page to itself", () => {

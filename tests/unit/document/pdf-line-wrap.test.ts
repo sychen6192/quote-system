@@ -22,6 +22,27 @@ describe("pdfWrapSyllables", () => {
     expect(syllables.filter((s) => s !== "").every((s) => s.length === 1)).toBe(true);
   });
 
+  it("is the registered callback for any run it can break (one limit for both)", () => {
+    for (const word of [
+      "PARTNUMBER0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+      "https://example.com/very/long/path?query=0123456789abcdef",
+      "交期為訂單確認後三十個工作天內出貨，運費由買方負擔。",
+      "A".repeat(LONG_RUN_CHARS + 1),
+    ]) {
+      expect(pdfWrapSyllables(word)).toEqual(pdfLineBreakSyllables(word));
+    }
+  });
+
+  it("still breaks a long run the kinsoku rules leave unbreakable (dot leaders)", () => {
+    for (const run of [".".repeat(LONG_RUN_CHARS + 6), "…".repeat(LONG_RUN_CHARS + 6)]) {
+      // The registered callback keeps it whole: it would overprint the next cell.
+      expect(pdfLineBreakSyllables(run)).toEqual([run]);
+      const syllables = pdfWrapSyllables(run);
+      expect(syllables.join("")).toBe(run);
+      expect(syllables.filter((s) => s === "")).toHaveLength(Array.from(run).length - 1);
+    }
+  });
+
   it("keeps a run at the limit whole", () => {
     expect(pdfWrapSyllables("B".repeat(LONG_RUN_CHARS))).toEqual(["B".repeat(LONG_RUN_CHARS)]);
   });

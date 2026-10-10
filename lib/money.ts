@@ -19,6 +19,12 @@ export type QuoteFinancialsOptions = {
   discount?: { type: DiscountType; value: number } | null;
   /** cents, untaxed, added after tax */
   otherFees?: number | null;
+  /**
+   * Cents per displayed unit: minorUnitStep(fractionDigits) of the configured
+   * currency (100 for TWD). Line amounts, discount, tax and fees are rounded
+   * to it so the printed figures add up. Omitted: plain cents.
+   */
+  minorUnitStep?: number;
 };
 
 export type QuoteFinancials = {
@@ -110,40 +116,70 @@ function mulDivRound(a: number, b: number, c: number): number {
 }
 
 /**
- * Line amount in cents = round(quantity × unit price), half away from zero.
+ * Cents per displayed unit for a currency shown with `fractionDigits`
+ * decimals: 100 for 0 (TWD, JPY), 10 for 1, else 1.
+ */
+export function minorUnitStep(fractionDigits: number): number {
+  if (fractionDigits === 0) return 100;
+  if (fractionDigits === 1) return 10;
+  return 1;
+}
+
+function validStep(step: number | undefined): number {
+  return step === 10 || step === 100 ? step : 1;
+}
+
+/** `cents` rounded half away from zero to a multiple of `step` (1, 10 or 100). */
+export function roundToStep(cents: number, step: number): number {
+  const s = validStep(step);
+  const value = int(cents);
+  if (s === 1) return value;
+  return mulDivRound(value, 1, s) * s || 0;
+}
+
+/**
+ * Line amount in cents = round(quantity × unit price), half away from zero,
+ * then to the currency's displayed unit when `step` is given.
  * Quantities have at most 3 decimals, so the product is computed exactly in
  * thousandths: 0.145 × 100 is 14.4999… in binary and would round to 14.
  */
-export function lineAmount(quantity: number, unitPriceCents: number): number {
+export function lineAmount(quantity: number, unitPriceCents: number, step?: number): number {
   const q = Number.isFinite(quantity) ? quantity : 0;
   const p = Number.isFinite(unitPriceCents) ? unitPriceCents : 0;
   const milli = Math.round(q * 1000);
-  if (
-    Number.isSafeInteger(p) &&
-    Number.isSafeInteger(milli) &&
-    Number(q.toFixed(3)) === q
-  ) {
-    return mulDivRound(milli, p, 1000) || 0;
-  }
-  return Math.round(q * p) || 0;
+  const cents =
+    Number.isSafeInteger(p) && Number.isSafeInteger(milli) && Number(q.toFixed(3)) === q
+      ? mulDivRound(milli, p, 1000) || 0
+      : Math.round(q * p) || 0;
+  return step === undefined ? cents : roundToStep(cents, step);
 }
 
+/**
+ * With a `minorUnitStep`, every printed figure (line amounts, discount, tax,
+ * fees) is rounded to that unit first, and subtotal and total are sums of the
+ * rounded figures, so the document adds up as printed (Taiwan's 營業稅 is
+ * whole dollars too). Unit prices keep their cents. The tax base is an
+ * intermediate value and stays unrounded.
+ */
 export function calculateQuoteFinancials(
   items: readonly MoneyItem[],
-  { taxRateBp, discount, otherFees }: QuoteFinancialsOptions
+  { taxRateBp, discount, otherFees, minorUnitStep: rawStep }: QuoteFinancialsOptions
 ): QuoteFinancials {
+  const step = validStep(rawStep);
   let subtotal = 0;
   let taxableSubtotal = 0;
   for (const item of items) {
-    const amount = lineAmount(item.quantity, item.unitPrice);
+    const amount = lineAmount(item.quantity, item.unitPrice, step);
     subtotal += amount;
     if (item.isTaxable ?? true) taxableSubtotal += amount;
   }
 
-  const rawDiscount =
+  const rawDiscount = roundToStep(
     discount?.type === "percent"
       ? mulDivRound(subtotal, int(discount.value), 10_000)
-      : int(discount?.value);
+      : int(discount?.value),
+    step
+  );
   const discountAmount = Math.min(Math.max(rawDiscount, 0), Math.max(subtotal, 0));
 
   // The discount is spread over taxable and untaxed lines in proportion,
@@ -151,8 +187,8 @@ export function calculateQuoteFinancials(
   const taxBase =
     taxableSubtotal -
     (subtotal > 0 ? mulDivRound(discountAmount, taxableSubtotal, subtotal) : 0);
-  const tax = mulDivRound(taxBase, int(taxRateBp), 10_000);
-  const fees = int(otherFees);
+  const tax = roundToStep(mulDivRound(taxBase, int(taxRateBp), 10_000), step);
+  const fees = roundToStep(int(otherFees), step);
 
   return {
     subtotal,

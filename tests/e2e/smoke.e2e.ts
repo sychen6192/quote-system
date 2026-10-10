@@ -28,10 +28,23 @@ test.describe("health and PWA endpoints", () => {
     expect(res.headers()["cache-control"]).toContain("no-store");
   });
 
+  test("pages link one manifest, fetched with credentials", async ({ page }) => {
+    // Without crossorigin="use-credentials" browsers fetch the manifest
+    // without cookies, and a login proxy in front of the app (Cloudflare
+    // Access, docs/deploy/https.md) answers with its login page instead.
+    for (const locale of LOCALES) {
+      await page.goto(`/${locale}`);
+      const links = page.locator('link[rel="manifest"]');
+      await expect(links).toHaveCount(1);
+      await expect(links).toHaveAttribute("href", "/manifest.webmanifest");
+      await expect(links).toHaveAttribute("crossorigin", "use-credentials");
+    }
+  });
+
   test("the web app manifest is installable", async ({ request }) => {
     const res = await request.get("/manifest.webmanifest");
     expect(res.status()).toBe(200);
-    expect(res.headers()["content-type"]).toMatch(/application\/(manifest\+)?json/);
+    expect(res.headers()["content-type"]).toMatch(/^application\/manifest\+json/);
 
     const manifest = await res.json();
     expect(manifest.name, "name").toBeTruthy();
@@ -63,6 +76,14 @@ test.describe("health and PWA endpoints", () => {
     const res = await request.get("/offline.html");
     expect(res.status()).toBe(200);
     expect(res.headers()["content-type"]).toMatch(/text\/html/);
+  });
+
+  test("robots.txt keeps the whole app out of search engines", async ({ request }) => {
+    // Public even with APP_PASSWORD set (proxy-rules allow-lists it).
+    const res = await request.get("/robots.txt");
+    expect(res.status()).toBe(200);
+    expect(await res.text()).toMatch(/^Disallow: \/$/m);
+    expect(res.headers()["x-robots-tag"]).toContain("noindex");
   });
 });
 
@@ -135,6 +156,87 @@ test.describe("quotes", () => {
   });
 });
 
+test.describe("private data never leaks through /_next/<page>", () => {
+  // Next routed /_next/<anything> into [locale] with the locale "_next" and
+  // rendered that page into the 404 body: before 1.0.1, /_next/quotes/1 showed
+  // quote 1 and /_next/settings the bank account to anyone, signed in or not.
+  test("quote and settings pages under /_next/ are an empty 404", async ({ page, browser, baseURL }, testInfo) => {
+    test.setTimeout(120_000);
+    page.on("dialog", (dialog) => void dialog.accept());
+    const customer = `E2E leak ${testInfo.project.name} ${Date.now()}`;
+    const id = await createQuote(page, customer);
+    const number = (await page.locator("h1").first().innerText()).trim();
+    expect(number).not.toBe("");
+    const account = `9${String(Date.now()).slice(-9)}7`;
+
+    const restoreAccount = await setBankAccountNumber(page, account);
+    const anonymous = await browser.newContext({ baseURL, storageState: { cookies: [], origins: [] } });
+    try {
+      // The real pages carry what the probes look for, so its absence below means something.
+      expect(await (await page.request.get(`/en/quotes/${id}`)).text()).toContain(customer);
+      expect(await (await page.request.get("/en/settings")).text()).toContain(account);
+
+      const secrets = { number, customer, account };
+      const paths = [`/_next/quotes/${id}`, `/_next/quotes/${id}/edit`, "/_next/settings", "/_next/quotes", "/_next/customers"];
+      const clients = [
+        { who: "signed out", request: anonymous.request },
+        { who: "signed in", request: page.request },
+      ];
+      for (const { who, request } of clients) {
+        for (const path of paths) {
+          for (const headers of [{}, { RSC: "1" }] as Record<string, string>[]) {
+            const label = `${who} GET ${path}${"RSC" in headers ? " (RSC)" : ""}`;
+            const res = await request.get(path, { headers, maxRedirects: 0 });
+            const body = await res.text();
+            expect(res.status(), label).toBe(404);
+            for (const [what, value] of Object.entries(secrets)) {
+              expect(body.includes(value), `${label} contains the ${what}`).toBe(false);
+            }
+          }
+        }
+      }
+    } finally {
+      await anonymous.close();
+      await restoreAccount();
+    }
+  });
+});
+
+test.describe("host names with sign-in off", () => {
+  test.skip(!!process.env.E2E_APP_PASSWORD, "sign-in is on: APP_HOSTS is not used");
+  const appHosts = (process.env.E2E_APP_HOSTS ?? "").split(",").map((h) => h.trim()).filter(Boolean);
+
+  test("without APP_HOSTS any host name is served", async ({ request }) => {
+    test.skip(appHosts.length > 0, "the server has APP_HOSTS (E2E_APP_HOSTS is set)");
+    // The allow-list is opt-in, so an upgrade never locks out an install
+    // reached through its own domain (the app logs a warning instead).
+    const res = await request.get("/robots.txt", { headers: { Host: "quotes.example.com" } });
+    expect(res.status()).toBe(200);
+  });
+
+  test("with APP_HOSTS other names get 421, listed and local names are served", async ({ request, baseURL }) => {
+    test.skip(appHosts.length === 0, "set E2E_APP_HOSTS to the server's APP_HOSTS to run");
+    const port = new URL(baseURL!).port;
+    const listed = appHosts.find((h) => !h.includes("*"));
+    const served = [`127.0.0.1:${port}`, `localhost:${port}`, "quotes", "nas.local", ...(listed ? [listed] : [])];
+    for (const host of served) {
+      expect((await request.get("/robots.txt", { headers: { Host: host } })).status(), host).toBe(200);
+    }
+
+    const foreign = "rebind.attacker.example";
+    for (const path of ["/robots.txt", "/en/quotes", "/api/export/quotes"]) {
+      const res = await request.get(path, { headers: { Host: foreign }, maxRedirects: 0 });
+      expect(res.status(), path).toBe(421);
+      expect(await res.text()).toContain("Unknown host");
+    }
+    // A page may add X-Forwarded-Host but cannot change Host: both must pass.
+    const forwarded = await request.get("/robots.txt", { headers: { "X-Forwarded-Host": foreign } });
+    expect(forwarded.status()).toBe(421);
+    // Health checks work under any name.
+    expect((await request.get("/api/health", { headers: { Host: foreign } })).status()).toBe(200);
+  });
+});
+
 test.describe("sign-in", () => {
   test.skip(!process.env.E2E_APP_PASSWORD, "the server has no APP_PASSWORD (set E2E_APP_PASSWORD to run)");
 
@@ -148,6 +250,42 @@ test.describe("sign-in", () => {
     await context.close();
   });
 });
+
+/** Creates a quote through the editor and returns its id (the page ends on the quote). */
+async function createQuote(page: Page, company: string): Promise<number> {
+  await page.goto("/en/quotes/new");
+  await page.locator('[name="companyName"]').fill(company);
+  const salesperson = page.locator('[name="salesperson"]');
+  if ((await salesperson.inputValue()) === "") await salesperson.fill("E2E Sales");
+  await page.locator('[name="items.0.productName"]').fill("Leak probe");
+  await page.locator('[name="items.0.unitPrice"]').fill("100");
+  await page
+    .getByRole("button", { name: /^(Save quote|Save)$/ })
+    .filter({ visible: true })
+    .first()
+    .click();
+  await page.waitForURL(/\/en\/quotes\/\d+$/, { timeout: 20_000 });
+  return Number(new URL(page.url()).pathname.split("/").pop());
+}
+
+/** Saves the bank account number on the Settings page; returns a function that puts the old one back. */
+async function setBankAccountNumber(page: Page, value: string): Promise<() => Promise<void>> {
+  async function save(next: string) {
+    await page.goto("/en/settings#payment");
+    const field = page.getByLabel("Account number", { exact: true }).filter({ visible: true }).first();
+    await expect(field).toBeVisible();
+    const previous = await field.inputValue();
+    if (previous === next) return previous;
+    await field.fill(next);
+    await page.getByRole("button", { name: "Save changes" }).filter({ visible: true }).first().click();
+    await expect(page.getByText("All changes saved").filter({ visible: true }).first()).toBeVisible();
+    return previous;
+  }
+  const previous = await save(value);
+  return async () => {
+    await save(previous);
+  };
+}
 
 async function fillField(page: Page, label: RegExp, value: string): Promise<void> {
   const field = page.getByLabel(label).filter({ visible: true }).first();

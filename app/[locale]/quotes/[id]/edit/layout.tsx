@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
+import { hasLocale } from "next-intl";
+import { pagePath, requireSession } from "@/components/app-shell/require-session";
 import { parseQuoteId } from "@/lib/schemas/quote";
+import { routing } from "@/navigation";
 import { loadQuote } from "./load-quote";
 
 // Resolved outside loading.tsx's Suspense boundary: a notFound() thrown in
@@ -13,9 +16,12 @@ export default async function EditQuoteLayout({
   params,
 }: {
   children: ReactNode;
-  params: Promise<{ id: string }>;
+  params: Promise<{ locale: string; id: string }>;
 }) {
-  const { id } = await params;
+  const { locale, id } = await params;
+  if (!hasLocale(routing.locales, locale)) notFound();
+  // Signed out: to the sign-in page, not a 404 that would say whether the quote exists.
+  await requireSession(locale, pagePath(locale, `/quotes/${encodeURIComponent(id)}/edit`));
   const quoteId = parseQuoteId(id);
   if (quoteId === null || !(await loadQuote(quoteId))) notFound();
   return children;

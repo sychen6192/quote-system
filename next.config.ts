@@ -9,6 +9,9 @@ const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+  // A private business tool: keep every response (PDFs and CSVs included,
+  // which carry no <meta name="robots">) out of search engines.
+  { key: "X-Robots-Tag", value: "noindex, nofollow" },
 ];
 
 const nextConfig: NextConfig = {

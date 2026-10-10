@@ -20,7 +20,8 @@ export type SwRoute = "static" | "icon" | "navigate" | "bypass";
  * Which strategy a request gets. Plain ES2017, inlined into the worker and
  * evaluated by the unit tests. Everything not listed is left to the browser:
  * Server Actions (POST), /api/* (PDFs, CSV, branding), RSC payloads and the
- * worker/manifest themselves.
+ * worker/manifest themselves. (A GET navigation to one of them is still
+ * answered, with the navigation preload response: see passThroughNavigation.)
  */
 export const SW_ROUTE_SOURCE = `function routeFor(request, origin) {
   if (request.method !== "GET") return "bypass";
@@ -113,17 +114,40 @@ async function staleWhileRevalidate(event) {
   return network;
 }
 
+async function offlineResponse() {
+  const cache = await caches.open(OFFLINE_CACHE);
+  return cache.match(OFFLINE_URL);
+}
+
+// What a reverse proxy (Caddy, nginx, tailscale serve, Cloudflare) answers
+// while the app server is down or restarting. The app's own 500 / 404 pages
+// are real answers and pass through.
+function isGatewayDown(status) {
+  return status === 502 || status === 503 || status === 504 || (status >= 520 && status <= 530);
+}
+
 // Pages are always fresh from the network and never stored: they hold
 // customer data, and a stale quote is worse than an honest offline page.
 async function networkFirstNavigation(event) {
+  let response;
   try {
-    const response = (await event.preloadResponse) || (await fetch(event.request));
-    event.waitUntil(ensureOfflinePage().catch(() => undefined));
-    return response;
+    response = (await event.preloadResponse) || (await fetch(event.request));
   } catch (error) {
-    const cache = await caches.open(OFFLINE_CACHE);
-    return (await cache.match(OFFLINE_URL)) || Response.error();
+    return (await offlineResponse()) || Response.error();
   }
+  if (isGatewayDown(response.status)) {
+    // Same URL, so the offline page's retry reloads the page asked for.
+    return (await offlineResponse()) || response;
+  }
+  event.waitUntil(ensureOfflinePage().catch(() => undefined));
+  return response;
+}
+
+// Navigation preload runs for every navigation in scope: use it for the
+// ones that are not pages too (a PDF opened in a tab), or the server does
+// the work twice.
+async function passThroughNavigation(event) {
+  return (await event.preloadResponse) || fetch(event.request);
 }
 
 self.addEventListener("install", (event) => {
@@ -157,6 +181,10 @@ self.addEventListener("message", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const route = routeFor(event.request, self.location.origin);
+  if (event.request.mode === "navigate" && event.request.method === "GET" && route !== "navigate") {
+    event.respondWith(passThroughNavigation(event));
+    return;
+  }
   if (route === "static") event.respondWith(cacheFirst(event));
   else if (route === "icon") event.respondWith(staleWhileRevalidate(event));
   else if (route === "navigate") event.respondWith(networkFirstNavigation(event));
@@ -173,7 +201,15 @@ export function killSwitchSource(): string {
   return `/* Quote System service worker: disabled (PWA_DISABLE_SW). */
 "use strict";
 
-self.addEventListener("install", () => {
+// Pages see this worker reach "installed" like an update: tell them first,
+// so they do not offer to "reload to the new version".
+async function tellPages() {
+  const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+  for (const client of windows) client.postMessage({ type: "SW_DISABLED" });
+}
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(tellPages().catch(() => undefined));
   self.skipWaiting();
 });
 
@@ -183,8 +219,7 @@ self.addEventListener("activate", (event) => {
       const keys = await caches.keys();
       await Promise.all(keys.map((key) => caches.delete(key)));
       await self.registration.unregister();
-      const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-      for (const client of windows) client.postMessage({ type: "SW_DISABLED" });
+      await tellPages();
     })()
   );
 });

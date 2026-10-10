@@ -6,6 +6,12 @@
 #
 # Reads .env when present (same file as `npm run dev`); DATABASE_URL is
 # overridden below to reach the database over the compose network.
+#
+# Its own project name (containers quote-system-dev-*, volume
+# quote-system-dev_postgres_data): an installed bundle is project "quote-system",
+# and sharing its database volume would run two PostgreSQL servers on one data
+# directory.
+name: quote-system-dev
 
 services:
   app:

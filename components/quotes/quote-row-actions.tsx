@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { Copy, Download, Eye, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/navigation";
+import { DownloadLink } from "@/components/app-shell/download-link";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -40,6 +41,7 @@ export function QuoteRowActions({
         <DropdownMenuTrigger asChild>
           <Button
             ref={triggerRef}
+            data-row-actions=""
             variant="ghost"
             size="icon"
             aria-label={tList("actionsFor", { number: quotationNumber })}
@@ -71,11 +73,10 @@ export function QuoteRowActions({
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild className={item}>
-            {/* A plain link: the route answers with Content-Disposition: attachment. */}
-            <a href={pdfHref} download>
+            <DownloadLink href={pdfHref}>
               <Download aria-hidden="true" className="text-muted-foreground" />
               {t("downloadPdf")}
-            </a>
+            </DownloadLink>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem

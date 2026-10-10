@@ -56,7 +56,13 @@ export async function runMigrations({
 }: RunMigrationsOptions = {}): Promise<void> {
   // A dedicated single-connection client: the session-level advisory lock and
   // every migration statement must share one backend session.
-  const sql = postgres(url, { max: 1, onnotice: () => {}, connect_timeout: 10 });
+  // TimeZone: migrations run now()/defaults too (see db/index.ts).
+  const sql = postgres(url, {
+    max: 1,
+    onnotice: () => {},
+    connect_timeout: 10,
+    connection: { TimeZone: "UTC" },
+  });
   try {
     for (let attempt = 1; ; attempt++) {
       try {

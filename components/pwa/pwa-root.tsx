@@ -6,7 +6,9 @@ import { useTheme } from "next-themes";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useAppConfig } from "@/components/providers/app-config-provider";
+import { getDraftStorage } from "@/hooks/use-form-draft";
 import { PWA_LOGOUT_EVENT, isLoginPath, themeColorFor } from "@/lib/pwa/platform";
+import { beginSignOut, settleSignOut } from "@/lib/pwa/sign-out";
 import { OfflineBanner } from "./offline-banner";
 import { useInstallPrompt } from "./use-pwa";
 import { clearServiceWorkerCaches, useServiceWorker } from "./use-service-worker";
@@ -33,16 +35,32 @@ function useThemeColorSync(pathname: string | null) {
   }, [resolvedTheme, pathname]);
 }
 
-function useLogoutCacheClear(pathname: string | null) {
+function getSessionStorage(): Storage | null {
+  try {
+    return window.sessionStorage;
+  } catch {
+    return null;
+  }
+}
+
+// Shared devices: signing out drops the worker's caches and the quote
+// editor's autosaved drafts (lib/pwa/sign-out.ts).
+function useSignOutCleanup(pathname: string | null) {
   useEffect(() => {
-    const onLogout = () => void clearServiceWorkerCaches();
+    const onLogout = () => {
+      void clearServiceWorkerCaches();
+      beginSignOut(getDraftStorage(), getSessionStorage());
+    };
     window.addEventListener(PWA_LOGOUT_EVENT, onLogout);
     return () => window.removeEventListener(PWA_LOGOUT_EVENT, onLogout);
   }, []);
 
-  // Also when the session ended some other way (expiry, another tab).
   useEffect(() => {
-    if (pathname && isLoginPath(pathname)) void clearServiceWorkerCaches();
+    if (!pathname) return;
+    settleSignOut(pathname, getDraftStorage(), getSessionStorage());
+    // Caches also when the session ended some other way (expiry, another
+    // tab); drafts survive that, so unsaved work can be restored.
+    if (isLoginPath(pathname)) void clearServiceWorkerCaches();
   }, [pathname]);
 }
 
@@ -63,14 +81,14 @@ function useInstalledToast() {
 
 /**
  * Mounted once in the [locale] layout: service worker + update toast,
- * offline notice, theme-color sync, cache cleanup on sign-out and the
- * "installed" toast.
+ * offline notice, theme-color sync, cache and draft cleanup on sign-out
+ * and the "installed" toast.
  */
 export function PwaRoot() {
   const pathname = usePathname();
   useServiceWorker();
   useThemeColorSync(pathname);
-  useLogoutCacheClear(pathname);
+  useSignOutCleanup(pathname);
   useInstalledToast();
   return <OfflineBanner />;
 }

@@ -50,6 +50,7 @@ export function isPublicPath(pathname: string): boolean {
 // Fixed public URLs outside [locale] (spec §9). A new public file needs an
 // entry here; until then the proxy answers 404 for it (see below).
 const PUBLIC_ASSETS: readonly RegExp[] = [
+  /^\/robots\.txt$/,
   /^\/sw\.js$/,
   /^\/manifest\.webmanifest$/,
   /^\/offline\.html$/,
@@ -67,6 +68,13 @@ export function isPublicAsset(pathname: string): boolean {
 function hasFileLikeFirstSegment(pathname: string): boolean {
   return (pathname.split("/")[1] ?? "").includes(".");
 }
+
+// The only /_next/* URLs Next itself serves outside the matcher's exclusions
+// (dev HMR and the dev MCP endpoint; static/image are listed in case the
+// matcher ever changes). Anything else under /_next/ is routed by Next into
+// [locale] with locale "_next" and, like a dotted first segment, renders its
+// pages into the 404 body: /_next/quotes/1 would leak quote 1.
+const NEXT_INTERNAL = /^\/_next\/(static\/|image$|webpack-hmr$|mcp$)/;
 
 function isApiPath(pathname: string): boolean {
   return pathname === "/api" || pathname.startsWith("/api/");
@@ -95,9 +103,12 @@ export function decideProxyAction(req: ProxyInput): ProxyDecision {
   const passThrough: ProxyDecision = isApiPath(pathname) ? { action: "next" } : { action: "intl" };
   const possibleAction = isPossibleServerAction(req);
 
-  // Build assets outside the matcher's exclusions (e.g. dev HMR): never
-  // localised, never private. A Server Action posted here still needs auth.
-  if (pathname.startsWith("/_next/") && !possibleAction) return { action: "next" };
+  // "_next" is never a locale: pass Next's own endpoints through and 404 the
+  // rest, signed in or not. A Server Action posted here falls through to the
+  // auth checks below (Next answers it at any URL).
+  if (pathname.startsWith("/_next/") && !possibleAction) {
+    return NEXT_INTERNAL.test(pathname) ? { action: "next" } : { action: "notFound" };
+  }
 
   if (!possibleAction && isPublicAsset(pathname)) return { action: "next" };
   if (hasFileLikeFirstSegment(pathname)) return { action: "notFound" };

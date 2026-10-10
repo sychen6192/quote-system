@@ -3,7 +3,6 @@ import type { SQL } from "drizzle-orm";
 import {
   DEFAULT_QUOTE_NUMBER_PATTERN,
   allocateQuoteNumber,
-  parseQuoteNumberSeq,
   quoteNumberScope,
   renderQuoteNumber,
   validateQuoteNumberPattern,
@@ -59,7 +58,7 @@ describe("renderQuoteNumber", () => {
   });
 });
 
-describe("quoteNumberScope / parseQuoteNumberSeq", () => {
+describe("quoteNumberScope", () => {
   it("splits the rendered pattern around SEQ", () => {
     expect(quoteNumberScope(DEFAULT_QUOTE_NUMBER_PATTERN, "2026-10-09")).toEqual({
       prefix: "QT-20261009-",
@@ -73,19 +72,6 @@ describe("quoteNumberScope / parseQuoteNumberSeq", () => {
       scope: "/2026",
       pad: 2,
     });
-  });
-
-  it("parses the sequence back out", () => {
-    const scope = quoteNumberScope(DEFAULT_QUOTE_NUMBER_PATTERN, "2026-10-09");
-    expect(parseQuoteNumberSeq("QT-20261009-007", scope)).toBe(7);
-    expect(parseQuoteNumberSeq("QT-20261009-1000", scope)).toBe(1000);
-    expect(parseQuoteNumberSeq("QT-20261008-007", scope)).toBeNull();
-    expect(parseQuoteNumberSeq("QT-20261009-", scope)).toBeNull();
-    expect(parseQuoteNumberSeq("QT-20261009-12a", scope)).toBeNull();
-
-    const suffixed = quoteNumberScope("{SEQ:2}/{YYYY}", "2026-12-31");
-    expect(parseQuoteNumberSeq("05/2026", suffixed)).toBe(5);
-    expect(parseQuoteNumberSeq("05/2025", suffixed)).toBeNull();
   });
 });
 

@@ -56,8 +56,9 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ACTION_TOAST_DURATION_MS } from "@/components/ui/toast-layer";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { useFormDraft, draftDiffers, type DraftStatusStore } from "@/hooks/use-form-draft";
+import { DRAFT_VERSION, useFormDraft, draftDiffers, type DraftStatusStore } from "@/hooks/use-form-draft";
 import { useHotkey } from "@/hooks/use-hotkey";
 import { useIsDesktop, usePrefersReducedMotion } from "@/hooks/use-media-query";
 import { isIsoDate } from "@/lib/dates";
@@ -77,9 +78,16 @@ import {
   DuplicatedBanner,
   StatusNoticeBanner,
 } from "./banners";
+import { createDraftCarrier, expectedVersionArg } from "./conflict";
 import { CustomerSection } from "./customer-section";
 import { DetailsSection } from "./details-section";
-import { EditorProvider, createRevealBus, useMoney, type EditorContextValue } from "./editor-context";
+import {
+  EditorProvider,
+  createRevealBus,
+  createSignal,
+  useMoney,
+  type EditorContextValue,
+} from "./editor-context";
 import { WrappingMoney } from "./field-bits";
 import {
   SECTION_IDS,
@@ -106,6 +114,11 @@ export type QuoteFormProps = {
   mode: "create" | "edit";
   /** edit: the quote being edited */
   quoteId?: number | null;
+  /**
+   * edit: the quote's version as loaded (quoteVersion(updatedAt)). Saving
+   * sends it, so a quote changed elsewhere since is not silently overwritten.
+   */
+  version?: number | null;
   quotationNumber?: string | null;
   status?: QuoteStatus;
   initialValues: QuoteFormValues;
@@ -113,6 +126,8 @@ export type QuoteFormProps = {
   draftKey: string;
   /** edit: drafts of older versions of this quote to delete (quoteDraftPrefix) */
   draftPrunePrefix?: string;
+  /** Only prune drafts under draftPrunePrefix older than this (other sources' drafts). */
+  draftPruneMaxAgeMs?: number;
   /** YYYY-MM-DD in the business timezone */
   today: string;
   /** getDocumentBranding("html") for the live preview */
@@ -184,14 +199,20 @@ function usePreviewHidden(): boolean {
   return useSyncExternalStore(subscribePreviewHidden, readPreviewHidden, () => false);
 }
 
+// Unsaved edits on their way from an editor that hit a conflict to the one
+// that mounts with the latest version (the edit page keys the form by version).
+const draftCarrier = createDraftCarrier<QuoteFormValues>();
+
 export function QuoteForm({
   mode,
   quoteId = null,
+  version = null,
   quotationNumber = null,
   status = "draft",
   initialValues,
   draftKey,
   draftPrunePrefix,
+  draftPruneMaxAgeMs,
   today,
   branding,
   duplicatedFrom = null,
@@ -220,13 +241,25 @@ export function QuoteForm({
   const cancelReturnFocus = useRef<HTMLElement | null>(null);
   const allowLeave = useRef(false);
   const savingRef = useRef(false);
+  // The save went through: a failure reported after this (an aborted
+  // request as the page navigates away) is not an expired session.
+  const savedRef = useRef(false);
   const sheetFocus = useRef<string | null>(null);
   const [reveal] = useState(createRevealBus);
+  const [submitting] = useState(createSignal);
   const [openSections, setOpenSections] = useState(ALL_OPEN);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [bodyKey, setBodyKey] = useState(0);
   const [saved, setSaved] = useState(false);
+  const [conflict, setConflict] = useState(false);
+  // "Save anyway": the next save skips the version check.
+  const overwriteRef = useRef(false);
+  const reloadButtonRef = useRef<HTMLButtonElement>(null);
+  // Edits carried over by "Reload latest" from the editor this one replaced.
+  const [seed] = useState(() =>
+    mode === "edit" && quoteId !== null ? draftCarrier.peek(quoteId, version) : null
+  );
 
   const subscribe = useCallback(
     (onChange: (values: QuoteFormValues) => void) =>
@@ -241,7 +274,16 @@ export function QuoteForm({
     subscribe,
     initialValues: defaults,
     prunePrefix: draftPrunePrefix,
+    pruneMaxAgeMs: draftPruneMaxAgeMs,
+    seed,
   });
+
+  useEffect(() => {
+    if (!seed) return;
+    // The draft hook has stored it under this version's key.
+    draftCarrier.release(seed);
+    toast.info(t("conflictDialog.reloaded"), { id: "quote-form-conflict" });
+  }, [seed, t]);
 
   // A reload restores the scroll position, which can leave the restore
   // prompt above the fold (and the user typing into stale values).
@@ -268,6 +310,7 @@ export function QuoteForm({
 
   const flushDraft = draft.flush;
   const onSessionExpired = useCallback(() => {
+    if (savedRef.current) return;
     flushDraft();
     allowLeave.current = true;
     toast.error(t("messages.sessionExpired"), { id: "quote-form-session" });
@@ -275,8 +318,8 @@ export function QuoteForm({
   }, [flushDraft, t]);
 
   const editor = useMemo<EditorContextValue>(
-    () => ({ today, reveal, onSessionExpired }),
-    [today, reveal, onSessionExpired]
+    () => ({ today, reveal, onSessionExpired, submitting }),
+    [today, reveal, onSessionExpired, submitting]
   );
 
   const scrollBehavior: ScrollBehavior = reducedMotion ? "auto" : "smooth";
@@ -381,14 +424,19 @@ export function QuoteForm({
   };
 
   const onValid = async (data: QuoteFormData) => {
+    const overwrite = overwriteRef.current;
+    overwriteRef.current = false;
     if (savingRef.current) return;
     if (isOffline()) return onOffline();
     savingRef.current = true;
     let result: ActionResult;
     try {
+      const expected = expectedVersionArg(version, { overwrite });
       result =
         mode === "edit" && quoteId !== null
-          ? await updateQuote(quoteId, data)
+          ? expected === undefined
+            ? await updateQuote(quoteId, data)
+            : await updateQuote(quoteId, data, expected)
           : await createQuote(data);
     } catch {
       savingRef.current = false;
@@ -397,6 +445,7 @@ export function QuoteForm({
       return;
     }
     if (result.success) {
+      savedRef.current = true;
       draft.clear();
       allowLeave.current = true;
       setSaved(true);
@@ -417,17 +466,24 @@ export function QuoteForm({
       case "NOT_FOUND":
         toast.error(t("messages.notFound"));
         return;
+      case "CONFLICT":
+        // Whatever happens next, what was typed is on this device.
+        draft.flush();
+        setConflict(true);
+        return;
       case "RATE_LIMITED":
         toast.error(t("messages.rateLimited"));
         return;
       default:
         toast.error(t("messages.error"), {
           action: { label: t("messages.retry"), onClick: () => formRef.current?.requestSubmit() },
+          duration: ACTION_TOAST_DURATION_MS,
         });
     }
   };
 
   const onInvalid = (errors: FieldErrors<QuoteFormValues>) => {
+    overwriteRef.current = false;
     const paths = collectErrorPaths(errors);
     toast.error(t("messages.invalid", { count: Math.max(paths.length, 1) }), {
       id: "quote-form-invalid",
@@ -436,8 +492,12 @@ export function QuoteForm({
     focusFirstError(paths);
   };
 
-  const submit = (event: FormEvent<HTMLFormElement>) =>
-    form.handleSubmit(onValid, onInvalid)(event);
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    // Before validation: blank rows added with Enter are dropped, and
+    // suggestion searches still in flight are cancelled.
+    submitting.emit();
+    return form.handleSubmit(onValid, onInvalid)(event);
+  };
 
   useHotkey("mod+s", () => {
     if (!savingRef.current && !saved) formRef.current?.requestSubmit();
@@ -476,6 +536,26 @@ export function QuoteForm({
     // toggles) is re-derived from the restored values.
     setBodyKey((key) => key + 1);
     toast.success(t("banners.restored"));
+  };
+
+  const reloadLatest = () => {
+    if (isOffline()) return onOffline();
+    if (quoteId !== null) {
+      // The page re-renders with the latest version, which remounts this form
+      // (keyed by version) with the stored values; the new form stores these
+      // edits as its draft and offers to restore them.
+      draftCarrier.hold({
+        quoteId,
+        fromVersion: version,
+        draft: { version: DRAFT_VERSION, savedAt: Date.now(), values: form.getValues() },
+      });
+    }
+    router.refresh();
+  };
+
+  const saveAnyway = () => {
+    overwriteRef.current = true;
+    formRef.current?.requestSubmit();
   };
 
   // The saved quote's state (not the live form): what the customer has seen.
@@ -692,6 +772,34 @@ export function QuoteForm({
                 className={cn(buttonVariants({ variant: "destructive" }), "h-11 sm:h-9")}
               >
                 {t("cancelDialog.discard")}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={conflict} onOpenChange={setConflict}>
+          <AlertDialogContent
+            onOpenAutoFocus={(event) => {
+              // The safe choice first: nothing is overwritten, nothing is lost.
+              event.preventDefault();
+              reloadButtonRef.current?.focus();
+            }}
+          >
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t("conflictDialog.title")}</AlertDialogTitle>
+              <AlertDialogDescription>{t("conflictDialog.description")}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="gap-2 sm:gap-0">
+              <AlertDialogAction
+                onClick={saveAnyway}
+                // AlertDialogAction starts from the primary button: the outline
+                // variant sets no text colour of its own.
+                className={cn(buttonVariants({ variant: "outline" }), "h-11 text-foreground sm:h-9")}
+              >
+                {t("conflictDialog.overwrite")}
+              </AlertDialogAction>
+              <AlertDialogAction ref={reloadButtonRef} onClick={reloadLatest} className="h-11 sm:h-9">
+                {t("conflictDialog.reload")}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

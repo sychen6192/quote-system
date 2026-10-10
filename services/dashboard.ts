@@ -108,7 +108,10 @@ export async function getRecentQuotes(limit = 5, today?: string) {
   const day = await resolveToday(today);
   const rows = await db.query.quotations.findMany({
     with: { customer: true },
-    orderBy: [sql`${quotations.createdAt} desc nulls last`, desc(quotations.id)],
+    // Plain desc on the NOT NULL column: a backward scan of
+    // quotations_created_at_idx that stops after `limit` rows (the customer
+    // lookup then runs only for those, not for every quote).
+    orderBy: [desc(quotations.createdAt), desc(quotations.id)],
     limit: clampLimit(limit, 5),
   });
   return withDisplayStatus(rows, day);

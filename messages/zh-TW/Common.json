@@ -1,6 +1,5 @@
 {
   "backToDashboard": "返回儀表板",
-  "toggleTheme": "切換主題",
   "number": "報價單號",
   "customer": "客戶",
   "status": "狀態",
@@ -17,9 +16,8 @@
   "copyFailed": "無法複製，請手動選取文字後複製。",
   "clearSearch": "清除搜尋",
   "loading": "載入中…",
-  "notSet": "未填寫",
   "sessionExpired": "登入已逾時，正在前往登入頁面…",
-  "genericError": "發生錯誤，請再試一次。",
+  "downloadFailed": "無法下載檔案，請再試一次。",
   "pagination": {
     "label": "分頁",
     "previous": "上一頁",

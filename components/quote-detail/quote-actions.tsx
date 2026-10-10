@@ -14,6 +14,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { DownloadLink } from "@/components/app-shell/download-link";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -53,11 +54,11 @@ export function QuoteToolbar({ className }: { className?: string }) {
   return (
     <div className={cn("flex flex-wrap items-center gap-2", className)}>
       <Button asChild>
-        {/* A plain link: popup blockers and standalone PWAs swallow new windows. */}
-        <a href={downloadHref} download>
+        {/* A link, not a new window: popup blockers and standalone PWAs swallow those. */}
+        <DownloadLink href={downloadHref}>
           <Download aria-hidden="true" />
           {t("downloadPdf")}
-        </a>
+        </DownloadLink>
       </Button>
       <Button variant="outline" onClick={openSendDialog}>
         <Send aria-hidden="true" />
@@ -162,10 +163,10 @@ export function MobileActionBar() {
       <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 px-4 pb-safe-3 pt-3 shadow-[0_-4px_16px_-8px_hsl(var(--shadow-color)/0.15)] backdrop-blur-md supports-[backdrop-filter]:bg-background/80 md:hidden print:hidden">
         <div className="mx-auto flex max-w-lg items-center gap-2 pl-safe pr-safe">
           <Button asChild className="h-12 flex-1 text-[15px]">
-            <a href={downloadHref} download>
+            <DownloadLink href={downloadHref}>
               <Download aria-hidden="true" />
               {t("downloadPdf")}
-            </a>
+            </DownloadLink>
           </Button>
           <Button variant="outline" className="h-12 flex-1 text-[15px]" onClick={openSendDialog}>
             <Send aria-hidden="true" />

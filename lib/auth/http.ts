@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { DEFAULT_LOCALE, type AppLocale } from "@/i18n/locales";
+import { DEFAULT_LOCALE, LOCALE_COOKIE_NAME, type AppLocale } from "@/i18n/locales";
 import { isAppLocale, localeFromPath } from "./paths";
 
 /**
@@ -36,11 +36,11 @@ export function isHttpsRequest(req: NextRequest): boolean {
   return proto === "https" || req.nextUrl.protocol === "https:";
 }
 
-/** Form field → path of `fromPath` → NEXT_LOCALE cookie → default. */
+/** Form field → path of `fromPath` → language cookie (NEXT_LOCALE) → default. */
 export function requestLocale(req: NextRequest, formLocale: string, fromPath?: string): AppLocale {
   if (isAppLocale(formLocale)) return formLocale;
   const pathLocale = fromPath ? localeFromPath(fromPath) : null;
   if (pathLocale) return pathLocale;
-  const cookie = req.cookies.get("NEXT_LOCALE")?.value;
+  const cookie = req.cookies.get(LOCALE_COOKIE_NAME)?.value;
   return isAppLocale(cookie) ? cookie : DEFAULT_LOCALE;
 }

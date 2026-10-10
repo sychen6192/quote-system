@@ -250,3 +250,41 @@ describe("sendQuoteEmail", () => {
     await expect(sendQuoteEmail({ id: 5 })).resolves.toEqual({ success: true });
   });
 });
+
+// X-Forwarded-For is client-controlled, so the per-address limit alone does
+// not stop a session holder (or anyone, with sign-in off) from relaying spam.
+describe("sendQuoteEmail: overall limit", () => {
+  it("caps sends per process at 50 an hour, whatever address is claimed", async () => {
+    let action!: typeof import("@/actions/send-email");
+    jest.isolateModules(() => {
+      action = jest.requireActual("@/actions/send-email");
+    });
+    let n = 0;
+    mockHeaders.mockImplementation(async () => new Headers({ "x-forwarded-for": `172.20.${++n % 250}.${n}` }));
+    for (let i = 0; i < 50; i++) {
+      await expect(action.sendQuoteEmail({ id: 5 })).resolves.toEqual({ success: true });
+    }
+    const res = await action.sendQuoteEmail({ id: 5 });
+    expect(res).toMatchObject({ success: false, code: "RATE_LIMITED" });
+    if (!res.success && res.code === "RATE_LIMITED") expect(res.retryAfterMs).toBeGreaterThan(0);
+    expect(mockSend).toHaveBeenCalledTimes(50);
+  });
+
+  it("does not charge the overall budget for sends refused per address", async () => {
+    let action!: typeof import("@/actions/send-email");
+    jest.isolateModules(() => {
+      action = jest.requireActual("@/actions/send-email");
+    });
+    mockHeaders.mockResolvedValue(new Headers({ "x-forwarded-for": "172.21.0.1" }));
+    for (let i = 0; i < 20; i++) await action.sendQuoteEmail({ id: 5 });
+    for (let i = 0; i < 40; i++) {
+      await expect(action.sendQuoteEmail({ id: 5 })).resolves.toMatchObject({ code: "RATE_LIMITED" });
+    }
+    let n = 0;
+    mockHeaders.mockImplementation(async () => new Headers({ "x-forwarded-for": `172.22.0.${++n}` }));
+    for (let i = 0; i < 30; i++) {
+      await expect(action.sendQuoteEmail({ id: 5 })).resolves.toEqual({ success: true });
+    }
+    await expect(action.sendQuoteEmail({ id: 5 })).resolves.toMatchObject({ code: "RATE_LIMITED" });
+  });
+});
