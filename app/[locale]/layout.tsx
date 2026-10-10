@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import localFont from "next/font/local";
 
 import "./globals.css";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
@@ -17,7 +17,14 @@ import { appDisplayName, brandDisplayName, shortAppName } from "@/components/app
 import { PwaRoot } from "@/components/pwa/pwa-root";
 import { THEME_COLORS } from "@/lib/pwa/platform";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
+// Self-hosted (OFL, @fontsource-variable/inter latin subset): builds must not
+// depend on reaching Google Fonts — air-gapped / firewalled self-hosters.
+const inter = localFont({
+  src: "../fonts/InterVariable-latin.woff2",
+  weight: "100 900",
+  variable: "--font-sans",
+  display: "swap",
+});
 
 // Only the configured locales exist: anything else in the first segment
 // (/foo, /sw.js, /manifest.webmanifest) is a 404, never the dashboard.

@@ -77,6 +77,19 @@ export function formatAmount(cents: number, money: DocumentMoney): string {
   return numberFormat(money.currencyLocale, digits, digits).format(value / 100);
 }
 
+/**
+ * Unit prices keep any cents the user typed even when the currency is shown
+ * without decimals (NT$10.99 stays "10.99", not "11"); whole prices follow
+ * the currency's usual digits.
+ */
+export function formatUnitPrice(cents: number, money: DocumentMoney): string {
+  const value = Number.isFinite(cents) ? Math.round(cents) : 0;
+  const digits = money.fractionDigits;
+  const hidden = digits >= 2 ? 0 : value % (digits === 1 ? 10 : 100);
+  const max = hidden === 0 ? digits : 2;
+  return numberFormat(money.currencyLocale, digits, max).format(value / 100);
+}
+
 /** Cents with the currency symbol (the grand total). */
 export function formatTotal(cents: number, money: DocumentMoney): string {
   return formatMoney(cents, money);

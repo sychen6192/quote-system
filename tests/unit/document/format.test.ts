@@ -6,6 +6,7 @@ import {
   formatQuantity,
   formatRate,
   formatTotal,
+  formatUnitPrice,
   present,
 } from "@/components/quote-document/format";
 
@@ -76,5 +77,18 @@ describe("present", () => {
     expect(present("  ")).toBeNull();
     expect(present(null)).toBeNull();
     expect(present(" a ")).toBe("a");
+  });
+});
+
+describe("formatUnitPrice", () => {
+  it("keeps typed cents even when the currency shows no decimals", () => {
+    expect(formatUnitPrice(1099, TWD)).toBe("10.99");
+    expect(formatUnitPrice(1050, TWD)).toBe("10.5");
+    expect(formatUnitPrice(8_000_000, TWD)).toBe("80,000");
+  });
+
+  it("follows the currency's digits for whole and fractional prices", () => {
+    expect(formatUnitPrice(1000, USD)).toBe("10.00");
+    expect(formatUnitPrice(1099, USD)).toBe("10.99");
   });
 });

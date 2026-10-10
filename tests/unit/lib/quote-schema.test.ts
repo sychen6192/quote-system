@@ -213,6 +213,8 @@ describe("quote ids", () => {
     [-1, null],
     [1.5, null],
     ["1.5", null],
+    ["00001", null], // one canonical URL per quote
+    ["0", null],
     ["abc", null],
     ["", null],
     [null, null],

@@ -3,7 +3,8 @@
 import { useTransition } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Languages, Loader2 } from "lucide-react";
-import { usePathname, useRouter } from "@/navigation";
+import { getPathname, usePathname, useRouter } from "@/navigation";
+import { requestNavigation } from "@/lib/navigation-events";
 import { LOCALES, type AppLocale } from "@/i18n/locales";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,8 @@ export default function LanguageSwitcher({ className }: { className?: string }) 
     // Read at click time rather than via useSearchParams(), which would force
     // a Suspense boundary around the whole shell.
     const { search, hash } = window.location;
+    // Let a page with unsaved edits (Settings) intercept the switch.
+    if (!requestNavigation(`${getPathname({ href: pathname, locale: target })}${search}${hash}`)) return;
     startTransition(() => {
       router.replace(`${pathname}${search}${hash}`, { locale: target, scroll: false });
     });

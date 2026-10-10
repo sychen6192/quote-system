@@ -11,6 +11,7 @@ import { documentAccent } from "./accent";
 import {
   amountInWords,
   formatAmount,
+  formatUnitPrice,
   formatDocumentDate,
   formatQuantity,
   formatRate,
@@ -349,7 +350,7 @@ export function QuoteDocument({
                     ) : null}
                   </td>
                   <td className="whitespace-nowrap px-2 py-2.5 print:py-2 text-right tabular-nums text-slate-900">
-                    <span {...editable(`items.${index}.unitPrice`)}>{formatAmount(item.unitPrice, money)}</span>
+                    <span {...editable(`items.${index}.unitPrice`)}>{formatUnitPrice(item.unitPrice, money)}</span>
                   </td>
                   <td className="whitespace-nowrap px-2 py-2.5 print:py-2 text-right font-semibold tabular-nums text-slate-900">
                     <span {...editable(`items.${index}.amount`)}>{formatAmount(item.amount, money)}</span>

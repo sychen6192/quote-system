@@ -167,6 +167,15 @@
 
 @layer utilities {
   @media print {
+    /* Paper is white whatever the screen theme (dark mode must not print grey margins). */
+    :root {
+      color-scheme: light;
+    }
+    html,
+    body {
+      background: #ffffff !important;
+    }
+
     /* 1. 歸零瀏覽器預設邊距 */
     @page {
       margin: 0;

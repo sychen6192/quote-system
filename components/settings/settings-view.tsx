@@ -11,6 +11,7 @@ import {
   type MouseEvent,
 } from "react";
 import { useRouter } from "next/navigation";
+import { BEFORE_NAVIGATE_EVENT, type BeforeNavigateDetail } from "@/lib/navigation-events";
 import { useTranslations } from "next-intl";
 import {
   Building2,
@@ -254,12 +255,21 @@ export function SettingsView({ data }: { data: SettingsPageData }) {
       navigate.preventDefault();
       setPending({ traverseTo: navigate.destination.key });
     };
+    const onBeforeNavigate = (event: Event) => {
+      if (allowLeave.current || !isActiveDirty()) return;
+      const href = (event as CustomEvent<BeforeNavigateDetail>).detail?.href;
+      if (!href) return;
+      event.preventDefault();
+      setPending({ href });
+    };
     const navigation = getNavigation();
     window.addEventListener("beforeunload", onBeforeUnload);
+    window.addEventListener(BEFORE_NAVIGATE_EVENT, onBeforeNavigate);
     document.addEventListener("click", onClick, true);
     navigation?.addEventListener("navigate", onNavigate);
     return () => {
       window.removeEventListener("beforeunload", onBeforeUnload);
+      window.removeEventListener(BEFORE_NAVIGATE_EVENT, onBeforeNavigate);
       document.removeEventListener("click", onClick, true);
       navigation?.removeEventListener("navigate", onNavigate);
     };

@@ -224,7 +224,7 @@ export const quoteIdSchema = z
 /** Accepts a number or an all-digits string (route params); null otherwise. */
 export function parseQuoteId(value: unknown): number | null {
   const n =
-    typeof value === "string" && /^\d{1,10}$/.test(value.trim())
+    typeof value === "string" && /^[1-9]\d{0,9}$/.test(value.trim())
       ? Number(value.trim())
       : value;
   const parsed = quoteIdSchema.safeParse(n);

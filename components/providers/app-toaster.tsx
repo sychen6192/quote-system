@@ -5,8 +5,9 @@ import { Toaster } from "@/components/ui/sonner";
 import { useMediaQuery } from "@/hooks/use-media-query";
 
 /**
- * Themed toaster. Phones get toasts at the top: the bottom edge belongs to
- * the tab bar and the pages' sticky action bars.
+ * Themed toaster, always at the top: the bottom edge belongs to the phone
+ * tab bar and the pages' sticky action bars (Save, Download PDF). On wider
+ * screens it sits below the 56px top nav.
  */
 export function AppToaster() {
   const t = useTranslations("UI");
@@ -14,11 +15,11 @@ export function AppToaster() {
   const wide = useMediaQuery("(min-width: 768px)");
   return (
     <Toaster
-      position={wide ? "bottom-right" : "top-center"}
+      position={wide ? "top-right" : "top-center"}
       richColors
       closeButton
       containerAriaLabel={tCommon("notifications")}
-      offset={wide ? 24 : undefined}
+      offset={wide ? { top: 72, right: 24 } : undefined}
       mobileOffset={{ top: "calc(env(safe-area-inset-top, 0px) + 12px)" }}
       // Replaces (not merges with) components/ui/sonner's toastOptions, so its
       // classNames are repeated here alongside the translated close label.

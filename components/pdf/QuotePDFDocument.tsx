@@ -9,6 +9,7 @@ import { documentAccent, DOCUMENT_INK } from "@/components/quote-document/accent
 import {
   amountInWords,
   formatAmount,
+  formatUnitPrice,
   formatDocumentDate,
   formatQuantity,
   formatRate,
@@ -408,7 +409,7 @@ export function QuotePDFDocument({ view, branding, labels, lang }: QuotePDFDocum
                   {formatQuantity(item.quantity, money.currencyLocale)}
                   {item.unit ? <Text style={s.unit}> {item.unit}</Text> : null}
                 </Text>
-                <Text style={[s.td, s.colPrice]}>{formatAmount(item.unitPrice, money)}</Text>
+                <Text style={[s.td, s.colPrice]}>{formatUnitPrice(item.unitPrice, money)}</Text>
                 <Text style={[s.td, s.colAmount, s.itemName]}>{formatAmount(item.amount, money)}</Text>
               </View>
             ))

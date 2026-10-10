@@ -61,7 +61,7 @@ Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Sour
 
 ### Inter
 
-The Inter typeface is downloaded at build time by `next/font/google` and served with the app.
+`app/fonts/InterVariable-latin.woff2` (the latin subset of Inter, from `@fontsource-variable/inter` 5.3.0) is bundled with the app and served by `next/font/local`, so builds never need to reach Google Fonts.
 
 Copyright (c) 2016 The Inter Project Authors (https://github.com/rsms/inter).
 
