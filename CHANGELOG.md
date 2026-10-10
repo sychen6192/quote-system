@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-10-10
+
+Dependency updates and small fixes. Upgrading needs no change to `.env` and no manual step: there are no database migrations in this release.
+
 ### Changed
 
 - **Dependencies updated** (the open Dependabot updates): React 19.3, zod 4.6, react-hook-form 7.89, @react-pdf/renderer 4.9, Radix UI, lucide-react 1.x, Playwright 1.63, Jest 30, dotenv 18, and actions/checkout and actions/setup-node v7 in CI. `npm audit` reports nothing for the packages the app ships; the remaining advisories are in build and test tools.
@@ -146,6 +150,7 @@ The first release meant for other businesses to install. It adds an installable 
 4. If you mount `branding/`, make sure the files are readable by uid 1000 (the image no longer runs as uid 1001).
 5. Links to the old PDF URL need to point to `/api/quotes/<id>/pdf`.
 
-[Unreleased]: https://github.com/sychen6192/quote-system/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/sychen6192/quote-system/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/sychen6192/quote-system/releases/tag/v1.0.2
 [1.0.1]: https://github.com/sychen6192/quote-system/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/sychen6192/quote-system/releases/tag/v1.0.0

@@ -1,6 +1,6 @@
 {
   "name": "quote-system",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "description": "Self-hosted quotation management for small businesses: quotes, PDF, email, installable app.",
   "license": "MIT",
