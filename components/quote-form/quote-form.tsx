@@ -99,6 +99,7 @@ import {
   type SectionId,
 } from "./form-model";
 import { ItemsSection } from "./items-section";
+import { lastSalespersonCookie } from "./last-salesperson";
 import type { QuotePreviewProps } from "./quote-preview";
 import { SectionCard } from "./section-card";
 import { SectionIndex } from "./section-index";
@@ -447,6 +448,8 @@ export function QuoteForm({
     if (result.success) {
       savedRef.current = true;
       draft.clear();
+      // New quotes on this device start with it (unless Settings sets a default).
+      document.cookie = lastSalespersonCookie(data.salesperson);
       allowLeave.current = true;
       setSaved(true);
       toast.success(mode === "edit" ? t("messages.updated") : t("messages.created"));

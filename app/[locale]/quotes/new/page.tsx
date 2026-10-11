@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { hasLocale } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -13,6 +14,10 @@ import {
   newQuoteValues,
   withCustomer,
 } from "@/components/quote-form/initial-values";
+import {
+  LAST_SALESPERSON_COOKIE,
+  readLastSalesperson,
+} from "@/components/quote-form/last-salesperson";
 import { QuoteForm } from "@/components/quote-form/quote-form";
 import { todayInTimeZone } from "@/lib/dates";
 import { formValuesFromRecord } from "@/lib/quote-view";
@@ -55,16 +60,20 @@ export default async function NewQuotePage({
   await requireSession(locale, pagePath(locale, "/quotes/new", query));
   setRequestLocale(locale);
 
-  const [settings, branding] = await Promise.all([
+  const [settings, branding, cookieStore] = await Promise.all([
     getSettings(),
     getDocumentBranding("html"),
+    cookies(),
   ]);
   const today = todayInTimeZone(settings.region.timezone);
   const defaults = {
     today,
     validityDays: settings.quote.validityDays,
     taxRate: settings.quote.defaultTaxRate,
-    salesperson: settings.quote.defaultSalesperson,
+    // Settings' default salesperson, else whoever saved the last quote on this device.
+    salesperson:
+      settings.quote.defaultSalesperson ||
+      readLastSalesperson(cookieStore.get(LAST_SALESPERSON_COOKIE)?.value),
     notes: settings.quote.defaultNotes,
     terms: settings.quote.defaultTerms,
   };

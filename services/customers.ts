@@ -16,6 +16,9 @@ export type CustomerOption = {
   phone: string | null;
   vatNumber: string | null;
   address: string | null;
+  /** payment terms and delivery method of the customer's last quote */
+  paymentMethod: string | null;
+  shippingMethod: string | null;
 };
 
 export type CustomerDirectoryEntry = CustomerOption & {
@@ -52,6 +55,8 @@ function toOption(row: Record<string, unknown>): CustomerOption {
     phone: str(row.phone),
     vatNumber: str(row.vat_number),
     address: str(row.address),
+    paymentMethod: str(row.payment_method),
+    shippingMethod: str(row.shipping_method),
   };
 }
 
@@ -60,15 +65,27 @@ function likePattern(q: string): string {
   return `%${escapeLike(q)}%`;
 }
 
+// Payment terms and delivery method of the quote a customer snapshot (c)
+// belongs to; no row when no quote uses the snapshot any more.
+const quoteTerms = sql`
+  lateral (
+    select q.payment_method, q.shipping_method
+    from ${quotations} q
+    where q.customer_id = c.id
+    order by q.id desc
+    limit 1
+  ) terms`;
+
 // Newest snapshot per normalised company that still belongs to a quote.
 function latestPerCompany(match: SQL | undefined): SQL {
   return sql`
     select distinct on (lower(btrim(c.company_name)))
       lower(btrim(c.company_name)) as key,
-      c.id, c.company_name, c.contact_person, c.email, c.phone, c.vat_number, c.address
+      c.id, c.company_name, c.contact_person, c.email, c.phone, c.vat_number, c.address,
+      terms.payment_method, terms.shipping_method
     from ${customers} c
+    cross join ${quoteTerms}
     where btrim(c.company_name) <> ''
-      and exists (select 1 from ${quotations} q where q.customer_id = c.id)
       ${match ? sql`and ${match}` : sql``}
     order by lower(btrim(c.company_name)), c.id desc`;
 }
@@ -181,8 +198,10 @@ export async function getLatestCustomerByName(name: string): Promise<CustomerOpt
   if (!trimmed) return null;
   const rows = rowsOf(
     await db.execute(sql`
-      select c.company_name, c.contact_person, c.email, c.phone, c.vat_number, c.address
+      select c.company_name, c.contact_person, c.email, c.phone, c.vat_number, c.address,
+        terms.payment_method, terms.shipping_method
       from ${customers} c
+      left join ${quoteTerms} on true
       where lower(btrim(c.company_name)) = lower(btrim(${trimmed}))
       order by c.id desc
       limit 1`)

@@ -77,6 +77,8 @@ describe("withCustomer", () => {
       phone: null,
       vatNumber: null,
       address: "1 Main St",
+      paymentMethod: null,
+      shippingMethod: null,
     });
     expect(values).toMatchObject({
       companyName: "Acme Inc.",
@@ -85,6 +87,22 @@ describe("withCustomer", () => {
       phone: "",
       vatNumber: "",
       address: "1 Main St",
+      paymentMethod: "",
+      shippingMethod: "",
     });
+  });
+
+  it("carries the payment terms and delivery method of their last quote", () => {
+    const values = withCustomer(newQuoteValues(defaults), {
+      companyName: "Acme Inc.",
+      contactPerson: null,
+      email: null,
+      phone: null,
+      vatNumber: null,
+      address: null,
+      paymentMethod: "月結30天",
+      shippingMethod: "宅配",
+    });
+    expect(values).toMatchObject({ paymentMethod: "月結30天", shippingMethod: "宅配" });
   });
 });

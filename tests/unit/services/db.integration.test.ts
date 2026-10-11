@@ -429,7 +429,20 @@ describeDb("quotes against Postgres", () => {
         "50%_Off Ltd",
       ]);
       expect((await recentCustomerOptions(2)).map((c) => c.companyName)).toEqual(["500 Off Inc", "Beta"]);
-      expect((await recentCustomerOptions())[1]).toMatchObject({ companyName: "Beta", contactPerson: "Bob" });
+      expect((await recentCustomerOptions())[1]).toMatchObject({
+        companyName: "Beta",
+        contactPerson: "Bob",
+        paymentMethod: null,
+        shippingMethod: null,
+      });
+
+      // Each entry also carries the payment terms and delivery method of its quote.
+      await create({ companyName: "Terms Co", paymentMethod: "月結30天", shippingMethod: "宅配" });
+      const withTerms = { companyName: "Terms Co", paymentMethod: "月結30天", shippingMethod: "宅配" };
+      expect((await recentCustomerOptions(1))[0]).toMatchObject(withTerms);
+      expect(await searchCustomerOptions("terms")).toEqual([expect.objectContaining(withTerms)]);
+      expect(await getLatestCustomerByName(" TERMS CO ")).toMatchObject(withTerms);
+      expect((await getCustomerDirectory({ q: "terms" })).data).toEqual([expect.objectContaining(withTerms)]);
     });
 
     it("suggests products from past lines (newest per normalised name)", async () => {

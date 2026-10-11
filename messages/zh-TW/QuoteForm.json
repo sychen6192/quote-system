@@ -114,7 +114,9 @@
     "offline": "目前離線，無法取得建議。"
   },
   "customer": {
-    "filled": "已帶入「{company}」的客戶資料。"
+    "filled": "已帶入「{company}」的客戶資料。",
+    "termsCarried": "已沿用這家客戶上次的條件",
+    "termsItem": "{label}：{value}"
   },
   "vatLookup": {
     "button": "查詢",

@@ -77,7 +77,7 @@
     "terms": "Terms & conditions"
   },
   "placeholders": {
-    "companyName": "Pick a customer or type a new name",
+    "companyName": "Pick or type a company name",
     "contactPerson": "e.g. Jane Chen",
     "email": "name@company.com",
     "phone": "e.g. +886 2 2345 6789",
@@ -114,7 +114,9 @@
     "offline": "You're offline, so suggestions aren't available."
   },
   "customer": {
-    "filled": "Filled in the details saved for {company}."
+    "filled": "Filled in the details saved for {company}.",
+    "termsCarried": "Used the terms from their last quote",
+    "termsItem": "{label}: {value}"
   },
   "vatLookup": {
     "button": "Look up",
