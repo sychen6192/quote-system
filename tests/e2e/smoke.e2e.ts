@@ -193,6 +193,33 @@ test.describe("quotes", () => {
     await toggle.click();
     await expect(page.getByRole("listbox")).toBeHidden();
   });
+
+  test("the item field lists recently used items and fills in their price", async ({ page }, testInfo) => {
+    page.on("dialog", (dialog) => void dialog.accept());
+    const item = `E2E item ${testInfo.project.name} ${Date.now()}`;
+
+    await page.goto("/en/quotes/new");
+    await page.locator('[name="companyName"]').fill(`E2E Items ${Date.now()}`);
+    const salesperson = page.locator('[name="salesperson"]');
+    if ((await salesperson.inputValue()) === "") await salesperson.fill("E2E Sales");
+    await page.locator('[name="items.0.productName"]').fill(item);
+    await page.locator('[name="items.0.unit"]').fill("hr");
+    await page.locator('[name="items.0.unitPrice"]').fill("1250");
+    await page.keyboard.press("Control+s");
+    await page.waitForURL(/\/en\/quotes\/\d+$/, { timeout: 20_000 });
+
+    await page.goto("/en/quotes/new");
+    await page.locator('[name="items.0.productName"]').click();
+    const list = page.getByRole("listbox", { name: "Recently used items" });
+    await expect(list.getByRole("option").first()).toContainText(item);
+    await list.getByRole("option").first().click();
+
+    await expect(page.locator('[name="items.0.productName"]')).toHaveValue(item);
+    await expect(page.locator('[name="items.0.unit"]')).toHaveValue("hr");
+    await expect(page.locator('[name="items.0.unitPrice"]')).toHaveValue(/^1,?250(\.00)?$/);
+    // Picking moves on to the quantity, ready to type.
+    await expect(page.locator('[name="items.0.quantity"]')).toBeFocused();
+  });
 });
 
 test.describe("private data never leaks through /_next/<page>", () => {

@@ -294,6 +294,7 @@ function ItemRow({
                 onBlur={field.onBlur}
                 onPick={pickProduct}
                 search={searchProducts}
+                minChars={0}
                 getKey={(option) => option.productName.toLowerCase()}
                 onSessionError={onSessionExpired}
                 cancelOn={submitting}
@@ -308,6 +309,11 @@ function ItemRow({
                   offline: t("combobox.offline"),
                   results: (resultCount) => t("combobox.results", { count: resultCount }),
                   listbox: t("combobox.products"),
+                  browse: {
+                    title: t("combobox.recentProducts"),
+                    empty: t("combobox.noRecentProducts"),
+                    toggle: t("combobox.showProducts"),
+                  },
                 }}
                 renderOption={(option, query) => (
                   <>

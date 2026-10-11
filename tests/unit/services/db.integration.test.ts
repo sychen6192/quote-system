@@ -25,7 +25,7 @@ import {
 } from "@/services/customers";
 import { getDashboardMetrics, getExpiringSoon, getRecentQuotes } from "@/services/dashboard";
 import { quotesToCsv } from "@/services/export";
-import { searchProductOptions } from "@/services/products";
+import { recentProductOptions, searchProductOptions } from "@/services/products";
 import {
   getQuoteById,
   getQuotesList,
@@ -439,6 +439,17 @@ describeDb("quotes against Postgres", () => {
         { productName: "Widget Pro", description: null, unit: null, unitPrice: 30000, isTaxable: true },
       ]);
       expect(await searchProductOptions("_")).toEqual([]);
+
+      // Nothing typed yet: the items used most recently, newest line each.
+      expect((await recentProductOptions()).map((o) => o.productName)).toEqual([
+        "Gizmo",
+        "Gadget",
+        "widget",
+        "Widget Pro",
+      ]);
+      expect(await recentProductOptions(1)).toEqual([
+        { productName: "Gizmo", description: null, unit: null, unitPrice: 1000, isTaxable: true },
+      ]);
     });
 
     it("exports the filtered list as CSV", async () => {

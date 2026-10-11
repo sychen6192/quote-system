@@ -7,6 +7,7 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Added
 
 - **Pick a customer from a list.** Clicking the empty company name field on a quote (or its ▾ button) lists the customers you quoted most recently. Picking one fills in the contact person, email, phone, VAT number and address from their last quote. Typing still searches every saved customer, as before.
+- **Pick an item from a list.** The same works for an item's name: a click on the empty field (or ▾) lists the items used most recently with their price and unit, and picking one fills in the description, unit, unit price and tax setting, then moves on to the quantity.
 
 ## [1.0.2] - 2026-10-11
 

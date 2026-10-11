@@ -6,7 +6,11 @@ import {
   searchCustomerOptions,
   type CustomerOption,
 } from "@/services/customers";
-import { searchProductOptions, type ProductOption } from "@/services/products";
+import {
+  recentProductOptions,
+  searchProductOptions,
+  type ProductOption,
+} from "@/services/products";
 import { internalError, requireAuth, type ActionFailure } from "./types";
 
 export type SearchResult<T> = { success: true; data: T[] } | ActionFailure;
@@ -51,7 +55,12 @@ export async function searchCustomers(q: unknown): Promise<SearchResult<Customer
   );
 }
 
-/** Item suggestions from past quote lines. */
+/** Item suggestions from past quote lines; with nothing typed, the ones used most recently. */
 export async function searchProducts(q: unknown): Promise<SearchResult<ProductOption>> {
-  return search(q, (term) => searchProductOptions(term, LIMIT), "searchProducts");
+  return search(
+    q,
+    (term) => searchProductOptions(term, LIMIT),
+    "searchProducts",
+    () => recentProductOptions(LIMIT)
+  );
 }
