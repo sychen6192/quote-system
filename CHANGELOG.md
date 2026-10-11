@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
-## [1.0.2] - 2026-10-10
+## [1.0.2] - 2026-10-11
 
 Dependency updates and small fixes. Upgrading needs no change to `.env` and no manual step: there are no database migrations in this release.
 
