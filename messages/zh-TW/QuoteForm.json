@@ -8,38 +8,31 @@
     "back": "報價單",
     "backTo": "返回{target}",
     "createTitle": "新增報價單",
-    "createDesc": "填寫客戶、報價項目與條款，預覽會隨輸入即時更新。",
-    "editTitle": "編輯報價單 {number}",
-    "editDesc": "修改內容後按「儲存變更」即可更新這份報價單。"
+    "editTitle": "編輯報價單 {number}"
   },
   "banners": {
     "draftTitle": "要還原尚未儲存的草稿嗎？",
-    "draftBody": "您在 {when} 有一份尚未儲存的編輯內容。",
+    "draftBody": "{when} 的修改尚未儲存。",
     "restore": "還原草稿",
     "discard": "捨棄",
     "restored": "已還原草稿",
     "discarded": "已捨棄草稿",
-    "duplicated": "已從 <strong>{number}</strong> 複製。客戶、報價項目與條款皆已帶入，日期則從今天重新起算。",
+    "duplicated": "已從 <strong>{number}</strong> 複製，日期從今天起算。",
     "viewOriginal": "查看原報價單",
-    "customerPrefilled": "已帶入「<strong>{company}</strong>」最近一次報價的客戶資料。",
-    "statusSent": "這份報價單已寄給客戶。儲存後單號不變，記得將更新後的版本再寄給客戶。",
-    "statusAccepted": "客戶已接受這份報價單。若要提出不同條件，建議複製成新報價單，而不是修改客戶已同意的內容。",
-    "statusExpired": "這份報價單已於 {date} 過期。再次寄出前，請先設定新的有效期限。",
+    "customerPrefilled": "已帶入「<strong>{company}</strong>」的客戶資料。",
+    "statusSent": "這份報價單已寄出，修改後記得重新寄送。",
+    "statusAccepted": "客戶已接受。要改條件，建議複製成新報價單。",
+    "statusExpired": "已於 {date} 過期，寄出前請先更新有效期限。",
     "duplicateInstead": "改為複製",
     "setValidity": "設定新期限"
   },
   "sections": {
     "nav": "表單區段",
     "customer": "客戶資料",
-    "customerDesc": "這份報價單的對象",
     "details": "報價資訊",
-    "detailsDesc": "報價主旨、業務人員與有效期限",
     "items": "報價項目",
-    "itemsDesc": "產品與服務的數量和單價",
     "totals": "金額",
-    "totalsDesc": "稅率、折扣與其他費用",
     "terms": "條款與備註",
-    "termsDesc": "付款條件、交貨方式，以及其他需告知客戶的事項",
     "summaryEmpty": "尚未填寫",
     "state": {
       "complete": "已完成",
@@ -77,7 +70,7 @@
     "terms": "報價條款"
   },
   "placeholders": {
-    "companyName": "選擇既有客戶，或輸入新公司名稱",
+    "companyName": "選擇或輸入公司名稱",
     "contactPerson": "例如：王小明",
     "email": "name@company.com",
     "phone": "例如：02-2345-6789",
@@ -85,33 +78,37 @@
     "address": "縣市、區、路名與門牌號碼",
     "title": "例如：2027 年度網站維護專案",
     "salesperson": "您的姓名",
-    "productName": "搜尋或輸入品名",
-    "description": "規格、施作範圍，或其他有助客戶判斷的說明",
+    "productName": "選擇或輸入品名",
+    "description": "規格、施作範圍等",
     "unit": "式",
     "paymentMethod": "例如：月結30天",
     "shippingMethod": "例如：宅配、到府安裝",
-    "notes": "會顯示在報價單上，例如感謝詞",
+    "notes": "例如：感謝詞",
     "terms": "保固、取消規定、不含項目等"
   },
   "hints": {
-    "items": "小技巧：在最後一列的單價欄按 Enter，即可再新增一列。",
     "otherFees": "不計稅，於稅後加計，例如運費。"
   },
   "combobox": {
     "customers": "既有客戶",
     "recentCustomers": "最近報價的客戶",
-    "noRecentCustomers": "還沒有儲存過的客戶。輸入公司名稱，這張報價儲存後，下次就能從這裡選。",
+    "noRecentCustomers": "尚無客戶，儲存過的客戶會出現在這裡。",
     "showCustomers": "顯示既有客戶",
     "products": "過往品項",
+    "recentProducts": "最近用過的品項",
+    "noRecentProducts": "尚無品項，用過的品項會出現在這裡。",
+    "showProducts": "顯示過往品項",
     "searching": "搜尋中…",
-    "noCustomers": "找不到符合的客戶，繼續輸入即可使用新名稱。",
-    "noProducts": "找不到符合的過往品項，繼續輸入即可新增。",
+    "noCustomers": "沒有符合的客戶，繼續輸入即可新增。",
+    "noProducts": "沒有符合的品項，繼續輸入即可新增。",
     "results": "{count, plural, =0 {沒有建議項目} other {共 # 筆建議}}，可用上下鍵選擇。",
     "error": "目前無法取得建議。",
     "offline": "目前離線，無法取得建議。"
   },
   "customer": {
-    "filled": "已帶入「{company}」的客戶資料。"
+    "filled": "已帶入「{company}」的客戶資料。",
+    "termsCarried": "已沿用這家客戶上次的條件",
+    "termsItem": "{label}：{value}"
   },
   "vatLookup": {
     "button": "查詢",
@@ -121,7 +118,7 @@
     "notFound": "查無此統一編號的公司",
     "disabled": "統一編號查詢功能已在設定中關閉",
     "rateLimited": "查詢次數過多，請一分鐘後再試。",
-    "error": "查詢失敗，請稍後再試或改為手動輸入。"
+    "error": "查詢失敗，請稍後再試。"
   },
   "validity": {
     "presets": "依報價日期快速設定有效期限",
@@ -205,7 +202,7 @@
   },
   "conflictDialog": {
     "title": "這張報價單已在其他地方修改",
-    "description": "您開啟這張報價單後，有人（也可能是您在其他分頁或裝置上）儲存了變更。重新載入即可查看最新版本，您的修改會以草稿保留在這台裝置上，可隨時還原；也可以選擇仍要儲存，以您的內容覆蓋對方的變更。",
+    "description": "重新載入可看到最新版本，您的修改會存成草稿；或選擇仍要儲存，以您的內容覆蓋。",
     "reload": "載入最新版本",
     "overwrite": "仍要儲存",
     "reloaded": "已載入最新版本，您的修改已保留為草稿。"
@@ -220,6 +217,6 @@
     "notFound": "這份報價單已不存在，可能已被刪除。",
     "rateLimited": "請求過於頻繁，請稍候再試。",
     "sessionExpired": "登入已逾時，正在重新整理以便重新登入…",
-    "offline": "目前離線。草稿已存放在此裝置上，恢復連線後再按儲存即可。"
+    "offline": "目前離線，草稿已保留，連線後再儲存。"
   }
 }

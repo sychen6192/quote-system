@@ -11,7 +11,6 @@ import type { EffectiveSettings } from "@/lib/settings/types";
 import {
   buildSectionPatch,
   changedKeys,
-  ENV_VARS,
   formFieldOfErrorPath,
   resolveSettingsFields,
   tabFromHash,
@@ -143,22 +142,12 @@ describe("resolveSettingsFields", () => {
       company: { name: "Saved Co.", nameLocal: "" },
       quote: { footerText: "Thanks" },
     });
-    expect(resolved.meta.company.name).toEqual({
-      source: "db",
-      fallback: "Env Co.",
-      fallbackSource: "env",
-      envVar: "COMPANY_NAME",
-    });
+    expect(resolved.meta.company.name).toEqual({ source: "db", fallback: "Env Co." });
     // A blank local name is a saved value (hidden), not a fallback.
     expect(resolved.meta.company.nameLocal.source).toBe("db");
     expect(resolved.values.company.nameLocal).toBe("");
     expect(resolved.meta.company.address.source).toBe("env");
-    expect(resolved.meta.quote.footerText).toMatchObject({
-      source: "db",
-      fallback: "",
-      fallbackSource: "default",
-      envVar: null,
-    });
+    expect(resolved.meta.quote.footerText).toEqual({ source: "db", fallback: "" });
     expect(resolved.meta.quote.defaultSalesperson.source).toBe("default");
   });
 
@@ -175,19 +164,6 @@ describe("resolveSettingsFields", () => {
             source: settingSource(section, key, envSettings.layer, db),
           });
         }
-      }
-    }
-  });
-
-  it("names an env var for every field the env layer can set", () => {
-    const layer = getEnvSettings(FULL_ENV).layer;
-    for (const section of SETTINGS_SECTIONS) {
-      for (const key of Object.keys(layer[section] ?? {})) {
-        expect({ section, key, envVar: ENV_VARS[section][key] }).toEqual({
-          section,
-          key,
-          envVar: expect.any(String),
-        });
       }
     }
   });

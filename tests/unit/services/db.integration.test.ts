@@ -25,7 +25,7 @@ import {
 } from "@/services/customers";
 import { getDashboardMetrics, getExpiringSoon, getRecentQuotes } from "@/services/dashboard";
 import { quotesToCsv } from "@/services/export";
-import { searchProductOptions } from "@/services/products";
+import { recentProductOptions, searchProductOptions } from "@/services/products";
 import {
   getQuoteById,
   getQuotesList,
@@ -429,7 +429,20 @@ describeDb("quotes against Postgres", () => {
         "50%_Off Ltd",
       ]);
       expect((await recentCustomerOptions(2)).map((c) => c.companyName)).toEqual(["500 Off Inc", "Beta"]);
-      expect((await recentCustomerOptions())[1]).toMatchObject({ companyName: "Beta", contactPerson: "Bob" });
+      expect((await recentCustomerOptions())[1]).toMatchObject({
+        companyName: "Beta",
+        contactPerson: "Bob",
+        paymentMethod: null,
+        shippingMethod: null,
+      });
+
+      // Each entry also carries the payment terms and delivery method of its quote.
+      await create({ companyName: "Terms Co", paymentMethod: "月結30天", shippingMethod: "宅配" });
+      const withTerms = { companyName: "Terms Co", paymentMethod: "月結30天", shippingMethod: "宅配" };
+      expect((await recentCustomerOptions(1))[0]).toMatchObject(withTerms);
+      expect(await searchCustomerOptions("terms")).toEqual([expect.objectContaining(withTerms)]);
+      expect(await getLatestCustomerByName(" TERMS CO ")).toMatchObject(withTerms);
+      expect((await getCustomerDirectory({ q: "terms" })).data).toEqual([expect.objectContaining(withTerms)]);
     });
 
     it("suggests products from past lines (newest per normalised name)", async () => {
@@ -439,6 +452,17 @@ describeDb("quotes against Postgres", () => {
         { productName: "Widget Pro", description: null, unit: null, unitPrice: 30000, isTaxable: true },
       ]);
       expect(await searchProductOptions("_")).toEqual([]);
+
+      // Nothing typed yet: the items used most recently, newest line each.
+      expect((await recentProductOptions()).map((o) => o.productName)).toEqual([
+        "Gizmo",
+        "Gadget",
+        "widget",
+        "Widget Pro",
+      ]);
+      expect(await recentProductOptions(1)).toEqual([
+        { productName: "Gizmo", description: null, unit: null, unitPrice: 1000, isTaxable: true },
+      ]);
     });
 
     it("exports the filtered list as CSV", async () => {

@@ -164,6 +164,8 @@ test.describe("quotes", () => {
     await page.locator('[name="contactPerson"]').fill("Ms. Lin");
     await page.locator('[name="phone"]').fill("02-2345-6789");
     await page.locator('[name="vatNumber"]').fill("12345675");
+    await page.locator('[name="paymentMethod"]').fill("Net 45");
+    await page.locator('[name="shippingMethod"]').fill("Courier");
     const salesperson = page.locator('[name="salesperson"]');
     if ((await salesperson.inputValue()) === "") await salesperson.fill("E2E Sales");
     await page.locator('[name="items.0.productName"]').fill("Consulting");
@@ -184,6 +186,10 @@ test.describe("quotes", () => {
     await expect(page.locator('[name="contactPerson"]')).toHaveValue("Ms. Lin");
     await expect(page.locator('[name="phone"]')).toHaveValue("02-2345-6789");
     await expect(page.locator('[name="vatNumber"]')).toHaveValue("12345675");
+    // ...and the payment terms and delivery method of their last quote.
+    await expect(page.locator('[name="paymentMethod"]')).toHaveValue("Net 45");
+    await expect(page.locator('[name="shippingMethod"]')).toHaveValue("Courier");
+    await expect(page.getByText("Used the terms from their last quote")).toBeVisible();
     await expect(list).toBeHidden();
 
     // The ▾ button opens and closes the list too.
@@ -192,6 +198,62 @@ test.describe("quotes", () => {
     await expect(page.getByRole("listbox").getByRole("option").first()).toContainText(company);
     await toggle.click();
     await expect(page.getByRole("listbox")).toBeHidden();
+
+    // Terms typed by hand stay; empty ones are filled.
+    await page.goto("/en/quotes/new");
+    await page.locator('[name="paymentMethod"]').fill("Cash on delivery");
+    await name.click();
+    await page.getByRole("listbox", { name: "Recent customers" }).getByRole("option").first().click();
+    await expect(name).toHaveValue(company);
+    await expect(page.locator('[name="paymentMethod"]')).toHaveValue("Cash on delivery");
+    await expect(page.locator('[name="shippingMethod"]')).toHaveValue("Courier");
+  });
+
+  test("a new quote starts with the salesperson of the last quote saved on this device", async ({ page }) => {
+    page.on("dialog", (dialog) => void dialog.accept());
+    await page.goto("/en/quotes/new");
+    const salesperson = page.locator('[name="salesperson"]');
+    test.skip((await salesperson.inputValue()) !== "", "Settings has a default salesperson, which comes first");
+
+    await page.locator('[name="companyName"]').fill(`E2E Salesperson ${Date.now()}`);
+    await salesperson.fill("Mei Lin");
+    await page.locator('[name="items.0.productName"]').fill("Consulting");
+    await page.locator('[name="items.0.unitPrice"]').fill("100");
+    await page.keyboard.press("Control+s");
+    await page.waitForURL(/\/en\/quotes\/\d+$/, { timeout: 20_000 });
+
+    await page.goto("/en/quotes/new");
+    await expect(salesperson).toHaveValue("Mei Lin");
+    // Prefilled, not typed: going back asks nothing (no "Discard changes?").
+    await page.getByRole("button", { name: "Back to Quotes" }).click();
+    await page.waitForURL(/\/en\/quotes$/, { timeout: 10_000 });
+  });
+
+  test("the item field lists recently used items and fills in their price", async ({ page }, testInfo) => {
+    page.on("dialog", (dialog) => void dialog.accept());
+    const item = `E2E item ${testInfo.project.name} ${Date.now()}`;
+
+    await page.goto("/en/quotes/new");
+    await page.locator('[name="companyName"]').fill(`E2E Items ${Date.now()}`);
+    const salesperson = page.locator('[name="salesperson"]');
+    if ((await salesperson.inputValue()) === "") await salesperson.fill("E2E Sales");
+    await page.locator('[name="items.0.productName"]').fill(item);
+    await page.locator('[name="items.0.unit"]').fill("hr");
+    await page.locator('[name="items.0.unitPrice"]').fill("1250");
+    await page.keyboard.press("Control+s");
+    await page.waitForURL(/\/en\/quotes\/\d+$/, { timeout: 20_000 });
+
+    await page.goto("/en/quotes/new");
+    await page.locator('[name="items.0.productName"]').click();
+    const list = page.getByRole("listbox", { name: "Recently used items" });
+    await expect(list.getByRole("option").first()).toContainText(item);
+    await list.getByRole("option").first().click();
+
+    await expect(page.locator('[name="items.0.productName"]')).toHaveValue(item);
+    await expect(page.locator('[name="items.0.unit"]')).toHaveValue("hr");
+    await expect(page.locator('[name="items.0.unitPrice"]')).toHaveValue(/^1,?250(\.00)?$/);
+    // Picking moves on to the quantity, ready to type.
+    await expect(page.locator('[name="items.0.quantity"]')).toBeFocused();
   });
 });
 

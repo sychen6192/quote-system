@@ -45,7 +45,7 @@ describe("loadSettingsPageData", () => {
     const data = await loadSettingsPageData();
     expect(getSettingsProvenance).toHaveBeenCalledTimes(1);
     expect(data.values.company.name).toBe("Saved Co.");
-    expect(data.meta.company.name).toMatchObject({ source: "db", fallback: "Env Co.", fallbackSource: "env" });
+    expect(data.meta.company.name).toMatchObject({ source: "db", fallback: "Env Co." });
     // A saved blank address hides it (blank is a value), it does not fall back to env.
     expect(data.values.company.address).toBe("");
     expect(data.meta.company.address.source).toBe("db");

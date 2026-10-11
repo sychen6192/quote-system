@@ -111,7 +111,6 @@ export function SetupChecklist({ done: serverDone, className }: { done: SetupDon
           <h2 id="setup-checklist-title" className="text-base font-semibold tracking-tight">
             {t("title")}
           </h2>
-          <p className="mt-0.5 text-sm text-muted-foreground">{t("description")}</p>
         </div>
         <button
           type="button"
@@ -166,13 +165,7 @@ export function SetupChecklist({ done: serverDone, className }: { done: SetupDon
                 >
                   {t(`items.${item.key}.title`)}
                 </span>
-                {isDone ? (
-                  <span className="sr-only">{t("done")}</span>
-                ) : (
-                  <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
-                    {t(`items.${item.key}.description`)}
-                  </span>
-                )}
+                {isDone ? <span className="sr-only">{t("done")}</span> : null}
               </span>
               {isDone ? null : (
                 <ChevronRight aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />

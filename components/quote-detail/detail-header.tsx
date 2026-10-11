@@ -96,12 +96,8 @@ export function ExpiredNotice({ validUntilLabel }: { validUntilLabel: string }) 
       className="flex flex-col gap-3 rounded-xl border border-warning/30 bg-warning/10 p-4 sm:flex-row sm:items-center sm:justify-between print:hidden"
     >
       <div className="flex gap-3">
-        <AlertTriangle aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-warning" />
-        <div className="space-y-0.5">
-          <p className="font-semibold text-foreground">{t("title", { date: validUntilLabel })}</p>
-          {/* Not muted-foreground: that is 4.1:1 on the warning tint. */}
-          <p className="text-sm text-foreground/80">{t("description")}</p>
-        </div>
+        <AlertTriangle aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-warning sm:mt-0" />
+        <p className="font-semibold text-foreground">{t("title", { date: validUntilLabel })}</p>
       </div>
       <Button asChild variant="outline" className="h-11 shrink-0 bg-background md:h-9">
         <Link href={{ pathname: "/quotes/new", query: { from: String(quote.id) } }}>

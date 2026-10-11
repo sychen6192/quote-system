@@ -1,34 +1,28 @@
 {
   "checklist": {
     "title": "完成初始設定",
-    "description": "只要幾個步驟，就能讓每一張報價單都帶有貴公司的專業形象。",
     "progress": "已完成 {done}／{total} 項",
     "dismiss": "隱藏設定清單",
     "done": "已完成",
     "items": {
       "company": {
-        "title": "填寫公司資料",
-        "description": "公司名稱、地址與統一編號會顯示在每張報價單上。"
+        "title": "填寫公司資料"
       },
       "logo": {
-        "title": "上傳公司標誌",
-        "description": "顯示在報價單、PDF 與 App 圖示上。"
+        "title": "上傳公司標誌"
       },
       "firstQuote": {
-        "title": "建立第一張報價單",
-        "description": "系統會記住客戶與品項，下次開單更快。"
+        "title": "建立第一張報價單"
       },
       "install": {
-        "title": "安裝 App",
-        "description": "從主畫面或 Dock 直接開啟，使用起來就像原生 App。"
+        "title": "安裝 App"
       }
     }
   },
   "firstRun": {
     "eyebrow": "歡迎使用",
     "title": "建立第一張報價單",
-    "description": "填入客戶與品項，系統會自動算好小計與稅額，並產生可直接列印的 PDF。",
-    "cta": "建立第一張報價單",
+    "cta": "新增報價單",
     "secondary": "設定公司資料",
     "points": {
       "pdf": "中英文 PDF，可直接列印",

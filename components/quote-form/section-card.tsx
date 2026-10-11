@@ -82,7 +82,6 @@ type SectionCardProps = {
   id: SectionId;
   icon: LucideIcon;
   title: string;
-  description?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** One-line recap shown while collapsed */
@@ -103,7 +102,6 @@ export function SectionCard({
   id,
   icon: Icon,
   title,
-  description,
   open,
   onOpenChange,
   summary,
@@ -146,13 +144,6 @@ export function SectionCard({
               {!open && summary ? (
                 <span className="block truncate text-sm font-normal text-muted-foreground">
                   {summary}
-                </span>
-              ) : description ? (
-                <span
-                  aria-hidden="true"
-                  className="hidden truncate text-sm font-normal text-muted-foreground sm:block"
-                >
-                  {description}
                 </span>
               ) : null}
             </span>

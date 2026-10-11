@@ -98,20 +98,19 @@ export function RegionalSection() {
 
   return (
     <section aria-labelledby={headingId} className="space-y-5">
-      <SectionHeading id={headingId} icon={Globe2} title={t("title")} description={t("description")} />
+      <SectionHeading id={headingId} icon={Globe2} title={t("title")} />
       <SectionFormProvider api={api}>
         <Form {...form}>
           <form ref={formRef} onSubmit={submit} noValidate className="space-y-4">
-            <SettingsCard title={t("moneyTitle")} description={t("moneyDescription")}>
+            <SettingsCard title={t("moneyTitle")}>
               <MoneyFields initialCurrency={initial.currency} />
             </SettingsCard>
 
-            <SettingsCard title={t("timeTitle")} description={t("timeDescription")}>
+            <SettingsCard title={t("timeTitle")}>
               <Field
                 section="region"
                 name="timezone"
                 label={t("timezone")}
-                description={t("timezoneHint")}
                 className="max-w-md"
               >
                 {(field) => (
@@ -126,7 +125,7 @@ export function RegionalSection() {
               </Field>
             </SettingsCard>
 
-            <SettingsCard title={t("taiwanTitle")} description={t("taiwanDescription")}>
+            <SettingsCard title={t("taiwanTitle")}>
               <FormField
                 control={form.control}
                 name="twVatLookup"
@@ -362,7 +361,6 @@ function MoneyFields({ initialCurrency }: { initialCurrency: string }) {
           {sample ?? "—"}
         </span>
       </div>
-      <p className="text-[0.8rem] text-muted-foreground">{t("currencyLocaleHint")}</p>
 
       <div
         className={cn(

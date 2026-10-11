@@ -17,16 +17,16 @@
   },
   "network": {
     "offlineTitle": "You're offline",
-    "offlineDescription": "Saving, sending and PDFs will work again once you reconnect.",
+    "offlineDescription": "Saving and sending resume once you're back online.",
     "backOnline": "Back online",
     "offlineBadge": "Offline",
-    "offlineAnnouncement": "You're offline. Saving, sending and PDFs will work again once you reconnect.",
+    "offlineAnnouncement": "You're offline. Saving and sending resume once you're back online.",
     "hide": "Hide"
   },
   "install": {
     "button": "Install app",
     "rowTitle": "Install on this device",
-    "rowPrompt": "No app store needed. It opens in its own window.",
+    "rowPrompt": "Opens in its own window. No app store needed.",
     "rowIos": "Add it to your Home Screen from the Share menu.",
     "rowMac": "Add it to the Dock from Safari's File menu.",
     "install": "Install",
@@ -36,10 +36,10 @@
     "gotIt": "Got it",
     "ios": {
       "title": "Install on iPhone or iPad",
-      "intro": "Add {name} to your Home Screen to open it like an app.",
-      "step1": "Tap <share></share> <b>Share</b> in the browser toolbar. Don't see it? Tap <more></more> first.",
+      "intro": "Add {name} to your Home Screen.",
+      "step1": "Tap <share></share> <b>Share</b>. Don't see it? Tap <more></more> first.",
       "step2": "Scroll down and choose <add></add> <b>Add to Home Screen</b>.",
-      "step3": "Tap <b>Add</b>. {name} now opens from your Home Screen."
+      "step3": "Tap <b>Add</b>."
     },
     "mac": {
       "title": "Add to Dock",
@@ -50,18 +50,18 @@
   },
   "offlinePage": {
     "title": "You're offline",
-    "description": "We can't reach the server right now. Check your Wi-Fi or mobile data, then try again.",
+    "description": "Check your connection and try again.",
     "retry": "Try again",
     "checking": "Checking…",
     "stillOffline": "Still no connection. Try again in a moment.",
     "autoReload": "This page reloads by itself once you're back online.",
     "whileOffline": "While you're offline",
-    "tipDrafts": "Quotes you were editing are kept as drafts on this device. Pick up where you left off when you're back.",
-    "tipConnection": "Saving, emailing and downloading PDFs need a connection.",
+    "tipDrafts": "Quotes you were editing are kept as drafts.",
+    "tipConnection": "Saving, email and PDFs need a connection.",
     "serverTitle": "Can't reach the server",
-    "serverDescription": "Your device is online, but the server isn't responding. It may be restarting after an update.",
+    "serverDescription": "The server isn't responding. It may be updating.",
     "serverStill": "The server still isn't responding. Try again in a moment.",
-    "serverAutoRetry": "We'll keep checking and reload this page when it's back.",
+    "serverAutoRetry": "This page reloads when it's back.",
     "serverWhile": "In the meantime"
   }
 }

@@ -58,12 +58,12 @@ export function PaymentSection() {
 
   return (
     <section aria-labelledby={headingId} className="space-y-5">
-      <SectionHeading id={headingId} icon={Landmark} title={t("title")} description={t("description")} />
+      <SectionHeading id={headingId} icon={Landmark} title={t("title")} />
       <SectionFormProvider api={api}>
         <Form {...form}>
           <form ref={formRef} onSubmit={submit} noValidate className="space-y-4">
             <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
-              <SettingsCard title={t("accountTitle")} description={t("accountDescription")}>
+              <SettingsCard title={t("accountTitle")}>
                 <div className="grid gap-x-4 gap-y-5 sm:grid-cols-[minmax(0,1fr)_9rem]">
                   <Field section="payment" name="bankName" label={t("bankName")}>
                     {(field) => (
@@ -160,7 +160,6 @@ function PaymentPreview({ control }: { control: Control<PaymentForm> }) {
           {t("previewEmpty")}
         </p>
       )}
-      <p className="mt-3 text-xs text-muted-foreground">{t("previewCaption")}</p>
     </figure>
   );
 }

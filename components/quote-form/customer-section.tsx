@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useFormContext } from "react-hook-form";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -25,6 +25,8 @@ import { useEditor } from "./editor-context";
 import { RequiredMark, fieldClass } from "./field-bits";
 
 type CustomerField = "companyName" | "contactPerson" | "email" | "phone" | "vatNumber" | "address";
+type TermsField = "paymentMethod" | "shippingMethod";
+const TERMS_FIELDS: readonly TermsField[] = ["paymentMethod", "shippingMethod"];
 
 export function CustomerSection() {
   const t = useTranslations("QuoteForm");
@@ -33,9 +35,30 @@ export function CustomerSection() {
   const { twVatLookup } = useAppConfig();
   const [lookingUp, setLookingUp] = useState(false);
   const [announcement, setAnnouncement] = useState("");
+  // What the last pick put into the terms fields, so the next pick can tell
+  // its own values from ones typed by hand.
+  const pickedTerms = useRef<Partial<Record<TermsField, string>>>({});
 
-  const fill = (field: CustomerField, value: string) =>
+  const fill = (field: CustomerField | TermsField, value: string) =>
     form.setValue(field, value, { shouldDirty: true, shouldValidate: true });
+
+  /**
+   * Payment terms and delivery method follow the picked customer (from their
+   * last quote), but never overwrite what was typed by hand: a field changes
+   * only while it is empty or still holds what an earlier pick put there.
+   */
+  const carryTerms = (option: CustomerOption): string[] => {
+    const carried: string[] = [];
+    for (const field of TERMS_FIELDS) {
+      const next = option[field]?.trim() ?? "";
+      const current = String(form.getValues(field) ?? "");
+      if (current.trim() !== "" && current !== pickedTerms.current[field]) continue;
+      pickedTerms.current[field] = next;
+      if (next !== current) fill(field, next);
+      if (next) carried.push(t("customer.termsItem", { label: t(`fields.${field}`), value: next }));
+    }
+    return carried;
+  };
 
   const pickCustomer = (option: CustomerOption) => {
     fill("companyName", option.companyName);
@@ -44,7 +67,10 @@ export function CustomerSection() {
     fill("phone", option.phone ?? "");
     fill("vatNumber", option.vatNumber ?? "");
     fill("address", option.address ?? "");
+    const carried = carryTerms(option);
     setAnnouncement(t("customer.filled", { company: option.companyName }));
+    // The terms are further down the form: say what was carried over.
+    if (carried.length) toast.info(t("customer.termsCarried"), { description: carried.join(" · ") });
   };
 
   const lookUpVat = async () => {

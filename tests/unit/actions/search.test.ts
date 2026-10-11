@@ -6,37 +6,42 @@ jest.mock("@/services/customers", () => ({
   searchCustomerOptions: jest.fn(),
   recentCustomerOptions: jest.fn(),
 }));
-jest.mock("@/services/products", () => ({ searchProductOptions: jest.fn() }));
+jest.mock("@/services/products", () => ({
+  searchProductOptions: jest.fn(),
+  recentProductOptions: jest.fn(),
+}));
 
 import { searchCustomers, searchProducts } from "@/actions/search";
 import { assertAuthenticated } from "@/lib/auth/guard";
 import { recentCustomerOptions, searchCustomerOptions } from "@/services/customers";
-import { searchProductOptions } from "@/services/products";
+import { recentProductOptions, searchProductOptions } from "@/services/products";
 
 const mockAuth = assertAuthenticated as jest.Mock;
 const mockCustomers = searchCustomerOptions as jest.Mock;
 const mockRecent = recentCustomerOptions as jest.Mock;
 const mockProducts = searchProductOptions as jest.Mock;
+const mockRecentProducts = recentProductOptions as jest.Mock;
 
 beforeEach(() => {
   mockAuth.mockResolvedValue(undefined);
   mockCustomers.mockResolvedValue([{ companyName: "Acme" }]);
   mockRecent.mockResolvedValue([{ companyName: "Recent Co" }]);
   mockProducts.mockResolvedValue([{ productName: "Widget", unitPrice: 100 }]);
+  mockRecentProducts.mockResolvedValue([{ productName: "Recent item", unitPrice: 200 }]);
   jest.spyOn(console, "error").mockImplementation(() => {});
 });
 
 afterEach(() => jest.restoreAllMocks());
 
 describe.each([
-  ["searchCustomers", searchCustomers, mockCustomers],
-  ["searchProducts", searchProducts, mockProducts],
-] as const)("%s", (_name, action, service) => {
+  ["searchCustomers", searchCustomers, mockCustomers, mockRecent],
+  ["searchProducts", searchProducts, mockProducts, mockRecentProducts],
+] as const)("%s", (_name, action, service, recent) => {
   it.each(["ac", ""])("returns UNAUTHORIZED first (%p)", async (q) => {
     mockAuth.mockRejectedValueOnce(new Error("UNAUTHENTICATED"));
     await expect(action(q)).resolves.toMatchObject({ success: false, code: "UNAUTHORIZED" });
     expect(service).not.toHaveBeenCalled();
-    expect(mockRecent).not.toHaveBeenCalled();
+    expect(recent).not.toHaveBeenCalled();
   });
 
   it("trims, caps the query length and limits to 8 results", async () => {
@@ -63,24 +68,20 @@ describe.each([
   });
 });
 
-describe("searchCustomers with nothing typed", () => {
-  it.each(["", "   ", "\u0000", null, 42])("lists the recent customers for %p", async (q) => {
-    await expect(searchCustomers(q)).resolves.toEqual({ success: true, data: [{ companyName: "Recent Co" }] });
-    expect(mockRecent).toHaveBeenCalledWith(8);
-    expect(mockCustomers).not.toHaveBeenCalled();
+describe.each([
+  ["searchCustomers", searchCustomers, mockCustomers, mockRecent, { companyName: "Recent Co" }],
+  ["searchProducts", searchProducts, mockProducts, mockRecentProducts, { productName: "Recent item", unitPrice: 200 }],
+] as const)("%s with nothing typed", (_name, action, service, recent, first) => {
+  it.each(["", "   ", "\u0000", null, 42])("lists the most recent entries for %p", async (q) => {
+    await expect(action(q)).resolves.toEqual({ success: true, data: [first] });
+    expect(recent).toHaveBeenCalledWith(8);
+    expect(service).not.toHaveBeenCalled();
   });
 
   it("returns INTERNAL (logged) when the list fails", async () => {
-    mockRecent.mockRejectedValueOnce(new Error("relation does not exist"));
-    const res = await searchCustomers("");
+    recent.mockRejectedValueOnce(new Error("relation does not exist"));
+    const res = await action("");
     expect(res).toMatchObject({ success: false, code: "INTERNAL" });
     expect(JSON.stringify(res)).not.toContain("relation");
-  });
-});
-
-describe("searchProducts with nothing typed", () => {
-  it.each(["", "   ", "\u0000", null, 42])("returns no results for %p without querying", async (q) => {
-    await expect(searchProducts(q)).resolves.toEqual({ success: true, data: [] });
-    expect(mockProducts).not.toHaveBeenCalled();
   });
 });

@@ -12,7 +12,6 @@
   "itemCount": "{count, plural, one {# item} other {# items}}",
   "expiredBanner": {
     "title": "This quote expired on {date}",
-    "description": "Prices or availability may have changed. Duplicate it to send an updated quote, or edit it and extend the validity.",
     "duplicate": "Duplicate as new quote"
   },
   "viewer": {

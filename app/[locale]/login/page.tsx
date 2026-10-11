@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { hasLocale } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { Globe, KeyRound } from "lucide-react";
+import { Globe } from "lucide-react";
 import { Link, routing } from "@/navigation";
 import { LOCALES } from "@/i18n/locales";
 import { safeNextPath } from "@/lib/auth/paths";
@@ -123,11 +123,6 @@ export default async function LoginPage({
             </div>
 
             <LoginForm locale={locale} next={next} error={error} retryMinutes={retryMinutes} />
-
-            <p className="mt-6 flex items-start gap-2 border-t pt-4 text-xs leading-relaxed text-muted-foreground">
-              <KeyRound aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
-              <span>{t("hint")}</span>
-            </p>
           </div>
 
           <nav aria-label={t("language")} className="mt-6 flex justify-center">

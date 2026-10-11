@@ -72,12 +72,12 @@ export function CompanySection() {
 
   return (
     <section aria-labelledby={headingId} className="space-y-5">
-      <SectionHeading id={headingId} icon={Building2} title={t("title")} description={t("description")} />
+      <SectionHeading id={headingId} icon={Building2} title={t("title")} />
       <SectionFormProvider api={api}>
         <Form {...form}>
           <form ref={formRef} onSubmit={submit} noValidate className="space-y-4">
             <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
-              <SettingsCard title={t("detailsTitle")} description={t("detailsDescription")}>
+              <SettingsCard title={t("detailsTitle")}>
                 <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
                   <Field section="company" name="name" label={t("name")}>
                     {(field) => (
@@ -93,7 +93,6 @@ export function CompanySection() {
                     section="company"
                     name="nameLocal"
                     label={t("nameLocal")}
-                    description={t("nameLocalHint")}
                   >
                     {(field) => (
                       <Input {...field} placeholder={t("nameLocalPlaceholder")} className={fieldClass} />
@@ -119,7 +118,6 @@ export function CompanySection() {
                     section="company"
                     name="vatNumber"
                     label={t("vatNumber")}
-                    description={t("vatNumberHint")}
                   >
                     {(field) => (
                       <Input
@@ -258,7 +256,6 @@ function HeaderPreview({
           </div>
         </div>
       </div>
-      <p className="mt-3 text-xs text-muted-foreground">{t("caption")}</p>
     </figure>
   );
 }

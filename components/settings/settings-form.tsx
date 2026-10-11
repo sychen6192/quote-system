@@ -25,7 +25,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { z } from "zod";
 import { toast } from "sonner";
-import { Check, CircleDot, FileCog, Loader2, RotateCcw, type LucideIcon } from "lucide-react";
+import { Check, CircleDot, Loader2, RotateCcw, type LucideIcon } from "lucide-react";
 import { saveSettings } from "@/actions/settings";
 import type { ActionResult } from "@/actions/types";
 import type { SettingsSection } from "@/lib/settings/schema";
@@ -303,59 +303,33 @@ export function SectionFormProvider({ api, children }: { api: SectionFormApi; ch
 export function SectionHeading({
   icon: Icon,
   title,
-  description,
   id,
 }: {
   icon: LucideIcon;
   title: string;
-  description: string;
   id: string;
 }) {
+  // On phones the selected tab right above already names the section.
   return (
-    <div className="flex items-start gap-3">
+    <div className="flex items-center gap-3 max-sm:sr-only">
       <span
         aria-hidden="true"
-        className="mt-0.5 hidden size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary sm:flex"
+        className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"
       >
         <Icon className="size-5" />
       </span>
-      <div className="min-w-0 space-y-1">
-        <h2 id={id} className="text-xl font-semibold tracking-tight text-foreground">
-          {title}
-        </h2>
-        <p className="text-sm text-muted-foreground">{description}</p>
-      </div>
+      <h2 id={id} className="min-w-0 text-xl font-semibold tracking-tight text-foreground">
+        {title}
+      </h2>
     </div>
   );
 }
 
-export function SettingsCard({
-  title,
-  description,
-  action,
-  children,
-  className,
-  bodyClassName,
-}: {
-  title?: ReactNode;
-  description?: ReactNode;
-  action?: ReactNode;
-  children: ReactNode;
-  className?: string;
-  bodyClassName?: string;
-}) {
+export function SettingsCard({ title, children }: { title: ReactNode; children: ReactNode }) {
   return (
-    <section className={cn("rounded-xl border bg-card text-card-foreground shadow-card", className)}>
-      {title ? (
-        <div className="flex items-start justify-between gap-3 px-4 pt-4 md:px-6 md:pt-5">
-          <div className="min-w-0 space-y-1">
-            <h3 className="text-base font-semibold leading-6 tracking-tight">{title}</h3>
-            {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
-          </div>
-          {action ? <div className="shrink-0">{action}</div> : null}
-        </div>
-      ) : null}
-      <div className={cn("px-4 pb-5 pt-4 md:px-6 md:pb-6", bodyClassName)}>{children}</div>
+    <section className="rounded-xl border bg-card text-card-foreground shadow-card">
+      <h3 className="px-4 pt-4 text-base font-semibold leading-6 tracking-tight md:px-6 md:pt-5">{title}</h3>
+      <div className="px-4 pb-5 pt-4 md:px-6 md:pb-6">{children}</div>
     </section>
   );
 }
@@ -436,7 +410,7 @@ function fallbackText(
 const touchHitArea =
   "relative after:absolute after:-inset-x-1 after:-inset-y-3 after:content-[''] md:after:-inset-y-1.5";
 
-/** "From .env" note or "Reset" for a field, next to its label. */
+/** "Reset" for a saved field, next to its label. */
 export function FieldSource({
   section,
   name,
@@ -457,36 +431,6 @@ export function FieldSource({
   const [pending, setPending] = useState(false);
   const [open, setOpen] = useState(false);
   if (!meta) return null;
-
-  if (meta.source === "env") {
-    return (
-      <Popover key="env">
-        <PopoverTrigger
-          className={cn(
-            touchHitArea,
-            "inline-flex h-6 items-center gap-1 rounded-md border border-info/30 bg-info/10 px-1.5 text-[11px] font-medium text-info transition-colors hover:bg-info/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          )}
-        >
-          <FileCog aria-hidden="true" className="size-3" />
-          <span aria-hidden={label ? true : undefined}>{t("source.env")}</span>
-          {label ? <span className="sr-only">{t("source.envLabel", { field: label })}</span> : null}
-        </PopoverTrigger>
-        <PopoverContent align="end" className="w-72 text-sm">
-          <p className="font-medium">{t("source.envTitle")}</p>
-          <p className="mt-1 text-muted-foreground">
-            {t.rich("source.envBody", {
-              name: meta.envVar ?? "",
-              code: (chunks) => (
-                <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs text-foreground">
-                  {chunks}
-                </code>
-              ),
-            })}
-          </p>
-        </PopoverContent>
-      </Popover>
-    );
-  }
 
   if (meta.source !== "db" || !api) return null;
   const savedValue = data.values[section]?.[name];
@@ -513,16 +457,7 @@ export function FieldSource({
       <PopoverContent align="end" className="w-72 text-sm">
         <p className="font-medium">{t("reset.title")}</p>
         <p className="mt-1 text-muted-foreground">
-          {meta.fallbackSource === "env"
-            ? t.rich("reset.toEnv", {
-                name: meta.envVar ?? "",
-                code: (chunks) => (
-                  <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs text-foreground">
-                    {chunks}
-                  </code>
-                ),
-              })
-            : t("reset.toDefault")}
+          {t("reset.toDefault")}
         </p>
         <p className="mt-2 line-clamp-3 whitespace-pre-line break-words rounded-md bg-muted px-2 py-1.5 font-medium text-foreground">
           {shown}
@@ -566,7 +501,7 @@ type SettingsFieldProps<TForm extends FieldValues, TName extends Path<TForm>> = 
 };
 
 /**
- * A labelled form field with its provenance (".env" / Reset), description
+ * A labelled form field with its Reset button, description
  * and localized error. `children` renders the control inside FormControl.
  */
 export function SettingsField<TForm extends FieldValues, TName extends Path<TForm>>({

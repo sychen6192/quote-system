@@ -60,9 +60,9 @@ export function BrandingSection() {
 
   return (
     <section aria-labelledby={headingId} className="space-y-5">
-      <SectionHeading id={headingId} icon={Palette} title={t("title")} description={t("description")} />
+      <SectionHeading id={headingId} icon={Palette} title={t("title")} />
 
-      <SettingsCard title={t("imagesTitle")} description={t("imagesDescription")}>
+      <SettingsCard title={t("imagesTitle")}>
         <div className="grid gap-x-6 gap-y-8 md:grid-cols-2 xl:grid-cols-3">
           <ImageUploader kind="logo" source={data.branding.logo} version={data.version} />
           <ImageUploader kind="stamp" source={data.branding.stamp} version={data.version} />
@@ -73,7 +73,7 @@ export function BrandingSection() {
       <SectionFormProvider api={api}>
         <Form {...form}>
           <form ref={formRef} onSubmit={submit} noValidate className="space-y-4">
-            <SettingsCard title={t("colorTitle")} description={t("colorDescription")}>
+            <SettingsCard title={t("colorTitle")}>
               <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,17rem)]">
                 <ColorField />
                 <ColorPreview />

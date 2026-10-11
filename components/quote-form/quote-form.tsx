@@ -99,6 +99,7 @@ import {
   type SectionId,
 } from "./form-model";
 import { ItemsSection } from "./items-section";
+import { lastSalespersonCookie } from "./last-salesperson";
 import type { QuotePreviewProps } from "./quote-preview";
 import { SectionCard } from "./section-card";
 import { SectionIndex } from "./section-index";
@@ -447,6 +448,8 @@ export function QuoteForm({
     if (result.success) {
       savedRef.current = true;
       draft.clear();
+      // New quotes on this device start with it (unless Settings sets a default).
+      document.cookie = lastSalespersonCookie(data.salesperson);
       allowLeave.current = true;
       setSaved(true);
       toast.success(mode === "edit" ? t("messages.updated") : t("messages.created"));
@@ -615,9 +618,6 @@ export function QuoteForm({
                   </span>
                 )}
               </div>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {mode === "edit" ? t("header.editDesc") : t("header.createDesc")}
-              </p>
             </div>
             <div className="flex items-center gap-3 md:pb-1">
               <AutosaveIndicator store={draft.statusStore} className="md:hidden" />
@@ -693,7 +693,6 @@ export function QuoteForm({
                     id={id}
                     icon={SECTION_ICONS[id]}
                     title={t(`sections.${id}`)}
-                    description={t(`sections.${id}Desc`)}
                     open={openSections[id]}
                     onOpenChange={(open) =>
                       setOpenSections((current) => ({ ...current, [id]: open }))

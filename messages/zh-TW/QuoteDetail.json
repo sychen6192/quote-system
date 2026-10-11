@@ -12,7 +12,6 @@
   "itemCount": "{count, plural, other {共 # 項}}",
   "expiredBanner": {
     "title": "此報價單已於 {date} 過期",
-    "description": "價格或供貨狀況可能已有變動。可複製為新報價單後重新寄送，或編輯並延長有效期限。",
     "duplicate": "複製為新報價單"
   },
   "viewer": {

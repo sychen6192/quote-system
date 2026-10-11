@@ -3,7 +3,7 @@
   "count": "{count, plural, =0 {尚無報價單} other {共 # 張}}",
   "newQuote": "新增報價單",
   "exportCsv": "匯出 CSV",
-  "exportCsvHint": "將符合目前篩選條件的報價單匯出為試算表（CSV）",
+  "exportCsvHint": "匯出目前篩選結果（CSV）",
   "search": {
     "label": "搜尋報價單",
     "placeholder": "搜尋單號、客戶或主旨"
@@ -36,7 +36,6 @@
   "actionsFor": "報價單 {number} 的操作",
   "empty": {
     "title": "還沒有報價單",
-    "description": "建立第一張報價單吧！客戶、品項與金額都在同一頁完成。",
     "cta": "建立第一張報價單"
   },
   "customerFilter": {
@@ -46,13 +45,13 @@
   "noResults": {
     "title": "找不到符合的報價單",
     "description": "請換個關鍵字或狀態試試。",
-    "withQuery": "找不到符合「{query}」的報價單，請換個關鍵字或狀態試試。",
+    "withQuery": "找不到「{query}」，換個關鍵字試試。",
     "withCustomer": "「{name}」沒有符合這些條件的報價單。",
     "clear": "清除篩選"
   },
   "delete": {
     "title": "確定要刪除報價單 {number} 嗎？",
-    "description": "報價單、品項明細與異動紀錄都會永久刪除，且無法復原。",
+    "description": "刪除後無法復原。",
     "confirm": "刪除報價單",
     "deleting": "刪除中…",
     "deleted": "已刪除報價單 {number}",

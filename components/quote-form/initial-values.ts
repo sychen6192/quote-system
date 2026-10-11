@@ -63,7 +63,10 @@ export function duplicateQuoteValues(
   };
 }
 
-/** ?customer=<name>: the bill-to block from the company's newest quote. */
+/**
+ * ?customer=<name>: the bill-to block from the company's newest quote, and
+ * that quote's payment terms and delivery method where it had them.
+ */
 export function withCustomer(values: QuoteFormValues, customer: CustomerOption): QuoteFormValues {
   return {
     ...values,
@@ -73,5 +76,7 @@ export function withCustomer(values: QuoteFormValues, customer: CustomerOption):
     phone: customer.phone ?? "",
     vatNumber: customer.vatNumber ?? "",
     address: customer.address ?? "",
+    paymentMethod: customer.paymentMethod || values.paymentMethod,
+    shippingMethod: customer.shippingMethod || values.shippingMethod,
   };
 }

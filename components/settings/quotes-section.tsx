@@ -106,15 +106,15 @@ export function QuotesSection() {
 
   return (
     <section aria-labelledby={headingId} className="space-y-5">
-      <SectionHeading id={headingId} icon={ReceiptText} title={t("title")} description={t("description")} />
+      <SectionHeading id={headingId} icon={ReceiptText} title={t("title")} />
       <SectionFormProvider api={api}>
         <Form {...form}>
           <form ref={formRef} onSubmit={submit} noValidate className="space-y-4">
-            <SettingsCard title={t("numberingTitle")} description={t("numberingDescription")}>
+            <SettingsCard title={t("numberingTitle")}>
               <NumberPatternField today={data.today} />
             </SettingsCard>
 
-            <SettingsCard title={t("defaultsTitle")} description={t("defaultsDescription")}>
+            <SettingsCard title={t("defaultsTitle")}>
               <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
                 <Field section="quote" name="validityDays" label={t("validityDays")} suffix={t("daysSuffix")}>
                   {(field) => (
@@ -155,7 +155,6 @@ export function QuotesSection() {
                   section="quote"
                   name="defaultNotes"
                   label={t("defaultNotes")}
-                  description={t("defaultNotesHint")}
                   className="sm:col-span-2 lg:col-span-3"
                 >
                   {(field) => (
@@ -166,7 +165,6 @@ export function QuotesSection() {
                   section="quote"
                   name="defaultTerms"
                   label={t("defaultTerms")}
-                  description={t("defaultTermsHint")}
                   className="sm:col-span-2 lg:col-span-3"
                 >
                   {(field) => (
@@ -176,7 +174,7 @@ export function QuotesSection() {
               </div>
             </SettingsCard>
 
-            <SettingsCard title={t("documentTitle")} description={t("documentDescription")}>
+            <SettingsCard title={t("documentTitle")}>
               <div className="space-y-5">
                 <AmountInWordsField
                   currency={String(data.values.money.currency)}
@@ -186,7 +184,6 @@ export function QuotesSection() {
                   section="quote"
                   name="footerText"
                   label={t("footerText")}
-                  description={t("footerTextHint")}
                 >
                   {(field) => (
                     <Textarea {...field} rows={2} placeholder={t("footerTextPlaceholder")} className="max-h-40 min-h-[3.75rem] resize-y [field-sizing:content]" />
@@ -299,7 +296,6 @@ function NumberPatternField({ today }: { today: string }) {
                 </>
               )}
             </div>
-            <FormDescription>{t("patternHint")}</FormDescription>
             {/* While the live box above shows a pattern error, it says it better. */}
             <FormMessage>
               {(message) =>
