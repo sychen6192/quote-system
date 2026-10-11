@@ -19,6 +19,7 @@
 
 # production
 /build
+/THIRD_PARTY_LICENSES.txt
 
 # misc
 .DS_Store

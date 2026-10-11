@@ -14,7 +14,7 @@ updates:
       minor-and-patch:
         update-types: [minor, patch]
       # Majors arrive together in a second PR, so coupled ones (jest and
-      # ts-jest) move as a pair. If CI fails, comment
+      # @types/jest) move as a pair. If CI fails, comment
       # "@dependabot ignore <name> major version" to drop the culprit.
       majors:
         update-types: [major]

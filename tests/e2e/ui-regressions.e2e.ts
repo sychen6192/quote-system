@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 /**
  * Regression tests for UI bugs found in review (Wave C). Each one creates the
@@ -126,6 +126,28 @@ test.describe("quote editor", () => {
     await page.keyboard.press("Control+s");
     await page.waitForURL(/\/en\/quotes\/\d+$/, { timeout: 20_000 });
   });
+
+  // react-hook-form >= 7.81 re-validates the list on append while it holds a
+  // list-wide error, which flagged the new blank row "required" at once.
+  test("Add item after a list-wide error leaves the new row clean", async ({ page }) => {
+    await page.goto("/en/quotes/new");
+    await fillQuote(page, `E2E too large ${Date.now()}`, "Everything", "999999999999");
+    await page.locator('[name="items.0.quantity"]').fill("999999999");
+    await page.keyboard.press("Control+s");
+    const tooLarge = page.getByText("The quote total is too large.");
+    await expect(tooLarge).toBeVisible();
+
+    await page.getByRole("button", { name: "Add item" }).click();
+    const newName = page.locator('[name="items.1.productName"]');
+    await expect(newName).toBeVisible();
+    await expect(newName).not.toHaveAttribute("aria-invalid", "true");
+    await expect(page.locator('[name="items.1.unitPrice"]')).not.toHaveAttribute("aria-invalid", "true");
+
+    // Save drops the blank row and reports the total again.
+    await page.keyboard.press("Control+s");
+    await expect(tooLarge).toBeVisible();
+    await expect(newName).toHaveCount(0);
+  });
 });
 
 test.describe("quotes list", () => {
@@ -151,6 +173,62 @@ test.describe("quotes list", () => {
       inMain: Boolean(document.activeElement?.closest("main")),
     }));
     expect(focus).toEqual({ body: false, inMain: true });
+  });
+});
+
+test.describe("settings", () => {
+  async function openRegional(page: Page) {
+    await page.goto("/en/settings#regional");
+    const trigger = page.getByRole("combobox", { name: "Currency", exact: true }).filter({ visible: true }).first();
+    // Start from a listed currency (a database may hold a custom one); nothing is saved.
+    await expect(trigger).not.toHaveText(""); // filled in after hydration
+    if ((await trigger.textContent()) === "Other…") await pick(page, trigger, /^TWD/);
+    return { trigger, other: page.getByLabel("Currency — Other…", { exact: true }) };
+  }
+
+  async function pick(page: Page, trigger: Locator, option: string | RegExp) {
+    await trigger.click();
+    await page.getByRole("option", { name: option }).click();
+    await expect(page.getByRole("listbox")).toBeHidden();
+  }
+
+  // The Select handed focus back to its trigger as it closed, so a code typed
+  // after picking "Other…" type-ahead-selected a listed currency instead.
+  test("typing after picking Other… goes into the custom currency field", async ({ page }) => {
+    const { trigger, other } = await openRegional(page);
+    await pick(page, trigger, "Other…");
+
+    // The field starts with the listed value; it is selected, so typing replaces it.
+    await expect(other).toBeFocused();
+    await expect(other).not.toHaveValue("");
+    await page.keyboard.type("uah");
+    await expect(other).toHaveValue("UAH");
+    await expect(trigger).toHaveText("Other…");
+
+    // Picking "Other…" again (no value change) also lands in the field.
+    await pick(page, trigger, "Other…");
+    await expect(other).toBeFocused();
+    await page.keyboard.type("pln");
+    await expect(other).toHaveValue("PLN");
+    await expect(trigger).toHaveText("Other…");
+  });
+
+  test("after Other… by type-ahead, picking a listed value returns focus to the drop-down", async ({ page }) => {
+    const { trigger, other } = await openRegional(page);
+    await trigger.focus();
+    await page.keyboard.press("o"); // the closed Select type-ahead-selects "Other…"
+    await expect(other).toBeFocused();
+
+    await trigger.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("option", { name: "Other…" })).toBeFocused();
+    await page.keyboard.press("Home");
+    await expect(page.getByRole("option", { name: /^TWD/ })).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("listbox")).toBeHidden();
+    await expect(trigger).toHaveText(/^TWD/);
+    await expect(trigger).toBeFocused();
+    await expect(other).toHaveCount(0);
   });
 });
 

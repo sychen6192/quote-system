@@ -49,8 +49,11 @@ const requiredNumber = () =>
     })
   );
 
+// .optional() lets the key be absent: since zod 4.4 an object reports a
+// missing key as "nonoptional" unless its schema is optional-in, even when
+// the schema itself would turn undefined into the default.
 const optionalNumber = () =>
-  numberInput.pipe(z.number({ error: "invalidNumber" }).default(0));
+  numberInput.optional().pipe(z.number({ error: "invalidNumber" }).default(0));
 
 // Postgres text cannot hold NUL: reject it here as a field error instead of
 // failing the insert with a generic error.

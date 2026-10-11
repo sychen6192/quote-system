@@ -4,11 +4,19 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
-## [Unreleased]
+## [1.0.2] - 2026-10-10
+
+Dependency updates and small fixes. Upgrading needs no change to `.env` and no manual step: there are no database migrations in this release.
+
+### Changed
+
+- **Dependencies updated** (the open Dependabot updates): React 19.3, zod 4.6, react-hook-form 7.89, @react-pdf/renderer 4.9, Radix UI, lucide-react 1.x, Playwright 1.63, Jest 30, dotenv 18, and actions/checkout and actions/setup-node v7 in CI. `npm audit` reports nothing for the packages the app ships; the remaining advisories are in build and test tools.
 
 ### Fixed
 
 - **Date fields no longer stick out of their card on iPhone.** Safari gave the issue date, valid-until and delivery date fields its own native frame and a minimum width, so on phones they ran past the right edge of the form card, came out taller than the other fields and centred the date. They now size and align like every other input; tapping still opens the iOS date picker.
+- **Typing a currency or number format after picking "Other…" goes into its field.** In Settings → Regional, focus went back to the drop-down as it closed (also when "Other…" was picked again), so the first letters typed picked a listed value instead (typing "uah" selected USD) and the field disappeared again. The field also starts with the previous value selected, so typing replaces it; a currency code used to stay stuck at the old three letters.
+- **The Docker image now carries the license and notice files of the npm packages it ships**, in `/app/THIRD_PARTY_LICENSES.txt`. `THIRD_PARTY_NOTICES.md` said they were in the image, but the standalone build copies none. `npm run licenses` writes the same file from a checkout after `npm run build`.
 
 ## [1.0.1] - 2026-10-10
 
@@ -142,6 +150,7 @@ The first release meant for other businesses to install. It adds an installable 
 4. If you mount `branding/`, make sure the files are readable by uid 1000 (the image no longer runs as uid 1001).
 5. Links to the old PDF URL need to point to `/api/quotes/<id>/pdf`.
 
-[Unreleased]: https://github.com/sychen6192/quote-system/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/sychen6192/quote-system/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/sychen6192/quote-system/releases/tag/v1.0.2
 [1.0.1]: https://github.com/sychen6192/quote-system/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/sychen6192/quote-system/releases/tag/v1.0.0

@@ -4,7 +4,13 @@
 "use client";
 
 import { useCallback, useId, useRef, useState, type KeyboardEvent } from "react";
-import { useFieldArray, useFormContext, useFormState, useWatch } from "react-hook-form";
+import {
+  useFieldArray,
+  useFormContext,
+  useFormState,
+  useWatch,
+  type FieldPath,
+} from "react-hook-form";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
@@ -98,6 +104,11 @@ export function ItemsSection() {
   );
 
   const add = () => {
+    // react-hook-form >= 7.81 re-validates the list after append while it has
+    // a list-wide error (totalTooLarge, a server error), which would flag the
+    // new blank row "required" at once and hide that error. Save shows it
+    // again if it still applies.
+    form.clearErrors("items.root" as FieldPath<QuoteFormValues>);
     append(emptyItem(), { shouldFocus: false });
     focusName(count);
   };
