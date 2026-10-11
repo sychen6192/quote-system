@@ -90,7 +90,7 @@ Open **Settings** (the dashboard shows a checklist until this is done):
 | Payment | Bank name, bank code, account name and number (printed on quotes) |
 | Email | Sender name and address, CC, reply-to (the Resend API key itself stays in `.env`) |
 | Regional | Currency, money format, time zone, Taiwan 統編 lookup |
-| About | Version, sign-in status, install the app, CSV export, backup notes |
+| About | Version, email and sign-in status, install the app, CSV export |
 
 Everything saved here is stored in the database, takes precedence over `.env`, and is included in database backups.
 

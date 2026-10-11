@@ -10,6 +10,11 @@ All notable changes to this project are documented here. The format follows [Kee
 - **Pick an item from a list.** The same works for an item's name: a click on the empty field (or ▾) lists the items used most recently with their price and unit, and picking one fills in the description, unit, unit price and tax setting, then moves on to the quantity.
 - **The salesperson is remembered.** Without a default salesperson in Settings, a new quote starts with the salesperson of the last quote saved on that device (phone, computer). A default set in Settings still comes first.
 
+### Changed
+
+- **Less text on screen.** Descriptions under headings, field hints that repeat the label or placeholder, and server setup notes (`.env`, API keys, the sign-in password, backups) are gone from Settings, the quote form, the dashboard and the sign-in page; that is what the README is for. Messages that remain are shorter. On phones, Settings no longer repeats the selected tab's name as a heading.
+- The phone tab bar is less see-through, so its labels stay readable over whatever scrolls under it.
+
 ## [1.0.2] - 2026-10-11
 
 Dependency updates and small fixes. Upgrading needs no change to `.env` and no manual step: there are no database migrations in this release.

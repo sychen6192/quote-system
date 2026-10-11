@@ -178,12 +178,11 @@ export function ItemsSection() {
 
       <ItemsRootError />
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 @[40rem]:mt-3">
+      <div className="mt-4 @[40rem]:mt-3">
         <Button type="button" variant="outline" onClick={add} className="h-11 md:h-9">
           <Plus aria-hidden="true" />
           {t("items.add")}
         </Button>
-        <p className="hidden text-xs text-muted-foreground md:block">{t("hints.items")}</p>
       </div>
     </div>
   );

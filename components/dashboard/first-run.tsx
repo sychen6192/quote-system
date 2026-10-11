@@ -66,7 +66,6 @@ export function FirstRunHero({
         <h2 id="first-run-title" className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">
           {t("title")}
         </h2>
-        <p className="mt-2 text-base leading-relaxed text-muted-foreground">{t("description")}</p>
         <ul className="mt-5 space-y-2">
           {POINTS.map((point) => (
             <li key={point} className="flex items-center gap-2.5 text-sm text-foreground">

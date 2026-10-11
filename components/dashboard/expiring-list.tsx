@@ -32,7 +32,6 @@ export function ExpiringList({
     <SectionCard
       icon={CalendarClock}
       title={t("title")}
-      description={t("description")}
       count={total || undefined}
       countLabel={t("countLabel", { count: total })}
       className={className}

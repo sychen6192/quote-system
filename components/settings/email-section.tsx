@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useId, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useId, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { ExternalLink, Mail, MailCheck, MailWarning } from "lucide-react";
+import { Mail, MailCheck, MailWarning } from "lucide-react";
 import { MAX_CC_EMAILS, settingsSectionSchemas } from "@/lib/settings/schema";
 import { Form } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -31,12 +31,6 @@ type EmailForm = {
 const Field = settingsFieldFor<EmailForm>();
 
 const schema = settingsSectionSchemas.mail;
-
-const code = (chunks: ReactNode) => (
-  <code className="rounded bg-foreground/10 px-1 py-0.5 font-mono text-[0.8em] text-foreground">
-    {chunks}
-  </code>
-);
 
 export function EmailSection() {
   const t = useTranslations("Settings.email");
@@ -78,55 +72,33 @@ export function EmailSection() {
 
   return (
     <section aria-labelledby={headingId} className="space-y-5">
-      <SectionHeading id={headingId} icon={Mail} title={t("title")} description={t("description")} />
+      <SectionHeading id={headingId} icon={Mail} title={t("title")} />
 
-      <div
+      <p
         className={cn(
-          "flex items-start gap-3 rounded-xl border bg-card p-4 shadow-card",
-          data.mailEnabled ? "border-success/40" : "border-warning/50"
+          "flex items-center gap-2.5 rounded-xl border px-4 py-3 text-sm font-semibold",
+          data.mailEnabled
+            ? "border-success/40 bg-success/10 text-success"
+            : "border-warning/50 bg-warning/10 text-warning"
         )}
       >
-        <span
-          aria-hidden="true"
-          className={cn(
-            "flex size-9 shrink-0 items-center justify-center rounded-lg",
-            data.mailEnabled ? "bg-success/10 text-success" : "bg-warning/10 text-warning"
-          )}
-        >
-          {data.mailEnabled ? <MailCheck className="size-5" /> : <MailWarning className="size-5" />}
-        </span>
-        <div className="min-w-0 space-y-1 text-sm">
-          <p className={cn("font-semibold", data.mailEnabled ? "text-success" : "text-warning")}>
-            {data.mailEnabled ? t("statusOn") : t("statusOff")}
-          </p>
-          <p className="text-muted-foreground">
-            {data.mailEnabled ? t.rich("statusOnBody", { code }) : t.rich("statusOffBody", { code })}
-          </p>
-          {data.mailEnabled ? null : (
-            <a
-              href="https://resend.com/api-keys"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex min-h-11 items-center gap-1 font-medium text-foreground underline underline-offset-4 hover:text-primary md:min-h-0"
-            >
-              {t("getKey")}
-              <ExternalLink aria-hidden="true" className="size-3.5" />
-              <span className="sr-only">{t("opensInNewTab")}</span>
-            </a>
-          )}
-        </div>
-      </div>
+        {data.mailEnabled ? (
+          <MailCheck aria-hidden="true" className="size-5 shrink-0" />
+        ) : (
+          <MailWarning aria-hidden="true" className="size-5 shrink-0" />
+        )}
+        {data.mailEnabled ? t("statusOn") : t("statusOff")}
+      </p>
 
       <SectionFormProvider api={api}>
         <Form {...form}>
           <form ref={formRef} onSubmit={submit} noValidate className="space-y-4">
-            <SettingsCard title={t("senderTitle")} description={t("senderDescription")}>
+            <SettingsCard title={t("senderTitle")}>
               <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
                 <Field
                   section="mail"
                   name="senderName"
                   label={t("senderName")}
-                  description={t("senderNameHint")}
                 >
                   {(field) => (
                     <Input
@@ -141,7 +113,7 @@ export function EmailSection() {
                   section="mail"
                   name="senderEmail"
                   label={t("senderEmail")}
-                  description={t.rich("senderEmailHint", { code, fallback: senderFallback })}
+                  description={t("senderEmailHint")}
                 >
                   {(field) => (
                     <Input
@@ -158,7 +130,6 @@ export function EmailSection() {
                   section="mail"
                   name="replyTo"
                   label={t("replyTo")}
-                  description={t("replyToHint")}
                 >
                   {(field) => (
                     <Input

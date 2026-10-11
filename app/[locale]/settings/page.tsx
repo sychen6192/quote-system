@@ -50,7 +50,7 @@ export default async function SettingsPage({ params }: { params: Params }) {
     <PageContainer>
       <style dangerouslySetInnerHTML={{ __html: HASH_CSS }} />
       <script dangerouslySetInnerHTML={{ __html: HASH_SCRIPT }} />
-      <PageHeader title={t("title")} description={t("subtitle")} />
+      <PageHeader title={t("title")} />
       <SettingsView data={data} />
     </PageContainer>
   );

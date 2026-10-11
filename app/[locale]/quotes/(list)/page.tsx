@@ -107,7 +107,6 @@ export default async function QuotesListPage({
         <EmptyState
           icon={FileText}
           title={t("empty.title")}
-          description={t("empty.description")}
           action={
             <Button asChild size="lg" className="h-11 rounded-lg">
               <Link href="/quotes/new">

@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 export function SectionCard({
   icon: Icon,
   title,
-  description,
   count,
   countLabel,
   action,
@@ -15,7 +14,6 @@ export function SectionCard({
 }: {
   icon?: LucideIcon;
   title: string;
-  description?: string;
   count?: number;
   /** What screen readers hear for the count badge, e.g. "4 quotes" */
   countLabel?: string;
@@ -25,7 +23,7 @@ export function SectionCard({
 }) {
   return (
     <section className={cn("overflow-hidden rounded-xl border bg-card shadow-card", className)}>
-      <div className="flex items-start justify-between gap-3 px-5 pb-3 pt-4">
+      <div className="flex items-center justify-between gap-3 px-5 pb-3 pt-4">
         <div className="min-w-0">
           <h2 className="flex items-center gap-2 text-base font-semibold tracking-tight text-foreground">
             {Icon ? <Icon aria-hidden="true" className="size-4 text-muted-foreground" /> : null}
@@ -42,7 +40,6 @@ export function SectionCard({
               </>
             ) : null}
           </h2>
-          {description ? <p className="mt-0.5 text-sm text-muted-foreground">{description}</p> : null}
         </div>
         {action ? <div className="shrink-0">{action}</div> : null}
       </div>

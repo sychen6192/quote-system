@@ -42,51 +42,11 @@ export type FieldMeta = {
   source: FieldSource;
   /** What applies once the saved value is removed: the .env value, else the default. */
   fallback: FieldValue;
-  /** Where the fallback comes from. */
-  fallbackSource: "env" | "default";
-  /** The env var that can set this field, if any. */
-  envVar: string | null;
 };
 
 export type SectionValues = Record<string, FieldValue>;
 export type SettingsSnapshot = Record<SettingsSection, SectionValues>;
 export type SettingsFieldMeta = Record<SettingsSection, Record<string, FieldMeta>>;
-
-/** The env var behind each field (lib/config.ts getEnvSettings). */
-export const ENV_VARS: { [S in SettingsSection]: Record<string, string> } = {
-  company: {
-    name: "COMPANY_NAME",
-    nameLocal: "COMPANY_NAME_LOCAL",
-    address: "COMPANY_ADDRESS",
-    vatNumber: "COMPANY_VAT_NUMBER",
-    email: "COMPANY_EMAIL",
-    phone: "COMPANY_PHONE",
-    website: "COMPANY_WEBSITE",
-  },
-  payment: {
-    bankName: "BANK_NAME",
-    bankCode: "BANK_CODE",
-    accountName: "BANK_ACCOUNT_NAME",
-    accountNumber: "BANK_ACCOUNT_NUMBER",
-  },
-  quote: {
-    numberPattern: "QUOTE_NUMBER_PATTERN",
-    validityDays: "QUOTE_VALIDITY_DAYS",
-    defaultTaxRate: "DEFAULT_TAX_RATE",
-    defaultNotes: "DEFAULT_NOTES",
-    defaultTerms: "DEFAULT_TERMS",
-  },
-  money: { currency: "CURRENCY", currencyLocale: "CURRENCY_LOCALE" },
-  appearance: { brandColor: "BRAND_COLOR" },
-  region: { timezone: "APP_TIMEZONE" },
-  mail: {
-    senderName: "MAIL_SENDER_NAME",
-    senderEmail: "MAIL_SENDER_EMAIL",
-    ccEmails: "MAIL_CC_EMAILS",
-    replyTo: "MAIL_REPLY_TO",
-  },
-  features: { twVatLookup: "TW_VAT_LOOKUP" },
-};
 
 function layerValue(layer: SettingsLayer, section: SettingsSection, key: string): unknown {
   return (layer[section] as Record<string, unknown> | undefined)?.[key];
@@ -124,12 +84,7 @@ export function resolveSettingsFields(
       const fallback = envSet ? envValue : fallbackDefault;
       const source: FieldSource = settingSource(section, key, env, db);
       values[section][key] = asFieldValue(source === "db" ? layerValue(db, section, key) : fallback);
-      meta[section][key] = {
-        source,
-        fallback: asFieldValue(fallback),
-        fallbackSource: envSet ? "env" : "default",
-        envVar: ENV_VARS[section]?.[key] ?? null,
-      };
+      meta[section][key] = { source, fallback: asFieldValue(fallback) };
     }
   }
   return { values, meta };

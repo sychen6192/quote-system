@@ -618,9 +618,6 @@ export function QuoteForm({
                   </span>
                 )}
               </div>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {mode === "edit" ? t("header.editDesc") : t("header.createDesc")}
-              </p>
             </div>
             <div className="flex items-center gap-3 md:pb-1">
               <AutosaveIndicator store={draft.statusStore} className="md:hidden" />
@@ -696,7 +693,6 @@ export function QuoteForm({
                     id={id}
                     icon={SECTION_ICONS[id]}
                     title={t(`sections.${id}`)}
-                    description={t(`sections.${id}Desc`)}
                     open={openSections[id]}
                     onOpenChange={(open) =>
                       setOpenSections((current) => ({ ...current, [id]: open }))

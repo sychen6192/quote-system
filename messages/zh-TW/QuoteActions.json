@@ -27,7 +27,7 @@
   "email": {
     "title": "寄送報價單",
     "description": "報價單 {number} 會以 PDF 附件寄出。",
-    "descriptionDisabled": "可下載報價單 {number} 的 PDF，再附加到您自己的信件寄出。",
+    "descriptionDisabled": "請下載 PDF，再用您自己的信箱寄出。",
     "to": "收件人",
     "toPlaceholder": "name@company.com",
     "cc": "副本",
@@ -57,7 +57,6 @@
     },
     "disabled": {
       "title": "尚未設定寄信功能",
-      "description": "要從這裡直接寄出報價單，伺服器需要設定 Resend API 金鑰（RESEND_API_KEY）。設定完成前，可先下載 PDF，再附加到您自己的信件寄出。",
       "settings": "寄信設定"
     }
   }

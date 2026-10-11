@@ -31,12 +31,12 @@
   "callTo": "撥打 {phone}",
   "empty": {
     "title": "還沒有客戶",
-    "description": "建立報價單時填寫的客戶，會自動加入這裡。",
+    "description": "建立報價單後，客戶會自動出現在這裡。",
     "cta": "建立報價單"
   },
   "noResults": {
     "title": "找不到符合的客戶",
-    "description": "找不到符合「{query}」的客戶，請試試公司名稱、聯絡人、統編或 Email。",
+    "description": "試試公司名稱、聯絡人或統編。",
     "clear": "清除搜尋"
   },
   "results": "{count, plural, =0 {沒有符合條件的客戶} other {符合條件的客戶共 # 位}}"

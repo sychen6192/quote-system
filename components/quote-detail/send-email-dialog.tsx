@@ -215,8 +215,6 @@ export function SendEmailDialog({
                 <MailWarning aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-warning" />
                 <div className="space-y-1">
                   <p className="font-semibold">{t("disabled.title")}</p>
-                  {/* Not muted-foreground: that is about 4.1:1 on the warning tint. */}
-                  <p className="text-foreground/80">{t("disabled.description")}</p>
                   <Link
                     href="/settings"
                     className="inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline sm:min-h-0 sm:pt-1"

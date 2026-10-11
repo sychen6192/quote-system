@@ -8,38 +8,31 @@
     "back": "Quotes",
     "backTo": "Back to {target}",
     "createTitle": "New quote",
-    "createDesc": "Fill in the customer, items and terms. The preview updates as you type.",
-    "editTitle": "Edit {number}",
-    "editDesc": "Make your changes, then save to update this quote."
+    "editTitle": "Edit {number}"
   },
   "banners": {
     "draftTitle": "Restore your unsaved draft?",
-    "draftBody": "You have changes from {when} that were never saved.",
+    "draftBody": "Unsaved changes from {when}.",
     "restore": "Restore draft",
     "discard": "Discard",
     "restored": "Draft restored",
     "discarded": "Draft discarded",
-    "duplicated": "Duplicated from <strong>{number}</strong>. The customer, items and terms were copied; the dates start from today.",
+    "duplicated": "Copied from <strong>{number}</strong>. Dates start from today.",
     "viewOriginal": "View original",
-    "customerPrefilled": "Customer details filled in from the latest quote for <strong>{company}</strong>.",
-    "statusSent": "This quote has already been sent. Saving keeps the same number, so send the customer the updated version afterwards.",
-    "statusAccepted": "The customer accepted this quote. To offer different terms, duplicate it instead of changing what they agreed to.",
-    "statusExpired": "This quote expired on {date}. Set a new valid-until date before you send it again.",
+    "customerPrefilled": "Filled in the details for <strong>{company}</strong>.",
+    "statusSent": "Already sent. Send the updated version after saving.",
+    "statusAccepted": "Accepted by the customer. To change terms, duplicate it instead.",
+    "statusExpired": "Expired on {date}. Update the valid-until date before sending.",
     "duplicateInstead": "Duplicate instead",
     "setValidity": "Set new date"
   },
   "sections": {
     "nav": "Form sections",
     "customer": "Customer",
-    "customerDesc": "Who this quote is for",
     "details": "Quote details",
-    "detailsDesc": "Subject, salesperson and validity",
     "items": "Items",
-    "itemsDesc": "Products and services with quantities and prices",
     "totals": "Totals",
-    "totalsDesc": "Tax, discount and other fees",
     "terms": "Terms & notes",
-    "termsDesc": "Payment terms, delivery and anything else the customer should know",
     "summaryEmpty": "Not filled in yet",
     "state": {
       "complete": "Complete",
@@ -86,29 +79,28 @@
     "title": "e.g. 2027 website maintenance",
     "salesperson": "Your name",
     "productName": "Pick or type an item",
-    "description": "Specs, scope, or anything that helps the customer decide",
+    "description": "Specs, scope…",
     "unit": "pc",
     "paymentMethod": "e.g. Net 30",
     "shippingMethod": "e.g. Courier, on-site installation",
-    "notes": "Shown on the quote, e.g. a thank-you note",
+    "notes": "e.g. a thank-you note",
     "terms": "Warranty, cancellation, what is not included…"
   },
   "hints": {
-    "items": "Tip: press Enter in the last unit price to add another line.",
     "otherFees": "Not taxed; added after tax, e.g. shipping."
   },
   "combobox": {
     "customers": "Saved customers",
     "recentCustomers": "Recent customers",
-    "noRecentCustomers": "No saved customers yet. Type the company name: once this quote is saved, the customer is listed here next time.",
+    "noRecentCustomers": "No customers yet. Saved ones show up here.",
     "showCustomers": "Show saved customers",
     "products": "Past items",
     "recentProducts": "Recently used items",
-    "noRecentProducts": "No saved items yet. Type the item: once this quote is saved, it is listed here next time with its price.",
+    "noRecentProducts": "No items yet. Used ones show up here.",
     "showProducts": "Show past items",
     "searching": "Searching…",
-    "noCustomers": "No saved customer matches. Keep typing to use a new name.",
-    "noProducts": "No past item matches. Keep typing to add a new one.",
+    "noCustomers": "No match. Keep typing to add it.",
+    "noProducts": "No match. Keep typing to add it.",
     "results": "{count, plural, =0 {No suggestions} one {# suggestion} other {# suggestions}}. Use the up and down arrow keys to choose.",
     "error": "Suggestions aren't available right now.",
     "offline": "You're offline, so suggestions aren't available."
@@ -126,7 +118,7 @@
     "notFound": "No company found for this VAT number",
     "disabled": "VAT number lookup is turned off in Settings",
     "rateLimited": "Too many lookups. Try again in a minute.",
-    "error": "Lookup failed. Try again or enter the details manually."
+    "error": "Lookup failed. Try again later."
   },
   "validity": {
     "presets": "Set validity from the issue date",
@@ -210,7 +202,7 @@
   },
   "conflictDialog": {
     "title": "This quote was changed elsewhere",
-    "description": "Someone saved this quote after you opened it, perhaps in another tab or on another device. Reload to see the latest version: your changes stay on this device as a draft you can restore. Or save anyway to replace their changes with yours.",
+    "description": "Reload to see the latest version (your edits are kept as a draft), or save anyway to overwrite it.",
     "reload": "Reload latest",
     "overwrite": "Save anyway",
     "reloaded": "Showing the latest version. Your changes are kept as a draft."
@@ -225,6 +217,6 @@
     "notFound": "This quote no longer exists. It may have been deleted.",
     "rateLimited": "Too many requests. Wait a moment and try again.",
     "sessionExpired": "Your session has expired. Reloading so you can sign in again…",
-    "offline": "You're offline. Your draft is kept on this device; save again once you're back online."
+    "offline": "You're offline. Your draft is kept; save again once you're back."
   }
 }

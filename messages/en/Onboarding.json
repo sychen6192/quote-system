@@ -1,34 +1,28 @@
 {
   "checklist": {
     "title": "Finish setting up",
-    "description": "A few quick steps so every quote looks like it came from you.",
     "progress": "{done} of {total} done",
     "dismiss": "Hide setup checklist",
     "done": "Done",
     "items": {
       "company": {
-        "title": "Add your company details",
-        "description": "Name, address and tax ID appear on every quote."
+        "title": "Add your company details"
       },
       "logo": {
-        "title": "Upload your logo",
-        "description": "Shown on quotes, PDFs and the app icon."
+        "title": "Upload your logo"
       },
       "firstQuote": {
-        "title": "Create your first quote",
-        "description": "Customers and products are remembered for next time."
+        "title": "Create your first quote"
       },
       "install": {
-        "title": "Install the app",
-        "description": "Open it from your home screen or dock, like a native app."
+        "title": "Install the app"
       }
     }
   },
   "firstRun": {
     "eyebrow": "Welcome",
     "title": "Create your first quote",
-    "description": "Add a customer and a few items — the totals, tax and a print-ready PDF are worked out for you.",
-    "cta": "Create your first quote",
+    "cta": "New quote",
     "secondary": "Set up company details",
     "points": {
       "pdf": "Print-ready PDF in both languages",

@@ -44,7 +44,7 @@ export function BottomTabBar() {
   return (
     <nav
       aria-label={t("mainNavigation")}
-      className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/90 pb-safe backdrop-blur-md supports-[backdrop-filter]:bg-background/75 md:hidden print:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 pb-safe backdrop-blur-md supports-[backdrop-filter]:bg-background/90 md:hidden print:hidden"
     >
       <ul className="mx-auto grid h-16 max-w-lg grid-cols-5 items-stretch pl-safe-1 pr-safe-1">
         {[dashboard, quotes].map((item) => (

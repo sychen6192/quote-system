@@ -5,7 +5,7 @@
   },
   "error": {
     "title": "Something went wrong",
-    "description": "An unexpected error stopped this page from loading. Please try again — if it keeps happening, contact your administrator.",
+    "description": "This page couldn't load. Please try again.",
     "retry": "Try again",
     "reference": "Error reference: {digest}"
   },

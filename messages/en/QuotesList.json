@@ -3,7 +3,7 @@
   "count": "{count, plural, =0 {No quotes} one {# quote} other {# quotes}}",
   "newQuote": "New quote",
   "exportCsv": "Export CSV",
-  "exportCsvHint": "Download the quotes that match these filters as a spreadsheet (CSV)",
+  "exportCsvHint": "Export these quotes (CSV)",
   "search": {
     "label": "Search quotes",
     "placeholder": "Search quotes"
@@ -36,7 +36,6 @@
   "actionsFor": "Actions for quote {number}",
   "empty": {
     "title": "No quotes yet",
-    "description": "Create your first quote — customers, items and totals are all on one page.",
     "cta": "Create your first quote"
   },
   "customerFilter": {
@@ -46,13 +45,13 @@
   "noResults": {
     "title": "No matching quotes",
     "description": "Try another search term or status.",
-    "withQuery": "Nothing matches “{query}”. Try another search term or status.",
+    "withQuery": "Nothing matches “{query}”.",
     "withCustomer": "No quotes for “{name}” match these filters.",
     "clear": "Clear filters"
   },
   "delete": {
     "title": "Delete quote {number}?",
-    "description": "The quote, its items and its activity history are deleted permanently. This can't be undone.",
+    "description": "This can't be undone.",
     "confirm": "Delete quote",
     "deleting": "Deleting…",
     "deleted": "Quote {number} deleted",
