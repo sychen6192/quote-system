@@ -77,7 +77,7 @@
     "terms": "報價條款"
   },
   "placeholders": {
-    "companyName": "搜尋既有客戶，或輸入新公司名稱",
+    "companyName": "選擇既有客戶，或輸入新公司名稱",
     "contactPerson": "例如：王小明",
     "email": "name@company.com",
     "phone": "例如：02-2345-6789",
@@ -99,6 +99,9 @@
   },
   "combobox": {
     "customers": "既有客戶",
+    "recentCustomers": "最近報價的客戶",
+    "noRecentCustomers": "還沒有儲存過的客戶。輸入公司名稱，這張報價儲存後，下次就能從這裡選。",
+    "showCustomers": "顯示既有客戶",
     "products": "過往品項",
     "searching": "搜尋中…",
     "noCustomers": "找不到符合的客戶，繼續輸入即可使用新名稱。",

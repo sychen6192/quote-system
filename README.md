@@ -14,7 +14,7 @@
 - **PDF in two languages.** Server-rendered A4 PDF with embedded Noto Sans TC, so Chinese prints correctly everywhere. Download, print, or share it from your phone.
 - **Email it.** Send the quote with its PDF attached through [Resend](https://resend.com), with editable recipient, CC and message.
 - **Know where you stand.** Dashboard with open pipeline, accepted this month, acceptance rate and drafts; quotes expiring in the next 7 days; status lifecycle (draft, sent, accepted, rejected, expired) with an activity log.
-- **Fast entry.** Customer and product suggestions from past quotes, duplicate a quote, payment-term and validity presets, draft autosave with restore, Ctrl/⌘+S to save. Optional Taiwan 統一編號 lookup.
+- **Fast entry.** Pick a recent customer from the company field (or search all of them) to fill in their details, product suggestions from past quotes, duplicate a quote, payment-term and validity presets, draft autosave with restore, Ctrl/⌘+S to save. Optional Taiwan 統一編號 lookup.
 - **Customer directory** with quote counts, accepted totals and one-tap "new quote for this customer".
 - **Set up in the app.** Company details, logo, company stamp, app icon, brand colour, quote numbering (`QT-{YYYY}{MM}{DD}-{SEQ:3}`, ROC years supported), default tax, terms, bank details, email sender, currency and time zone, all on the Settings page.
 - **Installable app (PWA).** Add it to your phone's home screen or your computer's dock; it opens in its own window and shows a friendly offline page when the network is gone.

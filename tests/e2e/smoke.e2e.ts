@@ -154,6 +154,45 @@ test.describe("quotes", () => {
     await settle(page, 500);
     expectNoProblems(problems);
   });
+
+  test("the company field lists recent customers and fills in their details", async ({ page }, testInfo) => {
+    page.on("dialog", (dialog) => void dialog.accept());
+    const company = `E2E Recent ${testInfo.project.name} ${Date.now()}`;
+
+    await page.goto("/en/quotes/new");
+    await page.locator('[name="companyName"]').fill(company);
+    await page.locator('[name="contactPerson"]').fill("Ms. Lin");
+    await page.locator('[name="phone"]').fill("02-2345-6789");
+    await page.locator('[name="vatNumber"]').fill("12345675");
+    const salesperson = page.locator('[name="salesperson"]');
+    if ((await salesperson.inputValue()) === "") await salesperson.fill("E2E Sales");
+    await page.locator('[name="items.0.productName"]').fill("Consulting");
+    await page.locator('[name="items.0.unitPrice"]').fill("100");
+    await page.keyboard.press("Control+s");
+    await page.waitForURL(/\/en\/quotes\/\d+$/, { timeout: 20_000 });
+
+    // A click on the empty field opens the list: the newest customer comes first.
+    await page.goto("/en/quotes/new");
+    const name = page.locator('[name="companyName"]');
+    await expect(name).toHaveValue("");
+    await name.click();
+    const list = page.getByRole("listbox", { name: "Recent customers" });
+    await expect(list.getByRole("option").first()).toContainText(company);
+    await list.getByRole("option").first().click();
+
+    await expect(name).toHaveValue(company);
+    await expect(page.locator('[name="contactPerson"]')).toHaveValue("Ms. Lin");
+    await expect(page.locator('[name="phone"]')).toHaveValue("02-2345-6789");
+    await expect(page.locator('[name="vatNumber"]')).toHaveValue("12345675");
+    await expect(list).toBeHidden();
+
+    // The ▾ button opens and closes the list too.
+    const toggle = page.getByRole("button", { name: "Show saved customers" });
+    await toggle.click();
+    await expect(page.getByRole("listbox").getByRole("option").first()).toContainText(company);
+    await toggle.click();
+    await expect(page.getByRole("listbox")).toBeHidden();
+  });
 });
 
 test.describe("private data never leaks through /_next/<page>", () => {

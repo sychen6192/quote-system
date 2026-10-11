@@ -160,6 +160,21 @@ export async function searchCustomerOptions(q: string, limit = 8): Promise<Custo
   return rows.map(toOption);
 }
 
+/**
+ * The companies quoted most recently (newest snapshot each), for the quote
+ * form's customer list before anything is typed.
+ */
+export async function recentCustomerOptions(limit = 8): Promise<CustomerOption[]> {
+  const size = Math.min(Math.max(Math.trunc(limit) || 8, 1), 50);
+  const rows = rowsOf(
+    await db.execute(sql`
+      select * from (${latestPerCompany(undefined)}) latest
+      order by latest.id desc
+      limit ${size}`)
+  );
+  return rows.map(toOption);
+}
+
 /** The newest snapshot of a company (case/whitespace-insensitive), for ?customer= prefill. */
 export async function getLatestCustomerByName(name: string): Promise<CustomerOption | null> {
   const trimmed = normalizeSearchQuery(name, MAX_NAME_LENGTH);

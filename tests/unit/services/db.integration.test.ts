@@ -17,7 +17,12 @@ import { updateQuote } from "@/actions/update-quote";
 import { closeDb, db } from "@/db";
 import { quotations } from "@/db/schema";
 import { quoteViewFromRecord } from "@/lib/quote-view";
-import { getCustomerDirectory, getLatestCustomerByName, searchCustomerOptions } from "@/services/customers";
+import {
+  getCustomerDirectory,
+  getLatestCustomerByName,
+  recentCustomerOptions,
+  searchCustomerOptions,
+} from "@/services/customers";
 import { getDashboardMetrics, getExpiringSoon, getRecentQuotes } from "@/services/dashboard";
 import { quotesToCsv } from "@/services/export";
 import { searchProductOptions } from "@/services/products";
@@ -415,6 +420,16 @@ describeDb("quotes against Postgres", () => {
       expect(await searchCustomerOptions("%")).toEqual([expect.objectContaining({ companyName: "50%_Off Ltd" })]);
       expect(await getLatestCustomerByName("ACME CORP")).toMatchObject({ companyName: "acme corp" });
       expect(await getLatestCustomerByName("nobody")).toBeNull();
+
+      // Nothing typed yet: the companies quoted most recently, newest snapshot each.
+      expect((await recentCustomerOptions()).map((c) => c.companyName)).toEqual([
+        "500 Off Inc",
+        "Beta",
+        "acme corp",
+        "50%_Off Ltd",
+      ]);
+      expect((await recentCustomerOptions(2)).map((c) => c.companyName)).toEqual(["500 Off Inc", "Beta"]);
+      expect((await recentCustomerOptions())[1]).toMatchObject({ companyName: "Beta", contactPerson: "Bob" });
     });
 
     it("suggests products from past lines (newest per normalised name)", async () => {

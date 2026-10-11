@@ -10,7 +10,7 @@ import {
   type ReactNode,
   type Ref,
 } from "react";
-import { Loader2 } from "lucide-react";
+import { ChevronDown, Loader2 } from "lucide-react";
 import type { SearchResult } from "@/actions/search";
 import { Input } from "@/components/ui/input";
 import { useDebouncedCallback } from "@/hooks/use-debounced-value";
@@ -27,6 +27,11 @@ export type AsyncComboboxLabels = {
   /** Screen-reader summary once results arrive */
   results: (count: number) => string;
   listbox: string;
+  /**
+   * With minChars 0, what an empty query lists (e.g. recent customers): its
+   * caption, the message when it is empty, and the ▾ button that opens it.
+   */
+  browse?: { title: string; empty: string; toggle: string };
 };
 
 export type AsyncComboboxProps<T> = Omit<
@@ -46,6 +51,7 @@ export type AsyncComboboxProps<T> = Omit<
   /** Cancels pending and in-flight searches when it fires (e.g. the form is being saved). */
   cancelOn?: { on(listener: () => void): () => void };
   debounceMs?: number;
+  /** 0: a click on the empty field, ▾ or ↓ lists what an empty query returns. */
   minChars?: number;
   className?: string;
   /** Classes for the suggestions popup (it matches the input's width by default). */
@@ -92,6 +98,8 @@ export function AsyncCombobox<T>({
   const [results, setResults] = useState<T[]>([]);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(-1);
+  const browse = minChars === 0 ? labels.browse : undefined;
+  const browsing = query === "";
 
   const applyUpdate = (update: SearchUpdate<T>) => {
     if (update.status === "done") {
@@ -227,8 +235,11 @@ export function AsyncCombobox<T>({
         : status === "offline"
           ? labels.offline
           : status === "done" && results.length === 0
-            ? labels.empty
+            ? browse && browsing
+              ? browse.empty
+              : labels.empty
             : null;
+  const spinning = status === "loading" && open;
 
   return (
     <div className="relative">
@@ -245,10 +256,15 @@ export function AsyncCombobox<T>({
         autoComplete="off"
         autoCorrect="off"
         spellCheck={false}
-        className={cn(status === "loading" && "pr-9", className)}
+        className={cn((browse || spinning) && "pr-10", className)}
         onChange={(event) => {
           onValueChange(event.target.value);
           startSearch(event.target.value);
+        }}
+        onClick={(event) => {
+          inputProps.onClick?.(event);
+          // A click (or tap) on the empty field opens the list, like a menu.
+          if (browse && !open && !value.trim()) startSearch("");
         }}
         onKeyDown={handleKeyDown}
         onFocus={(event) => {
@@ -266,11 +282,42 @@ export function AsyncCombobox<T>({
           close();
         }}
       />
-      {status === "loading" && open && (
-        <Loader2
-          aria-hidden="true"
-          className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground"
-        />
+      {browse ? (
+        <button
+          type="button"
+          // Not a tab stop: the input handles the keyboard (↓ opens the list).
+          tabIndex={-1}
+          aria-label={browse.toggle}
+          aria-controls={listboxId}
+          aria-expanded={showPopup}
+          className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-md text-muted-foreground hover:text-foreground"
+          // Keep focus in the input so its blur doesn't close the list first.
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => {
+            if (showPopup) {
+              close();
+              return;
+            }
+            document.getElementById(inputId)?.focus();
+            startSearch(value);
+          }}
+        >
+          {spinning ? (
+            <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+          ) : (
+            <ChevronDown
+              aria-hidden="true"
+              className={cn("size-4 transition-transform", showPopup && "rotate-180")}
+            />
+          )}
+        </button>
+      ) : (
+        spinning && (
+          <Loader2
+            aria-hidden="true"
+            className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground"
+          />
+        )
       )}
       <div
         className={cn(
@@ -279,10 +326,15 @@ export function AsyncCombobox<T>({
           !showPopup && "hidden"
         )}
       >
+        {showList && browse && browsing && (
+          <p aria-hidden="true" className="px-4 pb-1 pt-2.5 text-xs font-medium text-muted-foreground">
+            {browse.title}
+          </p>
+        )}
         <ul
           id={listboxId}
           role="listbox"
-          aria-label={labels.listbox}
+          aria-label={browse && browsing ? browse.title : labels.listbox}
           className={cn("max-h-72 overflow-y-auto overscroll-contain p-1", !showList && "hidden")}
         >
           {showList &&

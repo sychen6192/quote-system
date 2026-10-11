@@ -113,6 +113,7 @@ export function CustomerSection() {
                 onBlur={field.onBlur}
                 onPick={pickCustomer}
                 search={searchCustomers}
+                minChars={0}
                 getKey={(option) => option.companyName.toLowerCase()}
                 onSessionError={onSessionExpired}
                 cancelOn={submitting}
@@ -126,6 +127,11 @@ export function CustomerSection() {
                   offline: t("combobox.offline"),
                   results: (count) => t("combobox.results", { count }),
                   listbox: t("combobox.customers"),
+                  browse: {
+                    title: t("combobox.recentCustomers"),
+                    empty: t("combobox.noRecentCustomers"),
+                    toggle: t("combobox.showCustomers"),
+                  },
                 }}
                 renderOption={(option, query) => (
                   <>
