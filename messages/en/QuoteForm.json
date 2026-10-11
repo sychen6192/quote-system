@@ -77,7 +77,7 @@
     "terms": "Terms & conditions"
   },
   "placeholders": {
-    "companyName": "Search or type a company name",
+    "companyName": "Pick a customer or type a new name",
     "contactPerson": "e.g. Jane Chen",
     "email": "name@company.com",
     "phone": "e.g. +886 2 2345 6789",
@@ -99,6 +99,9 @@
   },
   "combobox": {
     "customers": "Saved customers",
+    "recentCustomers": "Recent customers",
+    "noRecentCustomers": "No saved customers yet. Type the company name: once this quote is saved, the customer is listed here next time.",
+    "showCustomers": "Show saved customers",
     "products": "Past items",
     "searching": "Searching…",
     "noCustomers": "No saved customer matches. Keep typing to use a new name.",

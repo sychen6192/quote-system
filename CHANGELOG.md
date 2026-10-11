@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- **Pick a customer from a list.** Clicking the empty company name field on a quote (or its ▾ button) lists the customers you quoted most recently. Picking one fills in the contact person, email, phone, VAT number and address from their last quote. Typing still searches every saved customer, as before.
+
 ## [1.0.2] - 2026-10-11
 
 Dependency updates and small fixes. Upgrading needs no change to `.env` and no manual step: there are no database migrations in this release.
