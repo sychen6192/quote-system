@@ -15,10 +15,10 @@ import {
 } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { setQuoteStatus } from "@/actions/quote-status";
 import { downloadFile } from "@/components/app-shell/download";
 import { reloadForSignIn } from "@/components/app-shell/session";
 import { DeleteQuoteDialog } from "@/components/delete-quote-button";
+import { useOfferMarkSent, useSaveQuoteStatus } from "@/components/quotes/use-quote-status";
 import { ACTION_TOAST_DURATION_MS } from "@/components/ui/toast-layer";
 import type { AppLocale } from "@/i18n/locales";
 import { displayStatus as toDisplayStatus, type DisplayStatus, type QuoteStatus } from "@/lib/status";
@@ -55,6 +55,8 @@ type QuoteDetailContextValue = {
   changeStatus: (next: QuoteStatus) => void;
   /** /api/quotes/<id>/pdf?download=1&lang=… */
   downloadHref: string;
+  /** The PDF was downloaded: a draft offers to be marked as sent. */
+  pdfDownloaded: () => void;
   openSendDialog: () => void;
   openDeleteDialog: (returnFocus?: RefObject<HTMLElement | null>) => void;
   /** Starts fetching the PDF so a later share() can hand it over within the tap. */
@@ -130,9 +132,10 @@ function errorName(error: unknown): string {
 
 export function QuoteDetailProvider({ quote, children }: { quote: QuoteDetailInfo; children: ReactNode }) {
   const t = useTranslations("QuoteActions");
-  const tStatus = useTranslations("Status");
   const tCommon = useTranslations("Common");
   const router = useRouter();
+  const saveStatus = useSaveQuoteStatus(useCallback(() => router.push("/quotes"), [router]));
+  const offerMarkSent = useOfferMarkSent();
 
   const [status, setOptimisticStatus] = useOptimistic(quote.status);
   const [statusPending, startStatusTransition] = useTransition();
@@ -151,38 +154,25 @@ export function QuoteDetailProvider({ quote, children }: { quote: QuoteDetailInf
       if (next === previous) return;
       startStatusTransition(async () => {
         setOptimisticStatus(next);
-        let result: Awaited<ReturnType<typeof setQuoteStatus>>;
-        try {
-          result = await setQuoteStatus(quote.id, next);
-        } catch (error) {
-          // The proxy answers an expired session with 401, which makes the action throw.
-          console.error(error);
-          reloadForSignIn(tCommon("sessionExpired"));
-          return;
-        }
-        if (result.success) {
-          toast.success(t("status.changed", { status: tStatus(next) }), {
-            id: `quote-status-${quote.id}`,
-            action: undoable
-              ? { label: t("status.undo"), onClick: () => changeStatusRef.current(previous, false) }
-              : undefined,
-            duration: undoable ? ACTION_TOAST_DURATION_MS : undefined,
-          });
-        } else if (result.code === "UNAUTHORIZED") {
-          reloadForSignIn(tCommon("sessionExpired"));
-        } else if (result.code === "NOT_FOUND") {
-          toast.error(t("status.notFound"));
-          router.push("/quotes");
-        } else {
-          toast.error(t("status.failed"));
-        }
+        await saveStatus(
+          quote.id,
+          next,
+          undoable ? () => changeStatusRef.current(previous, false) : undefined
+        );
       });
     },
-    [quote.id, router, setOptimisticStatus, status, t, tCommon, tStatus]
+    [quote.id, saveStatus, setOptimisticStatus, status]
   );
+  // Read when a download or share finishes, after the click's render.
+  const statusRef = useRef(status);
   useEffect(() => {
     changeStatusRef.current = changeStatus;
-  }, [changeStatus]);
+    statusRef.current = status;
+  }, [changeStatus, status]);
+  const pdfSent = useCallback(() => {
+    if (statusRef.current !== "draft") return;
+    offerMarkSent(quote.id, quote.quotationNumber, () => changeStatusRef.current("sent"));
+  }, [offerMarkSent, quote.id, quote.quotationNumber]);
 
   const pdfUrl = `/api/quotes/${quote.id}/pdf?lang=${encodeURIComponent(quote.locale)}`;
 
@@ -246,6 +236,7 @@ export function QuoteDetailProvider({ quote, children }: { quote: QuoteDetailInf
               title: t("shareSheet.title", { number: quote.quotationNumber }),
               text: t("shareSheet.text", { number: quote.quotationNumber, company: quote.companyName }),
             });
+            pdfSent();
             return;
           } catch (error) {
             const name = errorName(error);
@@ -265,7 +256,7 @@ export function QuoteDetailProvider({ quote, children }: { quote: QuoteDetailInf
       }
       await copyLink();
     },
-    [copyLink, loadPdfFile, quote.companyName, quote.quotationNumber, t, tCommon]
+    [copyLink, loadPdfFile, pdfSent, quote.companyName, quote.quotationNumber, t, tCommon]
   );
 
   const value = useMemo<QuoteDetailContextValue>(
@@ -276,6 +267,7 @@ export function QuoteDetailProvider({ quote, children }: { quote: QuoteDetailInf
       statusPending,
       changeStatus: (next) => changeStatus(next),
       downloadHref: `${pdfUrl}&download=1`,
+      pdfDownloaded: pdfSent,
       openSendDialog: () => {
         setSendKey((key) => key + 1);
         setSendOpen(true);
@@ -288,7 +280,7 @@ export function QuoteDetailProvider({ quote, children }: { quote: QuoteDetailInf
       share,
       print: () => window.print(),
     }),
-    [changeStatus, pdfUrl, prepareShare, quote, share, status, statusPending]
+    [changeStatus, pdfSent, pdfUrl, prepareShare, quote, share, status, statusPending]
   );
 
   return (

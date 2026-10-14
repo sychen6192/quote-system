@@ -51,7 +51,7 @@ export function QuoteCards({
               </div>
               {showActions ? (
                 <div className="relative z-10 -mr-2 -mt-2 shrink-0">
-                  <QuoteRowActions id={row.id} quotationNumber={row.number} />
+                  <QuoteRowActions id={row.id} quotationNumber={row.number} status={row.savedStatus} />
                 </div>
               ) : null}
             </div>

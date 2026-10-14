@@ -13,6 +13,8 @@
     "change": "變更狀態",
     "changed": "已標記為「{status}」",
     "undo": "復原",
+    "sentPrompt": "{number} 已傳給客戶了嗎？",
+    "markSent": "標記為已發送",
     "failed": "無法變更狀態，請再試一次。",
     "notFound": "此報價單已不存在。"
   },

@@ -13,6 +13,8 @@
     "change": "Change status",
     "changed": "Marked as {status}",
     "undo": "Undo",
+    "sentPrompt": "Sent {number} to the customer?",
+    "markSent": "Mark as sent",
     "failed": "Couldn't change the status. Please try again.",
     "notFound": "This quote no longer exists."
   },

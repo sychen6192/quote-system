@@ -90,7 +90,7 @@ export function QuotesTable({ rows }: { rows: QuoteRowView[] }) {
                   {row.total}
                 </TableCell>
                 <TableCell className="relative z-10 py-2 pr-3 text-right">
-                  <QuoteRowActions id={row.id} quotationNumber={row.number} />
+                  <QuoteRowActions id={row.id} quotationNumber={row.number} status={row.savedStatus} />
                 </TableCell>
               </TableRow>
             );

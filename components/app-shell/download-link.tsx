@@ -10,6 +10,8 @@ export type DownloadLinkProps = Omit<ComponentProps<"a">, "href" | "download"> &
   href: string;
   /** Used when the response names no file (Content-Disposition). */
   filename?: string;
+  /** Runs once the file has been handed to the browser to save. */
+  onSaved?: () => void;
 };
 
 /**
@@ -19,7 +21,7 @@ export type DownloadLinkProps = Omit<ComponentProps<"a">, "href" | "download"> &
  * browser's own behaviour. Works as an `asChild` child (props and ref pass
  * through to the <a>).
  */
-export function DownloadLink({ href, filename, onClick, children, ...props }: DownloadLinkProps) {
+export function DownloadLink({ href, filename, onClick, onSaved, children, ...props }: DownloadLinkProps) {
   const t = useTranslations("Common");
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
@@ -46,8 +48,9 @@ export function DownloadLink({ href, filename, onClick, children, ...props }: Do
         { fetch: (input, init) => window.fetch(input, init), save: saveBlob },
         filename
       );
-      if (outcome === "unauthorized") reloadForSignIn(t("sessionExpired"));
-      else if (outcome === "failed") toast.error(t("downloadFailed"));
+      if (outcome === "saved") onSaved?.();
+      else if (outcome === "unauthorized") reloadForSignIn(t("sessionExpired"));
+      else toast.error(t("downloadFailed"));
     } finally {
       busyRef.current = false;
       setBusy(false);

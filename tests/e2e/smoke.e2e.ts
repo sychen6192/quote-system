@@ -255,6 +255,67 @@ test.describe("quotes", () => {
     // Picking moves on to the quantity, ready to type.
     await expect(page.locator('[name="items.0.quantity"]')).toBeFocused();
   });
+
+  test("a downloaded draft offers to be marked sent, and the list menu changes the status", async ({ page }, testInfo) => {
+    const problems = collectProblems(page);
+    page.on("dialog", (dialog) => void dialog.accept());
+    const company = `E2E Status ${testInfo.project.name} ${Date.now()}`;
+    const id = await createQuote(page, company);
+    const prompt = page.getByText(/^Sent .+ to the customer\?$/);
+    const markSent = page.getByRole("button", { name: "Mark as sent" });
+    // A click on a toast's button must not take focus: sonner hands it back
+    // once the toasts are gone, which would close a menu opened meanwhile.
+    const focusInToaster = () =>
+      page.evaluate(() => document.activeElement?.closest("[data-sonner-toaster]") != null);
+
+    // From the list: download the draft's PDF, then take up the offer.
+    await page.goto(`/en/quotes?q=${encodeURIComponent(company)}`);
+    const row = page.locator(`[data-quote-id="${id}"]`).filter({ visible: true }).first();
+    const menu = row.getByRole("button", { name: /^Actions for quote / });
+    await expect(row.getByText("Draft", { exact: true })).toBeVisible();
+    await menu.click();
+    const listDownload = page.waitForEvent("download");
+    await page.getByRole("menuitem", { name: "Download PDF" }).click();
+    await listDownload;
+    await expect(prompt).toBeVisible();
+    await markSent.click();
+    expect(await focusInToaster()).toBe(false);
+    await expect(page.getByText("Marked as Sent")).toBeVisible();
+    await expect(row.getByText("Sent", { exact: true })).toBeVisible();
+    await expect(prompt).toHaveCount(0);
+
+    // Any status from the menu, with Undo.
+    await menu.click();
+    await expect(page.getByRole("menuitemradio", { name: "Sent" })).toBeChecked();
+    await page.getByRole("menuitemradio", { name: "Accepted" }).click();
+    await expect(page.getByText("Marked as Accepted")).toBeVisible();
+    await expect(row.getByText("Accepted", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Undo" }).click();
+    expect(await focusInToaster()).toBe(false);
+    await expect(row.getByText("Sent", { exact: true })).toBeVisible();
+    await menu.click();
+    await page.getByRole("menuitemradio", { name: "Draft" }).click();
+    await expect(row.getByText("Draft", { exact: true })).toBeVisible();
+
+    // On the quote: the draft's download offers it too; a sent quote's doesn't.
+    await page.goto(`/en/quotes/${id}`);
+    const download = page.getByRole("link", { name: "Download PDF" }).filter({ visible: true }).first();
+    let saved = page.waitForEvent("download");
+    await download.click();
+    await saved;
+    await expect(prompt).toBeVisible();
+    await markSent.click();
+    await expect(page.getByText("Marked as Sent")).toBeVisible();
+    saved = page.waitForEvent("download");
+    await download.click();
+    await saved;
+    await settle(page, 500);
+    await expect(prompt).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByText("Sent", { exact: true }).filter({ visible: true }).first()).toBeVisible();
+
+    expectNoProblems(problems);
+  });
 });
 
 test.describe("private data never leaks through /_next/<page>", () => {

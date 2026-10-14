@@ -20,6 +20,11 @@ const PAPER: Record<DisplayStatus, { pill: string; dot: string }> = {
   expired: { pill: "bg-amber-50 text-amber-800 ring-amber-200", dot: "bg-amber-600" },
 };
 
+/** A status's colour as a dot, for menus that list the statuses. */
+export function StatusDot({ status }: { status: DisplayStatus }) {
+  return <span aria-hidden="true" className={cn("size-2 shrink-0 rounded-full", TONE[status].dot)} />;
+}
+
 interface Props {
   /**
    * The display status, computed on the server with

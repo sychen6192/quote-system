@@ -82,6 +82,7 @@ describe("quote row view", () => {
     issuedDate: "2026-10-09",
     validUntil: "2026-10-12",
     totalAmount: 31216500,
+    status: "sent",
     displayStatus: "sent" as const,
     customer: { companyName: "宏達電子股份有限公司", contactPerson: "王志明" },
   };
@@ -106,6 +107,7 @@ describe("quote row view", () => {
       issuedLabel: "Oct 9, 2026",
       validUntilLabel: "Oct 12, 2026",
       status: "sent",
+      savedStatus: "sent",
       daysLeft: 3,
       urgency: "soon",
     });
@@ -114,10 +116,11 @@ describe("quote row view", () => {
 
   it("has no days-left for decided quotes and tolerates missing parts", () => {
     const view = toQuoteRowView(
-      { ...row, title: null, customer: null, displayStatus: "accepted", issuedDate: null },
+      { ...row, title: null, customer: null, status: "accepted", displayStatus: "accepted", issuedDate: null },
       { today: "2026-10-09", money, locale: "zh-TW" }
     );
     expect(view).toMatchObject({ title: null, customerName: null, daysLeft: null, urgency: "none", issuedLabel: "" });
+    expect(view.savedStatus).toBe("accepted");
   });
 
   it("marks expired quotes", () => {
@@ -125,7 +128,8 @@ describe("quote row view", () => {
       { ...row, validUntil: "2026-10-01", displayStatus: "expired" },
       { today: "2026-10-09", money, locale: "en" }
     );
-    expect(view).toMatchObject({ daysLeft: -8, urgency: "expired" });
+    // Still a sent quote underneath: that is what its status menu shows.
+    expect(view).toMatchObject({ status: "expired", savedStatus: "sent", daysLeft: -8, urgency: "expired" });
   });
 });
 

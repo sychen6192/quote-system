@@ -21,27 +21,16 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetDescription, SheetHandle, SheetTitle } from "@/components/ui/sheet";
-import { QUOTE_STATUS_VALUES, isQuoteStatus, type QuoteStatus } from "@/lib/status";
+import { StatusDot } from "@/components/quotes/quote-status-badge";
+import { StatusMenuItems } from "@/components/quotes/status-menu-items";
+import { QUOTE_STATUS_VALUES } from "@/lib/status";
 import { cn } from "@/lib/utils";
 import { Link } from "@/navigation";
 import { useQuoteDetail } from "./detail-context";
-
-const STATUS_DOT: Record<QuoteStatus, string> = {
-  draft: "bg-muted-foreground",
-  sent: "bg-info",
-  accepted: "bg-success",
-  rejected: "bg-destructive",
-};
-
-function StatusDot({ status }: { status: QuoteStatus }) {
-  return <span aria-hidden="true" className={cn("size-2 shrink-0 rounded-full", STATUS_DOT[status])} />;
-}
 
 const editHref = (id: number) => `/quotes/${id}/edit`;
 const duplicateHref = (id: number) => ({ pathname: "/quotes/new", query: { from: String(id) } });
@@ -49,13 +38,13 @@ const duplicateHref = (id: number) => ({ pathname: "/quotes/new", query: { from:
 /** Desktop / tablet toolbar: Download PDF and Send first, then status, edit and the rest. */
 export function QuoteToolbar({ className }: { className?: string }) {
   const t = useTranslations("QuoteActions");
-  const { quote, downloadHref, openSendDialog } = useQuoteDetail();
+  const { quote, downloadHref, pdfDownloaded, openSendDialog } = useQuoteDetail();
 
   return (
     <div className={cn("flex flex-wrap items-center gap-2", className)}>
       <Button asChild>
         {/* A link, not a new window: popup blockers and standalone PWAs swallow those. */}
-        <DownloadLink href={downloadHref}>
+        <DownloadLink href={downloadHref} onSaved={pdfDownloaded}>
           <Download aria-hidden="true" />
           {t("downloadPdf")}
         </DownloadLink>
@@ -93,19 +82,7 @@ function StatusMenu() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-56">
         <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">{t("status.change")}</DropdownMenuLabel>
-        <DropdownMenuRadioGroup
-          value={status}
-          onValueChange={(value) => {
-            if (isQuoteStatus(value)) changeStatus(value);
-          }}
-        >
-          {QUOTE_STATUS_VALUES.map((value) => (
-            <DropdownMenuRadioItem key={value} value={value} className="gap-2 py-2">
-              <StatusDot status={value} />
-              {tStatus(value)}
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
+        <StatusMenuItems value={status} onChange={changeStatus} itemClassName="py-2" />
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -154,7 +131,7 @@ function MoreMenu() {
 /** Phones: a fixed bar with the two main actions and a sheet with the rest. */
 export function MobileActionBar() {
   const t = useTranslations("QuoteActions");
-  const { downloadHref, openSendDialog, prepareShare } = useQuoteDetail();
+  const { downloadHref, pdfDownloaded, openSendDialog, prepareShare } = useQuoteDetail();
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLButtonElement>(null);
 
@@ -163,7 +140,7 @@ export function MobileActionBar() {
       <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 px-4 pb-safe-3 pt-3 shadow-[0_-4px_16px_-8px_hsl(var(--shadow-color)/0.15)] backdrop-blur-md supports-[backdrop-filter]:bg-background/80 md:hidden print:hidden">
         <div className="mx-auto flex max-w-lg items-center gap-2 pl-safe pr-safe">
           <Button asChild className="h-12 flex-1 text-[15px]">
-            <DownloadLink href={downloadHref}>
+            <DownloadLink href={downloadHref} onSaved={pdfDownloaded}>
               <Download aria-hidden="true" />
               {t("downloadPdf")}
             </DownloadLink>

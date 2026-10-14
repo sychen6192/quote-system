@@ -9,11 +9,17 @@ All notable changes to this project are documented here. The format follows [Kee
 - **Pick a customer from a list.** Clicking the empty company name field on a quote (or its ▾ button) lists the customers you quoted most recently. Picking one fills in the contact person, email, phone, VAT number and address from their last quote, plus its payment terms and delivery method (only into those fields while they are empty or still hold what an earlier pick put there, so nothing typed by hand is replaced; a message says what was carried over). Typing still searches every saved customer, as before. "New quote" from the customer list carries the terms too.
 - **Pick an item from a list.** The same works for an item's name: a click on the empty field (or ▾) lists the items used most recently with their price and unit, and picking one fills in the description, unit, unit price and tax setting, then moves on to the quantity.
 - **The salesperson is remembered.** Without a default salesperson in Settings, a new quote starts with the salesperson of the last quote saved on that device (phone, computer). A default set in Settings still comes first.
+- **Mark a quote as sent in one tap.** After a draft's PDF is downloaded or shared, a message offers "Mark as sent", so the dashboard's open pipeline and acceptance rate count it. Emailing from the app already marked it sent.
+- **Change the status from the quotes list.** The ⋯ menu of each quote lists the four statuses, with Undo.
 
 ### Changed
 
 - **Less text on screen.** Descriptions under headings, field hints that repeat the label or placeholder, and server setup notes (`.env`, API keys, the sign-in password, backups) are gone from Settings, the quote form, the dashboard and the sign-in page; that is what the README is for. Messages that remain are shorter. On phones, Settings no longer repeats the selected tab's name as a heading.
 - The phone tab bar is less see-through, so its labels stay readable over whatever scrolls under it.
+
+### Fixed
+
+- Clicking a button in a message (Undo, Reload…) no longer takes focus, which could make a menu opened right afterwards close by itself once the messages went away.
 
 ## [1.0.2] - 2026-10-11
 

@@ -3,7 +3,7 @@
 
 import { daysUntil, isIsoDate, toIsoDate } from "@/lib/dates";
 import { formatMoney, type MoneyFormat } from "@/lib/money";
-import type { DisplayStatus } from "@/lib/status";
+import { normalizeStatus, type DisplayStatus, type QuoteStatus } from "@/lib/status";
 import { formatIsoDate } from "@/components/app-shell/format";
 
 /** How close the valid-until date is, for open quotes only. */
@@ -19,6 +19,8 @@ export type QuoteRowView = {
   issuedLabel: string;
   validUntilLabel: string;
   status: DisplayStatus;
+  /** the saved status; `status` reads "expired" instead for open quotes past valid-until */
+  savedStatus: QuoteStatus;
   total: string;
   /** days from today to valid-until (negative once passed); null for decided quotes */
   daysLeft: number | null;
@@ -35,6 +37,7 @@ type QuoteRowSource = {
   issuedDate?: string | Date | null;
   validUntil: string | Date;
   totalAmount: number;
+  status: string | null;
   displayStatus: DisplayStatus;
   customer?: { companyName?: string | null; contactPerson?: string | null } | null;
 };
@@ -64,6 +67,7 @@ export function toQuoteRowView(
     issuedLabel: formatIsoDate(toIsoDate(row.issuedDate ?? null), locale),
     validUntilLabel: formatIsoDate(validUntil, locale),
     status: row.displayStatus,
+    savedStatus: normalizeStatus(row.status),
     total: formatMoney(row.totalAmount, money),
     daysLeft,
     urgency: urgencyOf(row.displayStatus, daysLeft),
